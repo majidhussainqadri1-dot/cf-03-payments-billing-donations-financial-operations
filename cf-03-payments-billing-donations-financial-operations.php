@@ -3,7 +3,7 @@
  * Plugin Name: CF-03 Payments, Billing, Donations and Financial Operations
  * Plugin URI: https://sabrihomeopathy.com/
  * Description: Conditional, fail-closed financial operations foundation for the Sabri Social Homeopathy Platform.
- * Version: 0.1.0
+ * Version: 0.2.0
  * Requires at least: 6.0
  * Requires PHP: 8.1
  * Author: Dr. Allamah Majid Hussain Sabri
@@ -17,7 +17,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-define('SABRI_CF03_VERSION', '0.1.0');
+define('SABRI_CF03_VERSION', '0.2.0');
 define('SABRI_CF03_FILE', __FILE__);
 define('SABRI_CF03_DIR', plugin_dir_path(__FILE__));
 

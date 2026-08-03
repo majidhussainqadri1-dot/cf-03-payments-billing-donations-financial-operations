@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Sabri\CF03;
 
-use Sabri\CF03\Application\ActivationGate;
+use Sabri\CF03\Application\EvidenceBoundActivationGate;
 
 final class Plugin
 {
@@ -20,7 +20,7 @@ final class Plugin
 
         add_option(self::OPTION_RUNTIME_STATUS, 'disabled', '', false);
         add_option(self::OPTION_ACTIVATION_RECORD, [], '', false);
-        update_option(self::OPTION_VERSION, defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '0.1.0', false);
+        update_option(self::OPTION_VERSION, defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '0.2.0', false);
     }
 
     public static function boot(): void
@@ -40,7 +40,7 @@ final class Plugin
             return;
         }
 
-        $status = ActivationGate::forWordPress()->evaluate();
+        $status = EvidenceBoundActivationGate::forWordPress()->evaluate();
         if ($status->approved()) {
             return;
         }
@@ -69,11 +69,11 @@ final class Plugin
     /** @return array<string, mixed> */
     public static function runSiteHealthTest(): array
     {
-        $status = ActivationGate::forWordPress()->evaluate();
+        $status = EvidenceBoundActivationGate::forWordPress()->evaluate();
 
         return [
             'label'       => $status->approved()
-                ? 'CF-03 activation gates are approved'
+                ? 'CF-03 activation evidence is complete and hash-bound'
                 : 'CF-03 runtime remains safely disabled',
             'status'      => $status->approved() ? 'good' : 'recommended',
             'badge'       => [
@@ -82,8 +82,8 @@ final class Plugin
             ],
             'description' => '<p>' . esc_html(
                 $status->approved()
-                    ? 'All configured activation evidence is present. Provider and runtime functions remain subject to implemented feature gates.'
-                    : 'This is the expected foundation state. Missing gates: ' . implode(', ', $status->missingGates()) . '.'
+                    ? 'The versioned activation record matches the configured evidence hash. Runtime endpoints remain separately feature-gated and are not implemented in this foundation release.'
+                    : 'This is the expected foundation state. Missing or invalid gates: ' . implode(', ', $status->missingGates()) . '.'
             ) . '</p>',
             'actions'     => '',
             'test'        => 'sabri_cf03_activation_gate',

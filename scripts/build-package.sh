@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLUGIN_DIR="cf-03-payments-billing-donations-financial-operations"
 BUILD_DIR="${ROOT_DIR}/build"
 STAGE_DIR="${BUILD_DIR}/${PLUGIN_DIR}"
-ZIP_PATH="${BUILD_DIR}/${PLUGIN_DIR}-0.1.0.zip"
+ZIP_PATH="${BUILD_DIR}/${PLUGIN_DIR}-0.2.0.zip"
 
 rm -rf "${BUILD_DIR}"
 mkdir -p "${STAGE_DIR}"
@@ -24,7 +24,7 @@ done < <(find "${ROOT_DIR}" -type f \
   ! -name '.editorconfig' \
   -print0 | sort -z)
 
-find "${STAGE_DIR}" -type f -exec touch -t 202608040000 {} +
+find "${STAGE_DIR}" -type f -exec touch -t 202608040143 {} +
 (
   cd "${BUILD_DIR}"
   find "${PLUGIN_DIR}" -type f -print | LC_ALL=C sort | zip -X -q "${ZIP_PATH}" -@

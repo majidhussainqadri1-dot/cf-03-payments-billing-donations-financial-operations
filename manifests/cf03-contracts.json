@@ -1,0 +1,49 @@
+{
+  "module": "CF-03",
+  "software_version": "0.2.0",
+  "status": "conditional-foundation",
+  "runtime_collection_enabled": false,
+  "contracts": {
+    "activation_evidence": {
+      "version": "1.0",
+      "owner": "CF-03",
+      "hash_bound": true
+    },
+    "file00_financial_facts": {
+      "version": "1.0",
+      "producer": "CF-03",
+      "consumer_owner": "File 00",
+      "events": [
+        "PaymentSettled",
+        "PaymentFailed",
+        "PaymentCancelled",
+        "RefundSettled",
+        "SubscriptionCancelled"
+      ],
+      "direct_entitlement_write": false
+    },
+    "hosted_payment_provider": {
+      "version": "0.1",
+      "implementation_present": false,
+      "modes": ["hosted", "tokenized"],
+      "checkout_host_allowlist_required": true
+    },
+    "idempotency_store": {
+      "version": "0.1",
+      "implementation_present": false,
+      "unique_key": ["scope", "idempotency_key"]
+    },
+    "audit_sink": {
+      "version": "0.1",
+      "implementation_present": false,
+      "append_only_required": true
+    }
+  },
+  "constitutional_invariants": {
+    "clinic_commission_basis_points": 0,
+    "marketplace_commission_basis_points": 0,
+    "donation_grants_privilege": false,
+    "file00_is_entitlement_authority": true,
+    "floating_point_money_allowed": false
+  }
+}

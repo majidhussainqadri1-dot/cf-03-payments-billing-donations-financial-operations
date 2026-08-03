@@ -22,8 +22,15 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Syntax check
         run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
-      - name: Domain invariant tests
+      - name: Foundation domain tests
         run: php tests/run.php
+      - name: Product, evidence and adversarial tests
+        run: php tests/run-0.2.php
+      - name: Validate JSON manifests
+        run: |
+          for file in manifests/*.json; do
+            php -r 'json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);' "$file"
+          done
 
   package:
     name: Deterministic package smoke test
@@ -31,7 +38,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: Build package
-        run: bash scripts/build-package.sh
-      - name: Verify package exists
-        run: test -f build/cf-03-payments-billing-donations-financial-operations-0.1.0.zip
+      - name: Build package twice
+        run: |
+          bash scripts/build-package.sh
+          first="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-0.2.0.zip | cut -d' ' -f1)"
+          bash scripts/build-package.sh
+          second="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-0.2.0.zip | cut -d' ' -f1)"
+          test "$first" = "$second"
+      - name: Verify canonical package
+        run: |
+          test -f build/cf-03-payments-billing-donations-financial-operations-0.2.0.zip
+          unzip -Z1 build/cf-03-payments-billing-donations-financial-operations-0.2.0.zip \
+            | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
