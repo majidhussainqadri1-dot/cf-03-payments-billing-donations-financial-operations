@@ -82,8 +82,8 @@ final class ChargebackCase
     public function recordOutcome(bool $won, Money $providerFee, int $expectedVersion): void
     {
         $this->assertVersion($expectedVersion);
-        if (! in_array($this->state, ['submitted', 'accepted'], true)) {
-            throw new InvariantViolation('Chargeback is not awaiting an outcome.');
+        if ($this->state !== 'accepted') {
+            throw new InvariantViolation('Chargeback outcome requires provider acceptance of the submitted case.');
         }
         if ($providerFee->currency() !== $this->disputedAmount->currency()) {
             throw new InvariantViolation('Chargeback provider fee currency mismatch.');
