@@ -13,6 +13,9 @@ final class AuditEnvelope
     private const FORBIDDEN_KEYS = [
         'pan', 'cvv', 'pin', 'otp', 'password', 'secret', 'api_key',
         'webhook_key', 'bank_credentials', 'raw_body', 'token', 'card_number',
+        'private_key', 'access_key', 'refresh_token', 'authorization', 'cookie',
+        'iban', 'swift', 'routing_number', 'account_number', 'magnetic_stripe',
+        'track_data', 'cryptogram', 'security_code', 'payment_method_payload',
     ];
 
     /** @param array<string,mixed> $metadata */
@@ -34,7 +37,8 @@ final class AuditEnvelope
             }
         }
 
-        self::assertSafeMetadata($metadata);
+        $items = 0;
+        self::assertSafeMetadata($metadata, null, 0, $items);
     }
 
     /** @return array<string,mixed> */
@@ -73,8 +77,19 @@ final class AuditEnvelope
         return false;
     }
 
-    private static function assertSafeMetadata(mixed $value, ?string $key = null): void
-    {
+    private static function assertSafeMetadata(
+        mixed $value,
+        ?string $key,
+        int $depth,
+        int &$items
+    ): void {
+        if ($depth > 8) {
+            throw new InvalidArgumentException('Audit metadata exceeds the maximum nesting depth.');
+        }
+        $items++;
+        if ($items > 512) {
+            throw new InvalidArgumentException('Audit metadata exceeds the maximum item count.');
+        }
         if ($key !== null && self::isForbiddenKey($key)) {
             throw new InvariantViolation('Audit metadata contains a prohibited sensitive field.');
         }
@@ -83,8 +98,12 @@ final class AuditEnvelope
             throw new InvalidArgumentException('Audit metadata must contain only safe scalar and array values.');
         }
 
-        if (is_string($value) && strlen($value) > 2048) {
-            throw new InvalidArgumentException('Audit metadata string exceeds the safe limit.');
+        if (is_string($value)) {
+            if (strlen($value) > 2048
+                || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $value) === 1
+            ) {
+                throw new InvalidArgumentException('Audit metadata string is oversized or contains prohibited controls.');
+            }
         }
 
         if (! is_array($value)) {
@@ -95,7 +114,12 @@ final class AuditEnvelope
             if (! is_int($childKey) && ! is_string($childKey)) {
                 throw new InvalidArgumentException('Audit metadata key is invalid.');
             }
-            self::assertSafeMetadata($childValue, is_string($childKey) ? $childKey : null);
+            if (is_string($childKey)
+                && (strlen($childKey) > 96 || preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$/', $childKey) !== 1)
+            ) {
+                throw new InvalidArgumentException('Audit metadata key format is invalid.');
+            }
+            self::assertSafeMetadata($childValue, is_string($childKey) ? $childKey : null, $depth + 1, $items);
         }
     }
 }
