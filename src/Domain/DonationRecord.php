@@ -89,20 +89,21 @@ final class DonationRecord
         if (! in_array($this->state, ['settled', 'receipt_issued'], true)) {
             throw new InvariantViolation('Donation is not refundable from the current state.');
         }
-        if ($fact->type() !== DonationFinancialFactType::ONE_TIME_COMPLETED
-            && $fact->type() !== DonationFinancialFactType::MONTHLY_CANCELLED
-        ) {
-            throw new InvariantViolation('Donation refund/cancellation requires an applicable trusted financial fact.');
+        if ($fact->type() !== DonationFinancialFactType::REFUNDED) {
+            throw new InvariantViolation('Donation refund requires a trusted refund fact.');
         }
         $this->state = 'refunded';
         $this->recordVersion++;
     }
 
-    public function markChargedback(int $expectedVersion): void
+    public function markChargedback(TrustedDonationFact $fact, int $expectedVersion): void
     {
         $this->assertVersion($expectedVersion);
         if (! in_array($this->state, ['settled', 'receipt_issued'], true)) {
             throw new InvariantViolation('Donation chargeback is invalid for the current state.');
+        }
+        if ($fact->type() !== DonationFinancialFactType::CHARGEDBACK) {
+            throw new InvariantViolation('Donation chargeback requires a trusted chargeback fact.');
         }
         $this->state = 'chargedback';
         $this->recordVersion++;
