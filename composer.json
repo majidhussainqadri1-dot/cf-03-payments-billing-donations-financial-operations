@@ -1,6 +1,6 @@
 {
   "name": "sabri-homeopathy/cf-03-financial-operations",
-  "description": "Free-platform financial policy, voluntary donation governance and fail-closed financial operations for the Sabri Social Homeopathy Platform.",
+  "description": "Complete free-platform financial governance, voluntary donation, ledger, reconciliation and fail-closed financial operations for the Sabri Social Homeopathy Platform.",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {
@@ -16,7 +16,8 @@
       "php tests/run.php",
       "php tests/run-0.2.php",
       "php tests/run-1.0.php",
-      "php tests/run-free-donation-policy.php"
+      "php tests/run-free-donation-policy.php",
+      "php tests/run-plan-completion.php"
     ],
     "lint": "find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l"
   }
