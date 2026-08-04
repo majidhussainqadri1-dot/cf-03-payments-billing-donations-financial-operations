@@ -1,144 +1,31 @@
 {
   "module": "CF-03",
-  "software_version": "1.0.0-rc.3",
-  "schema_version": "2.0.0",
-  "status": "dual-plan-source-complete-runtime-fail-closed",
-  "governing_decision": "SSH-FIN-2026-08-04-01",
+  "software_version": "1.1.0-rc.1",
+  "base_schema_version": "2.0.0",
+  "complete_schema_version": "3.0.0",
+  "status": "final-founder-donation-transparency-source-complete-runtime-fail-closed",
+  "governing_decision": "SSH-FIN-DONATION-2026-08-04-01",
   "runtime_collection_enabled": false,
-  "paid_products": {
-    "membership": "dormant_non_collectible",
-    "education": "dormant_non_collectible",
-    "ai_add_on": "dormant_non_collectible",
-    "ai_usage": "dormant_non_collectible",
-    "platform_service_fee": "prohibited"
-  },
   "contracts": {
-    "activation_evidence": {
-      "version": "1.0",
-      "owner": "CF-03",
-      "hash_bound": true
-    },
-    "route_catalogue": {
-      "version": "1.0",
-      "owner": "CF-03",
-      "shell_owner": "File 20",
-      "visual_owner": "File 25",
-      "runtime_mutations": "fail_closed"
-    },
-    "product_price_governance": {
-      "version": "2.0",
-      "staging_approval_activation_separated": true,
-      "optimistic_concurrency": true,
-      "overlapping_active_prices_rejected": true,
-      "paid_activation_requires_new_change_control": true
-    },
-    "payment_intent": {
-      "version": "2.0",
-      "owner": "CF-03",
-      "idempotent": true,
-      "provider_reference_immutable": true,
-      "browser_return_success": false,
-      "trusted_success_requires_provider_evidence_and_ledger": true
-    },
-    "provider_webhook": {
-      "version": "2.0",
-      "raw_body_signature": "HMAC-SHA256",
-      "replay_window_required": true,
-      "event_uniqueness_required": true,
-      "unknown_state": "quarantine"
-    },
-    "ledger": {
-      "version": "2.0",
-      "double_entry": true,
-      "balanced_by_currency": true,
-      "append_only": true,
-      "source_idempotent": true,
-      "correction_mode": "reversal_or_adjustment"
-    },
-    "subscription_and_usage": {
-      "version": "2.0",
-      "explicit_recurring_consent": true,
-      "dunning_backoff": true,
-      "quiet_hours": true,
-      "ai_usage_signed": true,
-      "hard_caps": true
-    },
-    "refund_chargeback": {
-      "version": "2.0",
-      "separation_of_duties": true,
-      "uncertain_state": true,
-      "provider_reconciliation": true,
-      "chargeback_deadline_and_evidence": true
-    },
-    "donation_prompt": {
-      "version": "1.0",
-      "owner": "CF-03",
-      "presentation_owners": ["File 20", "File 25"],
-      "weekly_cap_days": 7,
-      "completed_donation_suppression_days": 30,
-      "minimum_engagement_seconds": 30,
-      "suggested_amounts": [
-        {"currency": "USD", "minor_units": 1000},
-        {"currency": "USD", "minor_units": 1400},
-        {"currency": "USD", "minor_units": 5000}
-      ],
-      "custom_amount_allowed": true,
-      "preselected_amount": null,
-      "monthly_preselected": false,
-      "guest_first_party_keys": ["sabri_donation_prompt_seen", "sabri_donation_prompt_next_at"],
-      "logged_in_server_fields": [
-        "last_donation_prompt_at",
-        "donation_prompt_status",
-        "donation_prompt_snoozed_until",
-        "last_donation_completed_at",
-        "donation_frequency_preference"
-      ]
-    },
-    "settlement_reconciliation": {
-      "version": "2.0",
-      "batch_line_parity": true,
-      "exception_materiality": true,
-      "period_close_dual_control": true,
-      "closed_period_immutable": true
-    },
-    "security_privacy": {
-      "version": "2.0",
-      "capability_and_step_up": true,
-      "toxic_roles_rejected": true,
-      "bounded_explainable_fraud": true,
-      "encrypted_expiring_exports": true,
-      "retention_and_legal_hold": true,
-      "tamper_evident_audit_chain": true
-    },
-    "restore": {
-      "version": "2.0",
-      "count_hash_parity": true,
-      "provider_event_replay_detection": true
-    },
-    "file00_financial_facts": {
-      "version": "1.0",
-      "producer": "CF-03",
-      "consumer_owner": "File 00",
-      "direct_entitlement_write": false
-    },
-    "hosted_payment_provider": {
-      "version": "2.0",
-      "implementation_present": false,
-      "fallback": "NullPaymentProvider",
-      "modes": ["hosted", "tokenized"],
-      "checkout_host_allowlist_required": true,
-      "donation_service_state": "preparing"
-    }
+    "founder_ownership": {"version": "1.0", "founder_owned": true, "trust": false, "donor_rights": false},
+    "donation_prompt": {"version": "2.0", "calendar_month_maximum": 1, "action_suppression_days": 30, "completed_donation_suppression_days": 30, "per_session": 1, "monthly_preselected": false},
+    "expense_ledger": {"version": "1.0", "approved_categories_only": true, "founder_categories_separate": true, "receipt_and_approval_evidence": true},
+    "public_transparency": {"version": "1.0", "route": "/transparency/", "aggregate_only": true, "fabricated_values": false, "donor_identity_public": false},
+    "donor_acknowledgment": {"version": "1.0", "explicit_consent": true, "revocable": true, "privilege": false},
+    "recurring_donation_management": {"version": "1.0", "easy_cancellation": true, "next_date": true, "receipts": true, "provider_dependent_amount_change": true},
+    "complete_schema": {"version": "3.0.0", "base_tables": 28, "extension_tables": 3, "total_tables": 31},
+    "hosted_payment_provider": {"version": "2.0", "implementation_present": false, "fallback": "NullPaymentProvider", "modes": ["hosted", "tokenized"]}
   },
   "constitutional_invariants": {
     "all_core_services_free": true,
-    "paid_product_checkout_allowed": false,
+    "fixed_fee_allowed": false,
     "clinic_commission_basis_points": 0,
     "marketplace_commission_basis_points": 0,
     "donation_grants_privilege": false,
     "donation_default_amount": null,
     "donation_default_recurring": false,
     "file00_is_entitlement_authority": true,
-    "floating_point_money_allowed": false
+    "floating_point_money_allowed": false,
+    "public_bank_or_payment_credentials": false
   }
 }
