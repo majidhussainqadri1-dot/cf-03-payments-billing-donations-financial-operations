@@ -14,7 +14,7 @@
   ],
   "properties": {
     "schema_version": { "const": "1.0" },
-    "module_version": { "type": "string", "const": "1.0.0-rc.2" },
+    "module_version": { "type": "string", "const": "1.0.0-rc.3" },
     "record_id": { "$ref": "#/$defs/identifier" },
     "configuration_hash": { "$ref": "#/$defs/sha256" },
     "approvals": {
