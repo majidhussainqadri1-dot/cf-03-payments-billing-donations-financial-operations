@@ -10,6 +10,13 @@ use JsonException;
 
 final class FinancialEventEnvelope
 {
+    private const FACT_SUFFIXES = [
+        'Created','Staged','Approved','Activated','Retired','Authorized','Captured','Settled','Failed',
+        'Cancelled','Expired','Refunded','Disputed','PastDue','Started','Issued','Posted','Requested',
+        'Succeeded','Reconciled','Opened','Won','Lost','Imported','Closed','Quarantined','Degraded',
+        'Adjusted','Paused','Resumed','Revoked','Delivered','Acknowledged','Completed','Updated'
+    ];
+
     /** @param array<string,scalar|null> $payload */
     public function __construct(
         private readonly string $eventId,
@@ -31,8 +38,15 @@ final class FinancialEventEnvelope
                 throw new InvalidArgumentException('Financial event envelope version is invalid.');
             }
         }
-        if (preg_match('/(?:Create|Update|Delete|Grant|Approve|Execute|Set|Change)$/', $eventType) === 1) {
-            throw new InvalidArgumentException('Financial event type must be a past-tense fact, not a command.');
+        $isFact = false;
+        foreach (self::FACT_SUFFIXES as $suffix) {
+            if (str_ends_with($eventType, $suffix)) {
+                $isFact = true;
+                break;
+            }
+        }
+        if (! $isFact) {
+            throw new InvalidArgumentException('Financial event type must be a normalized past-tense fact.');
         }
         foreach ($payload as $key => $value) {
             if (! is_scalar($value) && $value !== null) {
