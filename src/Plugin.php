@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sabri\CF03;
 
+use RuntimeException;
 use Sabri\CF03\Application\EvidenceBoundActivationGate;
 use Sabri\CF03\Domain\PlatformFinancialPolicy;
 use Sabri\CF03\Infrastructure\WordPressRestApi;
@@ -32,22 +33,28 @@ final class Plugin
     public static function activate(): void
     {
         if (! function_exists('add_option') || ! function_exists('update_option')) {
-            return;
+            throw new RuntimeException('WordPress option APIs are unavailable during CF-03 activation.');
         }
+
         add_option(self::OPTION_ACTIVATION_RECORD, [], '', false);
-        update_option(self::OPTION_RUNTIME_STATUS, self::RUNTIME_STATUS, false);
-        update_option(self::OPTION_VERSION, defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.0.0-rc.3', false);
-        update_option(self::OPTION_SCHEMA_VERSION, Schema::VERSION, false);
+        update_option(self::OPTION_RUNTIME_STATUS, 'schema_installing_fail_closed', false);
         update_option(self::OPTION_FINANCIAL_POLICY_DECISION, PlatformFinancialPolicy::DECISION_ID, false);
 
         $migrations = WordPressSchemaInstaller::install();
-        if ($migrations !== []) {
-            update_option(self::OPTION_LAST_MIGRATION, [
-                'schema_version' => Schema::VERSION,
-                'migration_ids' => $migrations,
-                'completed_at' => gmdate(DATE_ATOM),
-            ], false);
+        $expectedCount = count(Schema::tables(''));
+        if (count($migrations) !== $expectedCount) {
+            update_option(self::OPTION_RUNTIME_STATUS, 'schema_incomplete_fail_closed', false);
+            throw new RuntimeException('CF-03 activation did not verify every canonical schema migration.');
         }
+
+        update_option(self::OPTION_VERSION, defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.0.0-rc.3', false);
+        update_option(self::OPTION_SCHEMA_VERSION, Schema::VERSION, false);
+        update_option(self::OPTION_LAST_MIGRATION, [
+            'schema_version' => Schema::VERSION,
+            'migration_ids' => $migrations,
+            'completed_at' => gmdate(DATE_ATOM),
+        ], false);
+        update_option(self::OPTION_RUNTIME_STATUS, self::RUNTIME_STATUS, false);
     }
 
     public static function boot(): void
