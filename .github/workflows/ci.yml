@@ -28,8 +28,10 @@ jobs:
         run: php tests/run-0.2.php
       - name: Complete source-candidate tests
         run: php tests/run-1.0.php
-      - name: Free-platform donation policy tests
+      - name: Final donation policy tests
         run: php tests/run-free-donation-policy.php
+      - name: Founder ownership and transparency tests
+        run: php tests/run-founder-donation-transparency.php
       - name: Dual-plan completion tests
         run: php tests/run-plan-completion.php
       - name: Second adversarial integrity tests
@@ -46,22 +48,19 @@ jobs:
           ! grep -RInE '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|sk_live_[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,})' --exclude-dir=.git --exclude=ci.yml .
       - name: Governing source assertions
         run: |
-          grep -RInq 'SSH-FIN-2026-08-04-01' src docs manifests README.md
-          grep -q 'Version: 1.0.0-rc.3' cf-03-payments-billing-donations-financial-operations.php
-          grep -q "SABRI_CF03_VERSION', '1.0.0-rc.3'" cf-03-payments-billing-donations-financial-operations.php
-          grep -RInq "public const VERSION = '2.0.0'" src/Persistence/Schema.php
-          test -f src/Domain/PaymentIntent.php
-          test -f src/Application/ProviderWebhookVerifier.php
-          test -f src/Application/ReconciliationEngine.php
-          test -f src/Domain/ChargebackCase.php
-          test -f src/Domain/SecureExportJob.php
-          test -f src/Domain/RefundBalance.php
-          test -f tests/run-review-40.php
-          test -f src/Infrastructure/WordPressRestApi.php
-          grep -q 'SHOW TABLES LIKE' src/Infrastructure/WordPressSchemaInstaller.php
-          grep -q 'schema_incomplete_fail_closed' src/Plugin.php
+          grep -RInq 'SSH-FIN-DONATION-2026-08-04-01' src docs manifests README.md
+          grep -q 'Version: 1.1.0-rc.1' cf-03-payments-billing-donations-financial-operations.php
+          grep -q "SABRI_CF03_VERSION', '1.1.0-rc.1'" cf-03-payments-billing-donations-financial-operations.php
+          grep -RInq "public const VERSION='3.0.0'" src/Persistence/CompleteSchema.php
+          grep -q 'sabri_cf03_expenses' src/Persistence/TransparencySchema.php
+          grep -q 'sabri_cf03_transparency_snapshots' src/Persistence/TransparencySchema.php
+          grep -q 'sabri_cf03_donor_acknowledgments' src/Persistence/TransparencySchema.php
+          test -f src/Domain/FinancialTransparencySnapshot.php
+          test -f src/Domain/FounderOwnershipPolicy.php
+          test -f tests/run-founder-donation-transparency.php
+          grep -q '/transparency/' src/Application/RouteCatalogue.php
           grep -q 'sabri_manage_finance' src/Plugin.php
-          grep -q 'sabri_manage_finance' src/Infrastructure/WordPressRestApi.php
+          grep -q 'SHOW TABLES LIKE' src/Infrastructure/WordPressSchemaInstaller.php
 
   package:
     name: Deterministic package and parity
@@ -72,13 +71,13 @@ jobs:
       - name: Build twice
         run: |
           bash scripts/build-package.sh
-          first="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.0.0-rc.3.zip | cut -d' ' -f1)"
+          first="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.1.zip | cut -d' ' -f1)"
           bash scripts/build-package.sh
-          second="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.0.0-rc.3.zip | cut -d' ' -f1)"
+          second="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.1.zip | cut -d' ' -f1)"
           test "$first" = "$second"
       - name: Verify canonical package
         run: |
-          test -f build/cf-03-payments-billing-donations-financial-operations-1.0.0-rc.3.zip
-          unzip -Z1 build/cf-03-payments-billing-donations-financial-operations-1.0.0-rc.3.zip | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
-          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.0.0-rc.3.zip cf-03-payments-billing-donations-financial-operations/cf-03-payments-billing-donations-financial-operations.php | grep -q 'Version: 1.0.0-rc.3'
-          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.0.0-rc.3.zip cf-03-payments-billing-donations-financial-operations/src/Persistence/Schema.php | grep -q "VERSION = '2.0.0'"
+          test -f build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.1.zip
+          unzip -Z1 build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.1.zip | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
+          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.1.zip cf-03-payments-billing-donations-financial-operations/cf-03-payments-billing-donations-financial-operations.php | grep -q 'Version: 1.1.0-rc.1'
+          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.1.zip cf-03-payments-billing-donations-financial-operations/src/Persistence/CompleteSchema.php | grep -q "VERSION='3.0.0'"
