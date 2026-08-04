@@ -28,6 +28,7 @@ final class FraudReviewCase
         private readonly string $reviewId,
         private readonly string $subjectReference,
         array $signals,
+        private readonly DateTimeImmutable $openedAt,
         private readonly DateTimeImmutable $holdUntil,
         private string $state = 'open',
         private int $recordVersion = 1,
@@ -41,6 +42,9 @@ final class FraudReviewCase
         }
         if (! in_array($state, ['open', 'approved', 'declined', 'appealed', 'closed'], true) || $recordVersion < 1) {
             throw new InvalidArgumentException('Fraud review state or version is invalid.');
+        }
+        if ($holdUntil <= $openedAt || $holdUntil > $openedAt->modify('+7 days')) {
+            throw new InvalidArgumentException('Fraud hold must end after opening and within seven days.');
         }
 
         $normalized = [];
@@ -88,11 +92,14 @@ final class FraudReviewCase
         if (! in_array($this->state, ['open', 'appealed'], true)) {
             throw new InvariantViolation('Fraud review is not decisionable.');
         }
-        if ($at > $this->holdUntil) {
-            throw new InvariantViolation('Fraud hold expired without a timely decision; manual escalation is required.');
+        if ($at < $this->openedAt || $at > $this->holdUntil) {
+            throw new InvariantViolation('Fraud decision is outside the bounded review window; manual escalation is required.');
         }
         if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $reviewerReference) !== 1 || trim($reason) === '') {
             throw new InvalidArgumentException('Fraud review decision requires a valid reviewer and reason.');
+        }
+        if ($this->state === 'appealed' && $reviewerReference === $this->reviewerReference) {
+            throw new InvariantViolation('Fraud appeal requires a fresh reviewer.');
         }
         $this->reviewerReference = $reviewerReference;
         $this->decisionReason = $reason;
@@ -123,6 +130,8 @@ final class FraudReviewCase
 
     public function state(): string { return $this->state; }
     public function recordVersion(): int { return $this->recordVersion; }
+    public function openedAt(): DateTimeImmutable { return $this->openedAt; }
+    public function holdUntil(): DateTimeImmutable { return $this->holdUntil; }
 
     private function assertVersion(int $expectedVersion): void
     {
