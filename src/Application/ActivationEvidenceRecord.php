@@ -25,6 +25,15 @@ final class ActivationEvidenceRecord
     /** @var list<string> */
     private const NON_EXPIRING_APPROVALS = ['founder_change_control'];
 
+    /** @var list<array{0:string,1:string}> */
+    private const SEPARATED_APPROVAL_PAIRS = [
+        ['founder_change_control', 'independent_security_acceptance'],
+        ['founder_change_control', 'staging_acceptance'],
+        ['founder_change_control', 'rollback_rehearsal'],
+        ['staging_acceptance', 'rollback_rehearsal'],
+        ['pci_scope_validation', 'independent_security_acceptance'],
+    ];
+
     /** @var list<string> */
     private const TOP_LEVEL_KEYS = [
         'schema_version', 'module_version', 'record_id', 'configuration_hash', 'approvals', 'provider',
@@ -69,6 +78,7 @@ final class ActivationEvidenceRecord
 
         $approvals = $record['approvals'] ?? null;
         $evidenceIds = [];
+        $approvalActors = [];
         if (! is_array($approvals)) {
             foreach (self::REQUIRED_APPROVALS as $label) {
                 $missing[] = $label;
@@ -90,6 +100,15 @@ final class ActivationEvidenceRecord
                     $missing[] = 'activation_evidence_duplicate';
                 }
                 $evidenceIds[$evidenceId] = true;
+                $approvalActors[$key] = (string) $block['approver_ref'];
+            }
+
+            foreach (self::SEPARATED_APPROVAL_PAIRS as [$left, $right]) {
+                if (isset($approvalActors[$left], $approvalActors[$right])
+                    && hash_equals($approvalActors[$left], $approvalActors[$right])
+                ) {
+                    $missing[] = 'activation_approval_separation';
+                }
             }
         }
 
