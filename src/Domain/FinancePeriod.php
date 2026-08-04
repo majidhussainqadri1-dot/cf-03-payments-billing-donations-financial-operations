@@ -82,25 +82,6 @@ final class FinancePeriod
         $this->recordVersion++;
     }
 
-    /**
-     * Backward-compatible close helper. A single approver is retained for legacy tests;
-     * production command handlers must use approveClose() + lock() with separated actors.
-     */
-    public function close(ReconciliationResult $result, string $approver): void
-    {
-        if ($this->closed) {
-            return;
-        }
-        $result->assertClosable();
-        if (trim($approver) === '') {
-            throw new InvalidArgumentException('Approver is required.');
-        }
-        $this->closed = true;
-        $this->closedBy = $approver;
-        $this->state = 'locked';
-        $this->recordVersion++;
-    }
-
     public function reopen(
         string $requester,
         string $approver,
