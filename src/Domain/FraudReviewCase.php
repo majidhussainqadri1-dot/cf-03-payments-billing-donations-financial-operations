@@ -44,9 +44,11 @@ final class FraudReviewCase
         }
 
         $normalized = [];
+        $seenCodes = [];
+        $seenEvidence = [];
         foreach ($signals as $signal) {
             if (! is_array($signal)
-                || ! isset($signal['code'], $signal['weight'], $signal['evidence_ref'])
+                || array_keys($signal) !== ['code', 'weight', 'evidence_ref']
                 || ! is_string($signal['code'])
                 || ! is_int($signal['weight'])
                 || ! is_string($signal['evidence_ref'])
@@ -57,6 +59,11 @@ final class FraudReviewCase
             ) {
                 throw new InvalidArgumentException('Fraud review signal is invalid or prohibited.');
             }
+            if (isset($seenCodes[$signal['code']]) || isset($seenEvidence[$signal['evidence_ref']])) {
+                throw new InvariantViolation('Fraud risk cannot be inflated by duplicate signal codes or evidence references.');
+            }
+            $seenCodes[$signal['code']] = true;
+            $seenEvidence[$signal['evidence_ref']] = true;
             $normalized[] = $signal;
         }
         if ($normalized === []) {
@@ -84,8 +91,8 @@ final class FraudReviewCase
         if ($at > $this->holdUntil) {
             throw new InvariantViolation('Fraud hold expired without a timely decision; manual escalation is required.');
         }
-        if (trim($reviewerReference) === '' || trim($reason) === '') {
-            throw new InvalidArgumentException('Fraud review decision requires reviewer and reason.');
+        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $reviewerReference) !== 1 || trim($reason) === '') {
+            throw new InvalidArgumentException('Fraud review decision requires a valid reviewer and reason.');
         }
         $this->reviewerReference = $reviewerReference;
         $this->decisionReason = $reason;
