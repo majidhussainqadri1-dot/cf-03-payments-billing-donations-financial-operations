@@ -13,7 +13,7 @@ final class OutboxMessage
 {
     public function __construct(
         private readonly FinancialEventEnvelope $event,
-        private readonly DateTimeImmutable $availableAt,
+        private DateTimeImmutable $availableAt,
         private string $state = 'pending',
         private int $attempts = 0,
         private ?DateTimeImmutable $leasedUntil = null,
@@ -64,14 +64,16 @@ final class OutboxMessage
             $this->state = 'dead_letter';
             return;
         }
-        $this->state = 'pending';
         if ($retryAt <= $this->availableAt) {
             throw new InvalidArgumentException('Outbox retry time must move forward.');
         }
+        $this->availableAt = $retryAt;
+        $this->state = 'pending';
     }
 
     public function event(): FinancialEventEnvelope { return $this->event; }
     public function state(): string { return $this->state; }
     public function attempts(): int { return $this->attempts; }
     public function lastErrorCode(): ?string { return $this->lastErrorCode; }
+    public function availableAt(): DateTimeImmutable { return $this->availableAt; }
 }
