@@ -110,6 +110,9 @@ final class RefundRequest
         if ($this->status !== 'approved') {
             throw new InvariantViolation('Refund is not approved.');
         }
+        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $executor) !== 1) {
+            throw new InvalidArgumentException('Refund executor reference is invalid.');
+        }
         if ($executor === $this->reviewer || $executor === $this->requester) {
             throw new InvariantViolation('Requester/reviewer cannot execute the same high-risk refund.');
         }
