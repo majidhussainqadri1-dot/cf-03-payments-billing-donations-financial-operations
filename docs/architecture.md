@@ -1,8 +1,8 @@
-# CF-03 Architecture — 1.0.0-rc.2
+# CF-03 Architecture — 1.0.0-rc.3
 
 ## Status boundary
 
-This release is a **free-platform, donation-only conditional financial source candidate**, not a live payment processor. Founder Decision `SSH-FIN-2026-08-04-01` is the governing financial policy. Runtime collection remains disabled.
+This release is a **dual-plan source-complete, free-platform, donation-only conditional financial source candidate**, not a live payment processor. Founder Decision `SSH-FIN-2026-08-04-01` is the governing financial policy. Runtime collection remains disabled and fail closed.
 
 ## Canonical ownership
 
@@ -21,24 +21,24 @@ It does **not** own:
 
 ## Governing layers
 
-1. **WordPress bootstrap:** plugin loading, non-destructive activation metadata, registered prompt-state fields and Site Health visibility.
+1. **WordPress bootstrap:** plugin loading, additive schema installation, non-destructive activation metadata, registered prompt-state fields and Site Health visibility.
 2. **Founder financial policy:** all core services free; paid products dormant/non-collectible; donation only; commission 0%; no donation privilege.
-3. **Donation prompt policy:** seven-day cap, thirty-day post-donation suppression, active-monthly suppression, sensitive-context and engagement gates.
-4. **Donation presentation contract:** exact bilingual copy, amounts, actions, guest keys and logged-in fields for Files 20/25.
-5. **Donation intent:** positive USD amount, explicit monthly consent, idempotency and service-state gate.
+3. **Product and price governance:** staged, approved, active, dormant and retired states with optimistic concurrency and separation of duties.
+4. **Donation prompt policy:** seven-day cap, thirty-day post-donation suppression, active-monthly suppression, sensitive-context and engagement gates.
+5. **Donation intent and record:** positive USD amount, explicit monthly consent, idempotency, provider evidence, receipt, refund and chargeback facts.
 6. **Activation governance:** runtime constant, canonical evidence-record hash, versioned approvals, expiry and duplicate-evidence checks.
-7. **Provider evidence:** hosted/tokenized mode, signature/replay/event uniqueness, provider/intent/amount parity and unknown-state quarantine.
-8. **Financial invariants:** exact money, immutable balanced ledger, 0% commission and donation non-privilege.
-9. **Integration contracts:** File 00 facts, File 24 assurance evidence, File 19 notifications and provider-neutral ports.
-10. **Future persistence/application services:** live provider adapter, webhooks, receipts, refunds, settlement and operational reconciliation after external acceptance.
+7. **Provider evidence:** hosted/tokenized mode, raw-body signature, replay/event uniqueness, provider/intent/amount parity and unknown-state quarantine.
+8. **Payment truth:** complete payment-intent state machine and trusted settlement requiring normalized `payment.settled` evidence plus exact ledger parity.
+9. **Financial operations:** append-only double-entry ledger, refunds, subscriptions, chargebacks, settlement, reconciliation, close/lock, exports and retention.
+10. **Integration contracts:** File 00 facts, File 24 assurance evidence, File 19 notifications and provider-neutral ports.
 
 ## Free-policy law
 
 - Registration, membership, public knowledge, basic education and all core platform services are free.
 - PKR 400 membership, AI add-on/usage and other earlier price records remain historical/dormant; they are not deleted, but cannot create checkout.
-- `CheckoutCommand` applies `PlatformFinancialPolicy`; every non-donation product is rejected while the decision remains active.
+- `CheckoutCommand` and `ProductLifecycle` apply `PlatformFinancialPolicy`; every non-donation product is rejected while the decision remains active.
 - Only a donation product with voluntary billing and no entitlement mapping can be collectible.
-- Re-enabling any fee requires a new Founder Change-Control, migration, tests, staging and rollback evidence.
+- Re-enabling any fee requires a new Founder Change-Control, source-policy replacement, migration, tests, staging and rollback evidence.
 
 ## Donation prompt law
 
@@ -58,7 +58,7 @@ A boolean option is insufficient. Future live donation approval requires:
 
 - `SABRI_CF03_RUNTIME_ACTIVATION === true`;
 - a valid `SABRI_CF03_ACTIVATION_EVIDENCE_HASH`;
-- a canonical record for module version `1.0.0-rc.2`;
+- a canonical record for module version `1.0.0-rc.3`;
 - Founder, legal/tax/accounting, PCI, independent security, staging and rollback evidence;
 - validated hosted/tokenized provider evidence;
 - a legal entity/receiving account and explicit Founder collection activation.
@@ -69,11 +69,11 @@ Passing the evidence gate does not create a live route in this release.
 
 - Mutation keys are scoped, actor-bound, request-fingerprinted and immutable.
 - Floating-point money is rejected.
-- Provider events cannot map to financial success until signature, replay, uniqueness and parity checks pass.
+- Provider events cannot map to financial success until signature, timestamp, replay, uniqueness, provider, intent, amount, currency, event-type and ledger checks pass.
 - No platform form or data store accepts PAN, CVV, PIN, OTP, raw bank credentials or provider secrets.
 - Browser return pages never prove completion.
 - File 00 receives only past-tense financial facts and decides entitlement/access independently.
 
 ## Packaging
 
-The build script creates a deterministic `1.0.0-rc.2` WordPress ZIP with one canonical top-level folder and SHA-256 record. Tests, CI metadata and repository-only build files are excluded from the installable package.
+The build script creates a deterministic `1.0.0-rc.3` WordPress ZIP with one canonical top-level folder and SHA-256 record. Tests, CI metadata and repository-only build files are excluded from the installable package.
