@@ -10,6 +10,8 @@ use Sabri\CF03\Support\InvariantViolation;
 
 final class ProviderEvidence
 {
+    private readonly DateTimeImmutable $occurredAt;
+
     public function __construct(
         private readonly string $providerCode,
         private readonly string $providerEventId,
@@ -21,7 +23,8 @@ final class ProviderEvidence
         private readonly DateTimeImmutable $receivedAt,
         private readonly string $rawBodySha256,
         private readonly bool $signatureVerified,
-        private readonly bool $eventIdUnique
+        private readonly bool $eventIdUnique,
+        ?DateTimeImmutable $occurredAt = null
     ) {
         self::assertIdentifier($providerCode, 'Provider code');
         self::assertIdentifier($providerEventId, 'Provider event ID');
@@ -31,6 +34,13 @@ final class ProviderEvidence
 
         if (preg_match('/^[a-f0-9]{64}$/', $rawBodySha256) !== 1) {
             throw new InvalidArgumentException('Provider raw-body SHA-256 is invalid.');
+        }
+
+        $this->occurredAt = $occurredAt ?? $signatureTimestamp;
+        if ($this->occurredAt > $signatureTimestamp->modify('+5 minutes')
+            || $this->occurredAt > $receivedAt->modify('+5 minutes')
+        ) {
+            throw new InvalidArgumentException('Provider event occurrence time is implausibly in the future.');
         }
     }
 
@@ -70,6 +80,9 @@ final class ProviderEvidence
     public function paymentIntentId(): string { return $this->paymentIntentId; }
     public function amount(): Money { return $this->amount; }
     public function rawBodySha256(): string { return $this->rawBodySha256; }
+    public function occurredAt(): DateTimeImmutable { return $this->occurredAt; }
+    public function signatureTimestamp(): DateTimeImmutable { return $this->signatureTimestamp; }
+    public function receivedAt(): DateTimeImmutable { return $this->receivedAt; }
 
     private static function assertIdentifier(string $value, string $label): void
     {
