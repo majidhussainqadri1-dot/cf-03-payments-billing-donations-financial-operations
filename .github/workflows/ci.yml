@@ -50,7 +50,7 @@ jobs:
         run: |
           grep -RInq 'SSH-FIN-DONATION-2026-08-04-01' src docs manifests README.md
           grep -q 'Version: 1.1.0-rc.1' cf-03-payments-billing-donations-financial-operations.php
-          grep -q "SABRI_CF03_VERSION', '1.1.0-rc.1'" cf-03-payments-billing-donations-financial-operations.php
+          grep -q "SABRI_CF03_VERSION','1.1.0-rc.1'" cf-03-payments-billing-donations-financial-operations.php
           grep -RInq "public const VERSION='3.0.0'" src/Persistence/CompleteSchema.php
           grep -q 'sabri_cf03_expenses' src/Persistence/TransparencySchema.php
           grep -q 'sabri_cf03_transparency_snapshots' src/Persistence/TransparencySchema.php
