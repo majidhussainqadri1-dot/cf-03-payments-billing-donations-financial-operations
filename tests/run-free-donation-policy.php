@@ -8,6 +8,7 @@ use Sabri\CF03\Application\DonationAppealCopy;
 use Sabri\CF03\Application\DonationIntentDraft;
 use Sabri\CF03\Application\DonationPromptService;
 use Sabri\CF03\Domain\BillingType;
+use Sabri\CF03\Domain\DonationFinancialFactType;
 use Sabri\CF03\Domain\DonationFrequencyPreference;
 use Sabri\CF03\Domain\DonationPromptAction;
 use Sabri\CF03\Domain\DonationPromptContext;
@@ -18,6 +19,8 @@ use Sabri\CF03\Domain\FinancialProduct;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\PlatformFinancialPolicy;
 use Sabri\CF03\Domain\ProductKind;
+use Sabri\CF03\Domain\ProviderEvidence;
+use Sabri\CF03\Domain\TrustedDonationFact;
 use Sabri\CF03\Infrastructure\MemoryDonationPromptStateStore;
 
 $tests = [];
@@ -109,11 +112,34 @@ $tests['state round trip preserves requested fields'] = static function () use (
     $restored = DonationPromptState::fromStorage($state->toStorage());
     same($state->toStorage(), $restored->toStorage());
 };
-$tests['service persists prompt actions'] = static function () use ($now): void {
+$tests['service persists prompt user actions'] = static function () use ($now): void {
     $store = new MemoryDonationPromptStateStore();
     $service = new DonationPromptService($store, new DonationPromptPolicy(), static fn (): DateTimeImmutable => $now);
-    $service->record('user:42', DonationPromptAction::SHOWN);
+    $service->recordUserAction('user:42', DonationPromptAction::SHOWN);
     same(false, $service->decision('user:42', context(60))->shouldShow());
+};
+$tests['user action cannot forge donation completion'] = static function () use ($now): void {
+    $service = new DonationPromptService(new MemoryDonationPromptStateStore(), new DonationPromptPolicy(), static fn (): DateTimeImmutable => $now);
+    throws(static fn () => $service->recordUserAction('user:42', DonationPromptAction::DONATION_COMPLETED_MONTHLY), DomainException::class);
+};
+$tests['trusted monthly donation fact suppresses prompt'] = static function () use ($now): void {
+    $amount = new Money(1400, 'USD');
+    $evidence = donationEvidence($now, DonationFinancialFactType::MONTHLY_STARTED, true, $amount);
+    $fact = new TrustedDonationFact(DonationFinancialFactType::MONTHLY_STARTED, $evidence, 'provider.sandbox', 'intent:1', $amount);
+    $store = new MemoryDonationPromptStateStore();
+    $service = new DonationPromptService($store, new DonationPromptPolicy(), static fn (): DateTimeImmutable => $now);
+    $service->recordTrustedFinancialFact('user:42', $fact);
+    same('active_monthly_donor', $service->decision('user:42', context(60))->reason());
+};
+$tests['forged donation fact is rejected'] = static function () use ($now): void {
+    $amount = new Money(1000, 'USD');
+    $evidence = donationEvidence($now, DonationFinancialFactType::ONE_TIME_COMPLETED, false, $amount);
+    throws(static fn () => new TrustedDonationFact(DonationFinancialFactType::ONE_TIME_COMPLETED, $evidence, 'provider.sandbox', 'intent:1', $amount), DomainException::class);
+};
+$tests['mismatched donation fact type is rejected'] = static function () use ($now): void {
+    $amount = new Money(1000, 'USD');
+    $evidence = donationEvidence($now, DonationFinancialFactType::ONE_TIME_COMPLETED, true, $amount);
+    throws(static fn () => new TrustedDonationFact(DonationFinancialFactType::MONTHLY_STARTED, $evidence, 'provider.sandbox', 'intent:1', $amount), DomainException::class);
 };
 $tests['monthly consent must be explicit'] = static function () use ($now): void {
     throws(static fn () => new DonationIntentDraft('intent:1', 'user:42', new Money(1000, 'USD'), true, false, DonationServiceState::SANDBOX, 'idem-donation-0001', $now), DomainException::class);
@@ -141,6 +167,22 @@ exit($failures === 0 ? 0 : 1);
 function context(int $seconds, bool $interaction = false, string $page = 'normal', bool $shown = false, bool $failed = false): DonationPromptContext
 {
     return new DonationPromptContext('pageview:12345', $page, $seconds, $interaction, $shown, $failed);
+}
+function donationEvidence(DateTimeImmutable $now, DonationFinancialFactType $type, bool $verified, Money $amount): ProviderEvidence
+{
+    return new ProviderEvidence(
+        'provider.sandbox',
+        'event:donation:1',
+        $type->value,
+        'intent:1',
+        $amount,
+        'key:v1',
+        $now->modify('-30 seconds'),
+        $now,
+        str_repeat('a', 64),
+        $verified,
+        true
+    );
 }
 function same(mixed $expected, mixed $actual): void
 {
