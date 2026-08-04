@@ -30,11 +30,12 @@ The source enforces:
 - one prompt per page view and no same-session repetition after checkout failure;
 - seven-day snooze for Remind Me Later, Not Now and Close;
 - thirty-day suppression after a completed one-time donation;
-- indefinite general-prompt suppression while monthly donation remains active.
+- indefinite general-prompt suppression while monthly donation remains active;
+- donation-completion/monthly status only from trusted provider evidence, never a user/browser assertion.
 
 ## Implemented source domains
 
-Free-platform financial policy; dormant product/price preservation; weekly donation prompt state and policy; bilingual appeal contract; consent-safe donation intent; hosted donation provider port; exact money; strict idempotency and provider evidence; immutable balanced ledger; receipts/refunds; reconciliation; finance close; secure export; incident controls; backup parity; additive persistence schema; outbox/audit contracts.
+Free-platform financial policy; dormant product/price preservation; weekly donation prompt state and policy; bilingual appeal contract; consent-safe donation intent; trusted donation facts; hosted donation provider port; exact money; strict idempotency and provider evidence; immutable balanced ledger; receipts/refunds; reconciliation; finance close; secure export; incident controls; backup parity; additive persistence schema; outbox/audit contracts.
 
 ## External gates
 
