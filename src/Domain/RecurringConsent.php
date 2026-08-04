@@ -20,7 +20,9 @@ final class RecurringConsent
         private readonly string $termsSha256,
         private readonly string $cancellationPath,
         private readonly DateTimeImmutable $capturedAt,
-        private readonly bool $explicitlyConfirmed
+        private readonly bool $explicitlyConfirmed,
+        private ?DateTimeImmutable $revokedAt = null,
+        private int $recordVersion = 1
     ) {
         foreach ([$consentId, $actorReference, $productId] as $reference) {
             if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $reference) !== 1) {
@@ -39,16 +41,57 @@ final class RecurringConsent
         if (preg_match('/^[a-f0-9]{64}$/', $termsSha256) !== 1) {
             throw new InvalidArgumentException('Recurring consent terms hash is invalid.');
         }
-        if (! str_starts_with($cancellationPath, '/') || str_starts_with($cancellationPath, '//')) {
+        if (! str_starts_with($cancellationPath, '/')
+            || str_starts_with($cancellationPath, '//')
+            || str_contains($cancellationPath, "\r")
+            || str_contains($cancellationPath, "\n")
+            || str_contains($cancellationPath, '\\')
+        ) {
             throw new InvalidArgumentException('Recurring consent cancellation path must be same-origin.');
         }
         if (! $explicitlyConfirmed) {
             throw new InvariantViolation('Recurring billing requires explicit unpreselected consent.');
         }
+        if ($recordVersion < 1 || ($revokedAt !== null && $revokedAt < $capturedAt)) {
+            throw new InvalidArgumentException('Recurring consent revocation state or version is invalid.');
+        }
     }
 
-    public function assertRenewalParity(Money $amount, string $interval, string $termsSha256): void
+    public function revoke(DateTimeImmutable $at, int $expectedVersion): void
     {
+        $this->assertVersion($expectedVersion);
+        if ($at < $this->capturedAt) {
+            throw new InvariantViolation('Recurring consent cannot be revoked before it was captured.');
+        }
+        if ($this->revokedAt !== null) {
+            if ($this->revokedAt == $at) {
+                return;
+            }
+            throw new InvariantViolation('Recurring consent revocation timestamp is immutable.');
+        }
+        $this->revokedAt = $at;
+        $this->recordVersion++;
+    }
+
+    public function assertActiveAt(DateTimeImmutable $at): void
+    {
+        if ($at < $this->capturedAt) {
+            throw new InvariantViolation('Recurring consent was not yet captured at the requested time.');
+        }
+        if ($this->revokedAt !== null && $at >= $this->revokedAt) {
+            throw new InvariantViolation('Recurring consent has been revoked.');
+        }
+    }
+
+    public function assertRenewalParity(
+        Money $amount,
+        string $interval,
+        string $termsSha256,
+        ?DateTimeImmutable $at = null
+    ): void {
+        if ($at !== null) {
+            $this->assertActiveAt($at);
+        }
         if (! $this->amount->equals($amount)
             || $this->interval !== $interval
             || ! hash_equals($this->termsSha256, $termsSha256)
@@ -69,6 +112,19 @@ final class RecurringConsent
             'next_charge_at' => $this->nextChargeAt->format(DATE_ATOM),
             'cancellation_path' => $this->cancellationPath,
             'captured_at' => $this->capturedAt->format(DATE_ATOM),
+            'revoked_at' => $this->revokedAt?->format(DATE_ATOM),
+            'state' => $this->revokedAt === null ? 'active' : 'revoked',
+            'record_version' => $this->recordVersion,
         ];
+    }
+
+    public function recordVersion(): int { return $this->recordVersion; }
+    public function revokedAt(): ?DateTimeImmutable { return $this->revokedAt; }
+
+    private function assertVersion(int $expectedVersion): void
+    {
+        if ($expectedVersion !== $this->recordVersion) {
+            throw new InvariantViolation('Stale recurring-consent record version.');
+        }
     }
 }
