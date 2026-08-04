@@ -11,7 +11,8 @@
 - Added sensitive-context, engagement, page-view and checkout-failure safeguards.
 - Added bilingual Urdu/English appeal copy and a presentation-neutral File 20/File 25 integration contract.
 - Added consent-safe donation intent and hosted donation provider interfaces; live collection remains unavailable while provider/external gates are incomplete.
-- Added 22 automated free-policy and donation-prompt tests and updated PHP 8.1–8.3 CI/package parity for `1.0.0-rc.2`.
+- Restricted donation-completion prompt state to trusted, replay-safe provider evidence; user actions cannot forge donor completion/monthly status.
+- Added 25 automated free-policy and donation-prompt tests and updated PHP 8.1–8.3 CI/package parity for `1.0.0-rc.2`.
 
 ## 1.0.0-rc.1 — Complete Conditional Source Candidate
 
