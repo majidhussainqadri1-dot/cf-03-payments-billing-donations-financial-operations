@@ -140,12 +140,17 @@ final class PaymentIntent
     public function providerCode(): string { return $this->providerCode; }
     public function providerReference(): ?string { return $this->providerReference; }
     public function recordVersion(): int { return $this->recordVersion; }
+    public function createdAt(): DateTimeImmutable { return $this->createdAt; }
+    public function expiresAt(): DateTimeImmutable { return $this->expiresAt; }
 
     private function assertMutable(int $expectedVersion, DateTimeImmutable $at): void
     {
         $this->assertVersion($expectedVersion);
         if ($at < $this->updatedAt) {
             throw new InvariantViolation('Payment intent mutation timestamp cannot move backwards.');
+        }
+        if ($at >= $this->expiresAt) {
+            throw new InvariantViolation('Expired payment intent cannot attach or change a provider reference.');
         }
         if (in_array($this->state, [PaymentIntentState::FAILED, PaymentIntentState::CANCELLED, PaymentIntentState::EXPIRED, PaymentIntentState::REFUNDED], true)) {
             throw new InvariantViolation('Terminal payment intent cannot be mutated.');
