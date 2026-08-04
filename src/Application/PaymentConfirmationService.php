@@ -10,6 +10,7 @@ use Sabri\CF03\Domain\LedgerTransaction;
 use Sabri\CF03\Domain\PaymentIntent;
 use Sabri\CF03\Domain\PaymentIntentState;
 use Sabri\CF03\Domain\ProviderEvidence;
+use Sabri\CF03\Support\InvariantViolation;
 
 final class PaymentConfirmationService
 {
@@ -37,7 +38,11 @@ final class PaymentConfirmationService
         string $eventId
     ): FinancialEvent {
         $intent->assertProviderEvidence($evidence);
+        if ($evidence->eventType() !== 'payment.settled') {
+            throw new InvariantViolation('Payment settlement requires a normalized trusted payment.settled provider event.');
+        }
         $ledgerTransaction->assertBalanced();
+        $ledgerTransaction->assertRepresents($intent->amount());
 
         return ($this->transactional)(function () use ($intent, $ledgerTransaction, $expectedVersion, $at, $eventId): FinancialEvent {
             $intent->transition(PaymentIntentState::SETTLED, $expectedVersion, $at);
