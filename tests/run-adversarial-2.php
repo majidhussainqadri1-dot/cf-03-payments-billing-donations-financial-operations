@@ -34,14 +34,11 @@ $tests['non donation activation remains prohibited after full approval'] = stati
 };
 $tests['balanced but wrong amount ledger cannot settle payment'] = static function () use ($now): void {
     [$intent,$evidence] = readyIntentA2($now,'payment.settled');
-    $ledger = ledgerA2(1000);
-    $service = serviceA2();
-    throwsA2(static fn () => $service->confirmSettled($intent,$evidence,$ledger,3,$now,'event:settled:1'),DomainException::class);
+    throwsA2(static fn () => serviceA2()->confirmSettled($intent,$evidence,ledgerA2(1000),3,$now,'event:settled:1'),DomainException::class);
 };
 $tests['signed non settlement event cannot settle payment'] = static function () use ($now): void {
     [$intent,$evidence] = readyIntentA2($now,'payment.authorized');
-    $service = serviceA2();
-    throwsA2(static fn () => $service->confirmSettled($intent,$evidence,ledgerA2(1400),3,$now,'event:settled:1'),DomainException::class);
+    throwsA2(static fn () => serviceA2()->confirmSettled($intent,$evidence,ledgerA2(1400),3,$now,'event:settled:1'),DomainException::class);
 };
 $tests['exact settlement event and ledger parity still succeeds'] = static function () use ($now): void {
     [$intent,$evidence] = readyIntentA2($now,'payment.settled');
@@ -95,7 +92,11 @@ function ledgerA2(int $amount):LedgerTransaction
 }
 function serviceA2():PaymentConfirmationService
 {
-    return new PaymentConfirmationService(static fn(callable $work):mixed=>$work(),static fn(LedgerTransaction $transaction):null=>null,static fn($event):null=>null);
+    return new PaymentConfirmationService(
+        static fn(callable $work):mixed=>$work(),
+        static function(LedgerTransaction $transaction):void {},
+        static function($event):void {}
+    );
 }
 function sameA2(mixed $expected,mixed $actual):void{if($expected!==$actual){throw new RuntimeException('Expected '.var_export($expected,true).', got '.var_export($actual,true));}}
 /** @param class-string<Throwable> $class */
