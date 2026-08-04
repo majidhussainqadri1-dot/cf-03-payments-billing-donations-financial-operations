@@ -73,8 +73,17 @@ final class Plugin
                 'single' => true,
                 'show_in_rest' => false,
                 'default' => '',
-                'auth_callback' => static function (): bool {
-                    return function_exists('is_user_logged_in') && is_user_logged_in();
+                'auth_callback' => static function (
+                    bool $allowed,
+                    string $metaKey,
+                    int $objectId
+                ): bool {
+                    if (! function_exists('get_current_user_id') || ! function_exists('current_user_can')) {
+                        return false;
+                    }
+                    $currentUserId = get_current_user_id();
+                    return ($currentUserId > 0 && $currentUserId === $objectId)
+                        || current_user_can('sabri_manage_finance');
                 },
             ]);
         }
