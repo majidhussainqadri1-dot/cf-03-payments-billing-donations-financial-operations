@@ -86,7 +86,8 @@ final class CheckoutCommand
     {
         if (strlen($returnPath) < 1
             || strlen($returnPath) > 512
-            || preg_match('/[\x00-\x20\x7F\\]/', $returnPath) === 1
+            || preg_match('/[\x00-\x20\x7F]/', $returnPath) === 1
+            || str_contains($returnPath, '\\')
             || preg_match('/%(?:0[0-9A-F]|1[0-9A-F]|2F|5C|7F)/i', $returnPath) === 1
             || str_starts_with($returnPath, '//')
         ) {
