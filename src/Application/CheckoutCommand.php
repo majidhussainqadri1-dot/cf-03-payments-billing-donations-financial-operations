@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use InvalidArgumentException;
 use Sabri\CF03\Domain\FinancialProduct;
 use Sabri\CF03\Domain\Money;
+use Sabri\CF03\Domain\PlatformFinancialPolicy;
 use Sabri\CF03\Domain\PriceVersion;
 use Sabri\CF03\Support\InvariantViolation;
 
@@ -22,7 +23,8 @@ final class CheckoutCommand
         private readonly string $idempotencyKey,
         private readonly DateTimeImmutable $createdAt,
         private readonly DateTimeImmutable $expiresAt,
-        private readonly string $returnPath
+        private readonly string $returnPath,
+        ?PlatformFinancialPolicy $platformPolicy = null
     ) {
         self::assertReference($paymentIntentId, 'Payment intent ID');
         self::assertReference($userReference, 'User reference');
@@ -43,6 +45,8 @@ final class CheckoutCommand
         ) {
             throw new InvalidArgumentException('Checkout return destination must be a safe same-origin path.');
         }
+
+        ($platformPolicy ?? new PlatformFinancialPolicy())->assertCollectibleProduct($product);
 
         if (! $product->isCheckoutEligible()) {
             throw new InvariantViolation('Checkout requires an approved and available product.');
