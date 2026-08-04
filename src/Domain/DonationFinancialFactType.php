@@ -9,4 +9,6 @@ enum DonationFinancialFactType: string
     case ONE_TIME_COMPLETED = 'donation.settled';
     case MONTHLY_STARTED = 'donation.monthly_started';
     case MONTHLY_CANCELLED = 'donation.monthly_cancelled';
+    case REFUNDED = 'donation.refunded';
+    case CHARGEDBACK = 'donation.chargedback';
 }
