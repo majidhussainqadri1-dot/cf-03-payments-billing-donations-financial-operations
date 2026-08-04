@@ -17,6 +17,8 @@ final class FinancialEventEnvelope
         'Adjusted','Paused','Resumed','Revoked','Delivered','Acknowledged','Completed','Updated'
     ];
 
+    private const SENSITIVE_KEY_PATTERN = '/(?:pan|cvv|pin|otp|password|secret|raw_body|full_card|bank_credential|private_key|api_key|webhook_key|authorization|cookie|access_token|refresh_token|account_number|routing_number|iban|swift|track_data|cryptogram|security_code)/i';
+
     /** @param array<string,scalar|null> $payload */
     public function __construct(
         private readonly string $eventId,
@@ -48,12 +50,22 @@ final class FinancialEventEnvelope
         if (! $isFact) {
             throw new InvalidArgumentException('Financial event type must be a normalized past-tense fact.');
         }
+        if (count($payload) > 64) {
+            throw new InvalidArgumentException('Financial event payload exceeds the maximum field count.');
+        }
         foreach ($payload as $key => $value) {
-            if (! is_scalar($value) && $value !== null) {
-                throw new InvalidArgumentException('Financial event payload must contain scalar values only.');
+            if (! is_string($key)
+                || preg_match('/^[a-z][a-z0-9_]{0,63}$/', $key) !== 1
+                || preg_match(self::SENSITIVE_KEY_PATTERN, $key) === 1
+                || is_float($value)
+                || (! is_scalar($value) && $value !== null)
+            ) {
+                throw new InvalidArgumentException('Financial event payload contains an unsafe field or value.');
             }
-            if (preg_match('/(?:pan|cvv|pin|otp|password|secret|raw_body|full_card|bank_credential|private_key)/i', (string) $key) === 1) {
-                throw new InvalidArgumentException('Sensitive financial event payload field is prohibited.');
+            if (is_string($value)
+                && (strlen($value) > 2048 || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $value) === 1)
+            ) {
+                throw new InvalidArgumentException('Financial event payload string is oversized or contains prohibited controls.');
             }
         }
     }
