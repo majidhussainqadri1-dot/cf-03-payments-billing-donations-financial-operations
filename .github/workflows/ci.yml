@@ -32,6 +32,8 @@ jobs:
         run: php tests/run-free-donation-policy.php
       - name: Dual-plan completion tests
         run: php tests/run-plan-completion.php
+      - name: Second adversarial integrity tests
+        run: php tests/run-adversarial-2.php
       - name: Validate manifests
         run: |
           for file in manifests/*.json; do
