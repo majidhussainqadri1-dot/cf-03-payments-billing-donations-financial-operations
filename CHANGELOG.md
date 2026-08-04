@@ -1,18 +1,22 @@
 # Changelog
 
-## 1.0.0-rc.3 — Dual-Plan Complete Financial Source Candidate
+## 1.0.0-rc.3 — Forty-Round Reviewed Dual-Plan Financial Source Candidate
 
 - Completed repository source traceability for Definitive Master Plan v3.0 and CF-03 Complete Master Plan v1.0, covering `CF03-FR-001` through `CF03-FR-034`.
-- Added versioned product/price governance, complete payment intents, raw HMAC webhook verification, provider registry and fail-closed null provider.
-- Added exact settlement confirmation requiring normalized provider event, provider/intent/amount parity and exact ledger amount/currency parity.
-- Added append-only source-idempotent ledger journal, controlled financial adjustments, recurring consent, subscription operations, dunning and signed AI usage caps.
-- Completed refund uncertain/reconciliation states, chargeback evidence/deadline/outcome flow, donation records, settlement imports, reconciliation, finance close/lock/reopen and bounded fraud review.
-- Added secure asynchronous exports, retention/legal holds, restore replay reconciliation, versioned fact envelopes, retry/dead-letter outbox and tamper-evident audit chain.
-- Added canonical route catalogue, fail-closed WordPress REST contracts and additive schema `2.0.0` with 28 owner tables.
-- Preserved Founder Decision `SSH-FIN-2026-08-04-01`: paid products remain dormant/non-collectible, core services free, donation optional, commission 0% and live collection disabled.
-- Added 58 dual-plan completion tests plus 10 second-round adversarial integrity tests.
-- Fresh adversarial review removed a paid-product boolean bypass and blocked signed non-settlement events or balanced wrong-amount ledgers from settling payments.
-- Updated deterministic package identity to `1.0.0-rc.3` and PHP 8.1–8.3 CI.
+- Preserved Founder Decision `SSH-FIN-2026-08-04-01`: paid products remain dormant/non-collectible, core services free, donation optional, commission 0% and Live collection disabled.
+- Added versioned product/price governance, complete payment intents, provider registry and fail-closed null provider.
+- Hardened raw HMAC webhook verification with exact normalized payloads, `occurred_at`, replay checks and event-ID reservation only after trust validation.
+- Required payment settlement to match normalized event type, provider, intent, amount, currency, intent-validity window and exact balanced ledger posting.
+- Added append-only source-idempotent ledger, cumulative partial-refund ceilings and controlled three-person financial adjustments.
+- Completed explicit recurring consent and revocation, subscription period/pause/cancellation controls, bounded dunning and signed AI usage caps.
+- Completed refund uncertainty/reconciliation, chargeback opening/deadline/evidence/acceptance/outcome flow, donation binding, settlement imports and reconciliation.
+- Removed the legacy single-actor finance close and prohibited accepted-risk bypass of material reconciliation exceptions.
+- Hardened bounded fraud review, independent appeals, secure exports, retention/legal holds, restore replay reconciliation, event envelopes, outbox chronology and audit minimization.
+- Hardened invoice totals/status, hosted-checkout transport, return-path redirect safety, REST donation inputs and dedicated finance authorization.
+- Added checksum-drift detection, durable migration records, post-`dbDelta` verification of all 28 owner tables and fail-closed schema publication.
+- Completed **40 separate review → defect-correction cycles**, recorded in `docs/review-evidence-40-rounds-1.0.0-rc.3.md`.
+- Added 40 dedicated regression tests. The complete matrix now runs 198 tests per PHP version and 594 tests across PHP 8.1, 8.2 and 8.3.
+- Preserved deterministic `1.0.0-rc.3` WordPress package construction and parity verification.
 
 ## 1.0.0-rc.2 — Free Platform and Weekly Donation Appeal Amendment
 
