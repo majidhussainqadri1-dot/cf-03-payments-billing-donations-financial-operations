@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Sabri\CF03\Application;
 
 use InvalidArgumentException;
-use Sabri\CF03\Domain\AuditEnvelope;
 
 final class FinancialEvent
 {
@@ -25,11 +24,22 @@ final class FinancialEvent
         private readonly array $payload,
         private readonly int $occurredAt
     ) {
-        if (! in_array($type, self::TYPES, true)) { throw new InvalidArgumentException('Unknown financial event type.'); }
-        if ($type === 'DonationPrivilegeGranted') { throw new InvalidArgumentException('Donation privilege event is forbidden.'); }
-        new AuditEnvelope($eventId, 'system', 'financial_event', $type, \Sabri\CF03\Domain\AuditOutcome::SUCCESS, $payload);
+        if (trim($eventId) === '' || trim($aggregateId) === '' || $occurredAt <= 0) {
+            throw new InvalidArgumentException('Financial event identity is invalid.');
+        }
+        if (! in_array($type, self::TYPES, true)) {
+            throw new InvalidArgumentException('Unknown financial event type.');
+        }
+        foreach (array_keys($payload) as $key) {
+            if (preg_match('/(?:pan|cvv|pin|otp|password|secret|token|raw_body|full_card|bank_credential)/i', (string) $key)) {
+                throw new InvalidArgumentException('Sensitive financial event field is forbidden.');
+            }
+        }
     }
 
+    public function eventId(): string { return $this->eventId; }
     public function type(): string { return $this->type; }
+    public function aggregateId(): string { return $this->aggregateId; }
     /** @return array<string,scalar|null> */ public function payload(): array { return $this->payload; }
+    public function occurredAt(): int { return $this->occurredAt; }
 }
