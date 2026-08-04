@@ -16,6 +16,8 @@ final class SecureExportJob
         'refund_id', 'settlement_batch_id', 'exception_type', 'period_id',
     ];
 
+    private const ALLOWED_FILTERS = ['date_from', 'date_to', 'product_id', 'currency', 'status', 'period_id'];
+
     /** @var list<string> */
     private array $fields;
 
@@ -46,17 +48,48 @@ final class SecureExportJob
         if (! in_array($state, ['queued', 'running', 'ready', 'failed', 'expired', 'revoked'], true) || $recordVersion < 1) {
             throw new InvalidArgumentException('Finance export state or version is invalid.');
         }
+        foreach ($fields as $field) {
+            if (! is_string($field)) {
+                throw new InvalidArgumentException('Finance export fields must be strings.');
+            }
+        }
         $fields = array_values(array_unique($fields));
         if ($fields === [] || array_diff($fields, self::ALLOWED_FIELDS) !== []) {
             throw new InvariantViolation('Finance export contains unapproved or empty field selection.');
         }
-        foreach (array_keys($filters) as $filter) {
-            if (! in_array($filter, ['date_from', 'date_to', 'product_id', 'currency', 'status', 'period_id'], true)) {
-                throw new InvariantViolation('Finance export filter is not approved.');
+
+        $normalizedFilters = [];
+        foreach ($filters as $filter => $value) {
+            if (! is_string($filter)
+                || ! in_array($filter, self::ALLOWED_FILTERS, true)
+                || ! is_scalar($value)
+                || is_float($value)
+            ) {
+                throw new InvariantViolation('Finance export filter is not approved or safely typed.');
             }
+            $stringValue = trim((string) $value);
+            if ($stringValue === '' || strlen($stringValue) > 191 || preg_match('/[\x00-\x1F\x7F]/', $stringValue) === 1) {
+                throw new InvalidArgumentException('Finance export filter value is empty, oversized or contains control characters.');
+            }
+            match ($filter) {
+                'currency' => preg_match('/^[A-Z]{3}$/', $stringValue) === 1
+                    ?: throw new InvalidArgumentException('Finance export currency filter is invalid.'),
+                'period_id' => preg_match('/^[0-9]{4}-(0[1-9]|1[0-2])$/', $stringValue) === 1
+                    ?: throw new InvalidArgumentException('Finance export period filter is invalid.'),
+                'date_from', 'date_to' => self::assertDateFilter($stringValue),
+                'product_id', 'status' => preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{1,190}$/', $stringValue) === 1
+                    ?: throw new InvalidArgumentException('Finance export identifier filter is invalid.'),
+            };
+            $normalizedFilters[$filter] = $stringValue;
         }
+        if (isset($normalizedFilters['date_from'], $normalizedFilters['date_to'])
+            && $normalizedFilters['date_from'] > $normalizedFilters['date_to']
+        ) {
+            throw new InvariantViolation('Finance export date range is inverted.');
+        }
+
         $this->fields = $fields;
-        $this->filters = $filters;
+        $this->filters = $normalizedFilters;
     }
 
     public function start(int $expectedVersion): void
@@ -148,5 +181,14 @@ final class SecureExportJob
         if ($expectedVersion !== $this->recordVersion) {
             throw new InvariantViolation('Stale finance export record version.');
         }
+    }
+
+    private static function assertDateFilter(string $value): bool
+    {
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        if ($date === false || $date->format('Y-m-d') !== $value) {
+            throw new InvalidArgumentException('Finance export date filter is invalid.');
+        }
+        return true;
     }
 }
