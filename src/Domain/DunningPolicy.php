@@ -44,10 +44,15 @@ final class DunningPolicy
         DateTimeImmutable $failedAt,
         int $attemptNumber,
         DateTimeZone $userTimeZone,
-        bool $providerOutage = false
+        bool $providerOutage = false,
+        bool $consentActive = true,
+        bool $subscriptionCancelled = false
     ): DateTimeImmutable {
         if ($providerOutage) {
             throw new InvariantViolation('Provider outage must use service recovery, not user-failure dunning.');
+        }
+        if (! $consentActive || $subscriptionCancelled) {
+            throw new InvariantViolation('Dunning is prohibited after consent revocation or subscription cancellation.');
         }
         if ($attemptNumber < 1 || $attemptNumber > $this->maximumAttempts) {
             throw new InvariantViolation('Dunning attempts are exhausted or invalid.');
