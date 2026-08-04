@@ -18,7 +18,8 @@
       "php tests/run-1.0.php",
       "php tests/run-free-donation-policy.php",
       "php tests/run-plan-completion.php",
-      "php tests/run-adversarial-2.php"
+      "php tests/run-adversarial-2.php",
+      "php tests/run-review-40.php"
     ],
     "lint": "find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l"
   }
