@@ -37,14 +37,7 @@ final class CheckoutCommand
             throw new InvalidArgumentException('Checkout expiry must be after creation and no more than 24 hours later.');
         }
 
-        if (! str_starts_with($returnPath, '/')
-            || str_starts_with($returnPath, '//')
-            || str_contains($returnPath, '\\')
-            || str_contains($returnPath, "\r")
-            || str_contains($returnPath, "\n")
-        ) {
-            throw new InvalidArgumentException('Checkout return destination must be a safe same-origin path.');
-        }
+        self::assertSafeReturnPath($returnPath);
 
         ($platformPolicy ?? new PlatformFinancialPolicy())->assertCollectibleProduct($product);
 
@@ -86,6 +79,32 @@ final class CheckoutCommand
     {
         if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/', $value) !== 1) {
             throw new InvalidArgumentException($label . ' is invalid.');
+        }
+    }
+
+    private static function assertSafeReturnPath(string $returnPath): void
+    {
+        if (strlen($returnPath) < 1
+            || strlen($returnPath) > 512
+            || preg_match('/[\x00-\x20\x7F\\]/', $returnPath) === 1
+            || preg_match('/%(?:0[0-9A-F]|1[0-9A-F]|2F|5C|7F)/i', $returnPath) === 1
+            || str_starts_with($returnPath, '//')
+        ) {
+            throw new InvalidArgumentException('Checkout return destination contains an unsafe path encoding.');
+        }
+        $parts = parse_url($returnPath);
+        if (! is_array($parts)
+            || isset($parts['scheme'], $parts['host'])
+            || isset($parts['user'])
+            || isset($parts['pass'])
+            || isset($parts['fragment'])
+            || ! isset($parts['path'])
+            || ! str_starts_with($parts['path'], '/')
+            || str_starts_with($parts['path'], '//')
+            || str_contains($parts['path'], '/../')
+            || str_ends_with($parts['path'], '/..')
+        ) {
+            throw new InvalidArgumentException('Checkout return destination must be a canonical same-origin path.');
         }
     }
 }
