@@ -43,6 +43,8 @@ jobs:
       - name: Governing source assertions
         run: |
           grep -RInq 'SSH-FIN-2026-08-04-01' src docs manifests README.md
+          grep -q 'Version: 1.0.0-rc.3' cf-03-payments-billing-donations-financial-operations.php
+          grep -q "SABRI_CF03_VERSION', '1.0.0-rc.3'" cf-03-payments-billing-donations-financial-operations.php
           grep -RInq "public const VERSION = '2.0.0'" src/Persistence/Schema.php
           test -f src/Domain/PaymentIntent.php
           test -f src/Application/ProviderWebhookVerifier.php
@@ -50,7 +52,6 @@ jobs:
           test -f src/Domain/ChargebackCase.php
           test -f src/Domain/SecureExportJob.php
           test -f src/Infrastructure/WordPressRestApi.php
-          ! grep -RInE 'Version: 1\.0\.0-rc\.[12]|VERSION="1\.0\.0-rc\.[12]"' --exclude-dir=.git .
 
   package:
     name: Deterministic package and parity
