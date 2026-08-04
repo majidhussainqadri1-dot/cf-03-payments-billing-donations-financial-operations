@@ -17,7 +17,7 @@ final class Subscription
         'grace' => ['active', 'cancel_at_period_end', 'cancelled', 'expired'],
         'paused' => ['active', 'cancelled', 'expired'],
         'cancel_at_period_end' => ['active', 'cancelled', 'expired'],
-        'cancelled' => ['active', 'expired'],
+        'cancelled' => ['expired'],
         'expired' => [],
     ];
 
@@ -111,8 +111,8 @@ final class Subscription
 
     public function resume(DateTimeImmutable $newPeriodEnd, int $expectedVersion): void
     {
-        if (! in_array($this->state, ['past_due', 'grace', 'paused', 'cancel_at_period_end', 'cancelled'], true)) {
-            throw new InvariantViolation('Subscription is not resumable.');
+        if (! in_array($this->state, ['past_due', 'grace', 'paused', 'cancel_at_period_end'], true)) {
+            throw new InvariantViolation('Subscription is not resumable. A cancelled subscription requires new consent and a new subscription.');
         }
         $this->transition('active', $expectedVersion);
         $this->currentPeriodEnd = $newPeriodEnd;
