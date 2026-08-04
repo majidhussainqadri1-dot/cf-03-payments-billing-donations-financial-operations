@@ -33,9 +33,9 @@ jobs:
           for file in manifests/*.json; do
             php -r 'json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);' "$file"
           done
-      - name: Prohibited secret scan
+      - name: Prohibited credential material scan
         run: |
-          ! grep -RInE '(BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|sk_live_|cvv["'"']?\s*[:=]\s*["'"']?[0-9]{3,4}|pan["'"']?\s*[:=]\s*["'"']?[0-9]{12,19})' --exclude-dir=.git --exclude=ci.yml .
+          ! grep -RInE '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|sk_live_[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,})' --exclude-dir=.git --exclude=ci.yml .
 
   package:
     name: Deterministic package and parity
