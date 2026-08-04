@@ -13,14 +13,14 @@ final class PaymentIntentTransition
         'created' => ['provider_pending', 'cancelled', 'expired'],
         'provider_pending' => ['authorized', 'captured', 'settled', 'failed', 'cancelled', 'expired', 'quarantined'],
         'authorized' => ['captured', 'settled', 'failed', 'cancelled', 'expired', 'quarantined'],
-        'captured' => ['settled', 'refunded', 'disputed', 'quarantined'],
-        'settled' => ['refunded', 'disputed'],
+        'captured' => ['settled', 'disputed', 'quarantined'],
+        'settled' => ['disputed'],
         'quarantined' => ['provider_pending', 'failed', 'cancelled'],
         'failed' => [],
         'cancelled' => [],
         'expired' => [],
         'refunded' => ['disputed'],
-        'disputed' => ['refunded'],
+        'disputed' => [],
     ];
 
     public function assertAllowed(PaymentIntentState $from, PaymentIntentState $to): void
