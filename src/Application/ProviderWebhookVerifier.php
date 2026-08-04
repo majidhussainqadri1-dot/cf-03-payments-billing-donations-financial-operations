@@ -9,12 +9,13 @@ use InvalidArgumentException;
 use JsonException;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\ProviderEvidence;
+use Sabri\CF03\Support\InvariantViolation;
 
 final class ProviderWebhookVerifier
 {
     /**
      * @param callable(string,string):string $secretResolver provider, key version -> secret
-     * @param callable(string,string):bool $eventIsUnique provider, event ID -> uniqueness
+     * @param callable(string,string):bool $eventIsUnique provider, event ID -> atomic uniqueness reservation
      */
     public function __construct(
         private readonly mixed $secretResolver,
@@ -54,14 +55,21 @@ final class ProviderWebhookVerifier
 
         $signedPayload = $signatureTimestamp->getTimestamp() . '.' . $rawBody;
         $calculated = hash_hmac('sha256', $signedPayload, $secret);
-        $verified = hash_equals($calculated, $signatureHex);
+        if (! hash_equals($calculated, $signatureHex)) {
+            throw new InvariantViolation('Provider webhook signature is invalid.');
+        }
+
+        $age = $receivedAt->getTimestamp() - $signatureTimestamp->getTimestamp();
+        if ($age < 0 || $age > $this->replayWindowSeconds) {
+            throw new InvariantViolation('Provider webhook is outside the accepted replay window.');
+        }
 
         try {
             $payload = json_decode($rawBody, true, 32, JSON_THROW_ON_ERROR);
         } catch (JsonException $error) {
             throw new InvalidArgumentException('Provider webhook body is not valid JSON.', 0, $error);
         }
-        if (! is_array($payload)) {
+        if (! is_array($payload) || array_is_list($payload)) {
             throw new InvalidArgumentException('Provider webhook payload must be a JSON object.');
         }
 
@@ -77,6 +85,8 @@ final class ProviderWebhookVerifier
             throw new InvalidArgumentException('Provider webhook currency is invalid.');
         }
 
+        // Reserve only after signature, replay and payload validation. A forged request
+        // must never consume a legitimate provider event ID.
         $unique = ($this->eventIsUnique)($providerCode, (string) $payload['event_id']);
         $evidence = new ProviderEvidence(
             $providerCode,
@@ -88,7 +98,7 @@ final class ProviderWebhookVerifier
             $signatureTimestamp,
             $receivedAt,
             hash('sha256', $rawBody),
-            $verified,
+            true,
             $unique
         );
         $evidence->assertTrusted($this->replayWindowSeconds);
