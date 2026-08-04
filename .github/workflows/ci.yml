@@ -22,31 +22,36 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Syntax check
         run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
-      - name: Foundation domain tests
+      - name: Foundation tests
         run: php tests/run.php
-      - name: Product, evidence and adversarial tests
+      - name: Product evidence tests
         run: php tests/run-0.2.php
-      - name: Validate JSON manifests
+      - name: Complete source-candidate tests
+        run: php tests/run-1.0.php
+      - name: Validate manifests
         run: |
           for file in manifests/*.json; do
             php -r 'json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);' "$file"
           done
+      - name: Prohibited secret scan
+        run: |
+          ! grep -RInE '(BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|sk_live_|cvv["'"']?\s*[:=]\s*["'"']?[0-9]{3,4}|pan["'"']?\s*[:=]\s*["'"']?[0-9]{12,19})' --exclude-dir=.git --exclude=ci.yml .
 
   package:
-    name: Deterministic package smoke test
+    name: Deterministic package and parity
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: Build package twice
+      - name: Build twice
         run: |
           bash scripts/build-package.sh
-          first="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-0.2.0.zip | cut -d' ' -f1)"
+          first="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.0.0-rc.1.zip | cut -d' ' -f1)"
           bash scripts/build-package.sh
-          second="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-0.2.0.zip | cut -d' ' -f1)"
+          second="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.0.0-rc.1.zip | cut -d' ' -f1)"
           test "$first" = "$second"
       - name: Verify canonical package
         run: |
-          test -f build/cf-03-payments-billing-donations-financial-operations-0.2.0.zip
-          unzip -Z1 build/cf-03-payments-billing-donations-financial-operations-0.2.0.zip \
-            | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
+          test -f build/cf-03-payments-billing-donations-financial-operations-1.0.0-rc.1.zip
+          unzip -Z1 build/cf-03-payments-billing-donations-financial-operations-1.0.0-rc.1.zip | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
+          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.0.0-rc.1.zip cf-03-payments-billing-donations-financial-operations/cf-03-payments-billing-donations-financial-operations.php | grep -q 'Version: 1.0.0-rc.1'

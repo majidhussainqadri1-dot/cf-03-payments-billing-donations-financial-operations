@@ -1,0 +1,14 @@
+{
+  "module": "CF-03",
+  "version": "1.0.0-rc.1",
+  "status": "source-candidate-runtime-disabled",
+  "governing_plans": ["SSH-PMP-2026-v3.0", "CF-03-v1.0"],
+  "constitutional_rules": {
+    "clinic_marketplace_commission_basis_points": 0,
+    "donation_privilege": false,
+    "file00_entitlement_authority": true,
+    "hosted_or_tokenized_provider_only": true,
+    "raw_card_or_bank_secrets": false
+  },
+  "external_gates_required": ["founder_change_control", "legal_tax_accounting", "pci_scope", "provider_sandbox", "independent_security", "hostinger_staging", "backup_restore_rollback", "operational_staffing"]
+}
