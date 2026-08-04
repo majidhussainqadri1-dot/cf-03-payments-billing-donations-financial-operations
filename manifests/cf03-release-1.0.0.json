@@ -1,14 +1,34 @@
 {
   "module": "CF-03",
-  "version": "1.0.0-rc.1",
-  "status": "source-candidate-runtime-disabled",
+  "version": "1.0.0-rc.2",
+  "status": "free-platform-donation-only-source-candidate-runtime-disabled",
   "governing_plans": ["SSH-PMP-2026-v3.0", "CF-03-v1.0"],
+  "governing_decision": "SSH-FIN-2026-08-04-01",
   "constitutional_rules": {
+    "all_core_services_free": true,
+    "paid_products_dormant_non_collectible": true,
+    "donation_only_collectible_product_kind": true,
+    "donation_suggested_usd_minor_units": [1000, 1400, 5000],
+    "donation_custom_amount": true,
+    "monthly_donation_preselected": false,
+    "donation_prompt_cap_days": 7,
+    "completed_donation_suppression_days": 30,
     "clinic_marketplace_commission_basis_points": 0,
     "donation_privilege": false,
     "file00_entitlement_authority": true,
     "hosted_or_tokenized_provider_only": true,
     "raw_card_or_bank_secrets": false
   },
-  "external_gates_required": ["founder_change_control", "legal_tax_accounting", "pci_scope", "provider_sandbox", "independent_security", "hostinger_staging", "backup_restore_rollback", "operational_staffing"]
+  "external_gates_required": [
+    "legal_entity_and_receiving_account",
+    "founder_collection_activation",
+    "legal_tax_accounting",
+    "pci_scope",
+    "provider_sandbox",
+    "independent_security",
+    "hostinger_staging",
+    "browser_rtl_accessibility_performance",
+    "backup_restore_provider_exit_rollback",
+    "operational_staffing"
+  ]
 }
