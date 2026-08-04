@@ -41,6 +41,14 @@ final class PaymentConfirmationService
         if ($evidence->eventType() !== 'payment.settled') {
             throw new InvariantViolation('Payment settlement requires a normalized trusted payment.settled provider event.');
         }
+        if ($evidence->occurredAt() < $intent->createdAt()
+            || $evidence->occurredAt() >= $intent->expiresAt()
+        ) {
+            throw new InvariantViolation('Provider settlement must occur within the payment-intent validity window.');
+        }
+        if ($at < $evidence->occurredAt()) {
+            throw new InvariantViolation('Settlement recording time cannot precede the provider event occurrence time.');
+        }
         $ledgerTransaction->assertBalanced();
         $ledgerTransaction->assertRepresents($intent->amount());
 
