@@ -18,9 +18,12 @@ final class FinancePeriod
         private int $recordVersion = 1,
         private ?string $reviewedBy = null,
         private ?DateTimeImmutable $closedAt = null,
-        private ?string $acceptedRiskReference = null
+        private ?string $reopenReasonReference = null
     ) {
-        if (trim($periodId) === '' || ! in_array($state, ['open', 'reconciliation', 'exception_review', 'approved_close', 'locked'], true) || $recordVersion < 1) {
+        if (preg_match('/^[0-9]{4}-(0[1-9]|1[0-2])$/', $periodId) !== 1
+            || ! in_array($state, ['open', 'reconciliation', 'exception_review', 'approved_close', 'locked'], true)
+            || $recordVersion < 1
+        ) {
             throw new InvalidArgumentException('Finance period identity, state or version is invalid.');
         }
         if ($closed) {
@@ -42,27 +45,22 @@ final class FinancePeriod
         ReconciliationResult $result,
         string $reviewer,
         string $approver,
-        int $expectedVersion,
-        ?string $acceptedRiskReference = null
+        int $expectedVersion
     ): void {
         $this->assertVersion($expectedVersion);
         if (! in_array($this->state, ['reconciliation', 'exception_review'], true)) {
             throw new InvariantViolation('Finance period is not ready for close approval.');
         }
-        if (trim($reviewer) === '' || trim($approver) === '' || $reviewer === $approver) {
-            throw new InvariantViolation('Finance close requires separate reviewer and approver.');
+        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $reviewer) !== 1
+            || preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $approver) !== 1
+            || $reviewer === $approver
+        ) {
+            throw new InvariantViolation('Finance close requires valid separate reviewer and approver identities.');
         }
 
-        try {
-            $result->assertClosable();
-        } catch (InvariantViolation $error) {
-            if ($acceptedRiskReference === null
-                || preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $acceptedRiskReference) !== 1
-            ) {
-                throw $error;
-            }
-            $this->acceptedRiskReference = $acceptedRiskReference;
-        }
+        // Material exceptions are never closeable through an accepted-risk string.
+        // They must first be resolved in reconciliation and reflected in a new result.
+        $result->assertClosable();
 
         $this->reviewedBy = $reviewer;
         $this->closedBy = $approver;
@@ -89,8 +87,12 @@ final class FinancePeriod
         int $expectedVersion
     ): void {
         $this->assertVersion($expectedVersion);
-        if (! $this->closed || $requester === $approver || trim($requester) === '' || trim($approver) === '') {
-            throw new InvariantViolation('Finance period reopen requires closed state and dual control.');
+        if (! $this->closed
+            || preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $requester) !== 1
+            || preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $approver) !== 1
+            || $requester === $approver
+        ) {
+            throw new InvariantViolation('Finance period reopen requires locked state and valid dual control.');
         }
         if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $reasonReference) !== 1) {
             throw new InvalidArgumentException('Finance period reopen reason reference is invalid.');
@@ -99,7 +101,7 @@ final class FinancePeriod
         $this->closedBy = null;
         $this->closedAt = null;
         $this->state = 'exception_review';
-        $this->acceptedRiskReference = $reasonReference;
+        $this->reopenReasonReference = $reasonReference;
         $this->recordVersion++;
     }
 
