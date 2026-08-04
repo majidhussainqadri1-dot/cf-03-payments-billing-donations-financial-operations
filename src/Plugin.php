@@ -15,6 +15,8 @@ final class Plugin
     public const OPTION_ACTIVATION_RECORD = 'sabri_cf03_activation_record';
     public const OPTION_FINANCIAL_POLICY_DECISION = 'sabri_cf03_financial_policy_decision';
 
+    private const RUNTIME_STATUS = 'donation_preparing_paid_services_suspended';
+
     private const DONATION_PROMPT_META = [
         'last_donation_prompt_at',
         'donation_prompt_status',
@@ -26,8 +28,8 @@ final class Plugin
     public static function activate(): void
     {
         if (! function_exists('add_option') || ! function_exists('update_option')) { return; }
-        add_option(self::OPTION_RUNTIME_STATUS, 'donation_preparing_paid_services_suspended', '', false);
         add_option(self::OPTION_ACTIVATION_RECORD, [], '', false);
+        update_option(self::OPTION_RUNTIME_STATUS, self::RUNTIME_STATUS, false);
         update_option(self::OPTION_VERSION, defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.0.0-rc.2', false);
         update_option(self::OPTION_SCHEMA_VERSION, defined('SABRI_CF03_SCHEMA_VERSION') ? SABRI_CF03_SCHEMA_VERSION : '1.0.0', false);
         update_option(self::OPTION_FINANCIAL_POLICY_DECISION, PlatformFinancialPolicy::DECISION_ID, false);
