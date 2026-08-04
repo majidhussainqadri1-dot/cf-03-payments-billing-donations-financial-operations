@@ -29,12 +29,20 @@ final class TrustedDonationFact
         return $this->type;
     }
 
-    public function toPromptAction(): DonationPromptAction
+    public function promptActionOrNull(): ?DonationPromptAction
     {
         return match ($this->type) {
             DonationFinancialFactType::ONE_TIME_COMPLETED => DonationPromptAction::DONATION_COMPLETED_ONE_TIME,
             DonationFinancialFactType::MONTHLY_STARTED => DonationPromptAction::DONATION_COMPLETED_MONTHLY,
             DonationFinancialFactType::MONTHLY_CANCELLED => DonationPromptAction::MONTHLY_CANCELLED,
+            DonationFinancialFactType::REFUNDED,
+            DonationFinancialFactType::CHARGEDBACK => null,
         };
+    }
+
+    public function toPromptAction(): DonationPromptAction
+    {
+        return $this->promptActionOrNull()
+            ?? throw new InvariantViolation('This trusted donation fact does not mutate donation-prompt frequency state.');
     }
 }
