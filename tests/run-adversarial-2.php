@@ -80,7 +80,7 @@ function readyIntentA2(DateTimeImmutable $now,string $eventType):array
     $intent=new PaymentIntent('intent:1','user:1','donation.general',null,new Money(1400,'USD'),'provider.sandbox','idem-payment-intent-0001',str_repeat('a',64),$now,$now->modify('+1 hour'));
     $intent->attachProviderReference('provider-payment:1',1,$now);
     $intent->transition(PaymentIntentState::PROVIDER_PENDING,2,$now);
-    $evidence=new ProviderEvidence('provider.sandbox','event:provider:1',$eventType,'intent:1',new Money(1400,'USD'),'key:v1',$now->modify('-10 seconds'),$now,str_repeat('b',64),true,true);
+    $evidence=new ProviderEvidence('provider.sandbox','event:provider:1',$eventType,'intent:1',new Money(1400,'USD'),'key:v1',$now->modify('-10 seconds'),$now,str_repeat('b',64),true,true,$now);
     return [$intent,$evidence];
 }
 function ledgerA2(int $amount):LedgerTransaction
