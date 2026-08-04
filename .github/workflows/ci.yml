@@ -34,6 +34,8 @@ jobs:
         run: php tests/run-plan-completion.php
       - name: Second adversarial integrity tests
         run: php tests/run-adversarial-2.php
+      - name: Forty-round regression tests
+        run: php tests/run-review-40.php
       - name: Validate manifests
         run: |
           for file in manifests/*.json; do
@@ -53,7 +55,13 @@ jobs:
           test -f src/Application/ReconciliationEngine.php
           test -f src/Domain/ChargebackCase.php
           test -f src/Domain/SecureExportJob.php
+          test -f src/Domain/RefundBalance.php
+          test -f tests/run-review-40.php
           test -f src/Infrastructure/WordPressRestApi.php
+          grep -q 'SHOW TABLES LIKE' src/Infrastructure/WordPressSchemaInstaller.php
+          grep -q 'schema_incomplete_fail_closed' src/Plugin.php
+          grep -q 'sabri_manage_finance' src/Plugin.php
+          grep -q 'sabri_manage_finance' src/Infrastructure/WordPressRestApi.php
 
   package:
     name: Deterministic package and parity
