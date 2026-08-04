@@ -1,13 +1,45 @@
 {
   "module": "CF-03",
-  "software_version": "0.2.0",
-  "status": "conditional-foundation",
+  "software_version": "1.0.0-rc.2",
+  "status": "free-platform-donation-only-source-candidate",
+  "governing_decision": "SSH-FIN-2026-08-04-01",
   "runtime_collection_enabled": false,
+  "paid_products": {
+    "membership": "dormant_non_collectible",
+    "education": "dormant_non_collectible",
+    "ai_add_on": "dormant_non_collectible",
+    "ai_usage": "dormant_non_collectible",
+    "platform_service_fee": "prohibited"
+  },
   "contracts": {
     "activation_evidence": {
       "version": "1.0",
       "owner": "CF-03",
       "hash_bound": true
+    },
+    "donation_prompt": {
+      "version": "1.0",
+      "owner": "CF-03",
+      "presentation_owners": ["File 20", "File 25"],
+      "weekly_cap_days": 7,
+      "completed_donation_suppression_days": 30,
+      "minimum_engagement_seconds": 30,
+      "suggested_amounts": [
+        {"currency": "USD", "minor_units": 1000},
+        {"currency": "USD", "minor_units": 1400},
+        {"currency": "USD", "minor_units": 5000}
+      ],
+      "custom_amount_allowed": true,
+      "preselected_amount": null,
+      "monthly_preselected": false,
+      "guest_first_party_keys": ["sabri_donation_prompt_seen", "sabri_donation_prompt_next_at"],
+      "logged_in_server_fields": [
+        "last_donation_prompt_at",
+        "donation_prompt_status",
+        "donation_prompt_snoozed_until",
+        "last_donation_completed_at",
+        "donation_frequency_preference"
+      ]
     },
     "file00_financial_facts": {
       "version": "1.0",
@@ -23,10 +55,11 @@
       "direct_entitlement_write": false
     },
     "hosted_payment_provider": {
-      "version": "0.1",
+      "version": "0.2",
       "implementation_present": false,
       "modes": ["hosted", "tokenized"],
-      "checkout_host_allowlist_required": true
+      "checkout_host_allowlist_required": true,
+      "donation_service_state": "preparing"
     },
     "idempotency_store": {
       "version": "0.1",
@@ -40,9 +73,13 @@
     }
   },
   "constitutional_invariants": {
+    "all_core_services_free": true,
+    "paid_product_checkout_allowed": false,
     "clinic_commission_basis_points": 0,
     "marketplace_commission_basis_points": 0,
     "donation_grants_privilege": false,
+    "donation_default_amount": null,
+    "donation_default_recurring": false,
     "file00_is_entitlement_authority": true,
     "floating_point_money_allowed": false
   }
