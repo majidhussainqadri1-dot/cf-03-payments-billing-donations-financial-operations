@@ -90,11 +90,13 @@ final class Subscription
         $this->graceUntil = $graceUntil;
     }
 
-    public function pause(DateTimeImmutable $pausedUntil, int $expectedVersion): void
-    {
-        $now = new DateTimeImmutable('now', $pausedUntil->getTimezone());
-        if ($pausedUntil <= $now) {
-            throw new InvalidArgumentException('Subscription pause end must be in the future.');
+    public function pause(
+        DateTimeImmutable $pausedUntil,
+        DateTimeImmutable $at,
+        int $expectedVersion
+    ): void {
+        if ($pausedUntil <= $at) {
+            throw new InvalidArgumentException('Subscription pause end must be after the pause decision time.');
         }
         $this->transition('paused', $expectedVersion);
         $this->pausedUntil = $pausedUntil;
