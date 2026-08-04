@@ -22,6 +22,17 @@ final class ActivationEvidenceRecord
         'rollback_rehearsal' => 'rollback_rehearsal_passed',
     ];
 
+    /** @var list<string> */
+    private const TOP_LEVEL_KEYS = [
+        'schema_version', 'module_version', 'record_id', 'configuration_hash', 'approvals', 'provider',
+    ];
+
+    /** @var list<string> */
+    private const APPROVAL_KEYS = ['approved', 'evidence_id', 'approver_ref', 'approved_at', 'expires_at'];
+
+    /** @var list<string> */
+    private const PROVIDER_KEYS = ['mode', 'provider_ref', 'evidence_id', 'validated_at', 'expires_at'];
+
     /**
      * @param array<string,mixed> $record
      * @return list<string>
@@ -32,6 +43,10 @@ final class ActivationEvidenceRecord
         DateTimeImmutable $now
     ): array {
         $missing = [];
+
+        if (self::hasUnknownKeys($record, self::TOP_LEVEL_KEYS)) {
+            $missing[] = 'activation_record_unknown_fields';
+        }
 
         if (($record['schema_version'] ?? null) !== self::SCHEMA_VERSION) {
             $missing[] = 'activation_record_schema_version';
@@ -56,6 +71,9 @@ final class ActivationEvidenceRecord
                 $missing[] = $label;
             }
         } else {
+            if (self::hasUnknownKeys($approvals, array_keys(self::REQUIRED_APPROVALS))) {
+                $missing[] = 'activation_approvals_unknown_fields';
+            }
             foreach (self::REQUIRED_APPROVALS as $key => $label) {
                 $block = $approvals[$key] ?? null;
                 if (! self::validApprovalBlock($block, $now)) {
@@ -92,7 +110,7 @@ final class ActivationEvidenceRecord
                 self::normalize($record),
                 JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
             );
-        } catch (JsonException $error) {
+        } catch (JsonException) {
             return '';
         }
 
@@ -101,7 +119,10 @@ final class ActivationEvidenceRecord
 
     private static function validApprovalBlock(mixed $block, DateTimeImmutable $now): bool
     {
-        if (! is_array($block) || ($block['approved'] ?? false) !== true) {
+        if (! is_array($block)
+            || self::hasUnknownKeys($block, self::APPROVAL_KEYS)
+            || ($block['approved'] ?? false) !== true
+        ) {
             return false;
         }
 
@@ -128,7 +149,7 @@ final class ActivationEvidenceRecord
 
     private static function validProviderBlock(mixed $block, DateTimeImmutable $now): bool
     {
-        if (! is_array($block)) {
+        if (! is_array($block) || self::hasUnknownKeys($block, self::PROVIDER_KEYS)) {
             return false;
         }
 
@@ -155,6 +176,17 @@ final class ActivationEvidenceRecord
         }
 
         return true;
+    }
+
+    /** @param array<string,mixed> $value @param list<string> $allowed */
+    private static function hasUnknownKeys(array $value, array $allowed): bool
+    {
+        foreach (array_keys($value) as $key) {
+            if (! is_string($key) || ! in_array($key, $allowed, true)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static function validIdentifier(mixed $value): bool
