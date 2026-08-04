@@ -19,6 +19,7 @@ final class ChargebackCase
         private readonly string $paymentIntentId,
         private readonly Money $disputedAmount,
         private readonly string $reasonCode,
+        private readonly DateTimeImmutable $openedAt,
         private readonly DateTimeImmutable $responseDeadline,
         private string $state = 'notified',
         private int $recordVersion = 1,
@@ -33,6 +34,9 @@ final class ChargebackCase
         if ($disputedAmount->minorUnits() <= 0 || ! in_array($state, self::STATES, true) || $recordVersion < 1) {
             throw new InvalidArgumentException('Chargeback amount, state or version is invalid.');
         }
+        if ($responseDeadline <= $openedAt || $responseDeadline > $openedAt->modify('+180 days')) {
+            throw new InvalidArgumentException('Chargeback response deadline must follow opening and remain within 180 days.');
+        }
     }
 
     public function requireEvidence(DateTimeImmutable $at, int $expectedVersion): void
@@ -41,8 +45,8 @@ final class ChargebackCase
         if ($this->state !== 'notified') {
             throw new InvariantViolation('Chargeback evidence cannot be requested from the current state.');
         }
-        if ($at >= $this->responseDeadline) {
-            throw new InvariantViolation('Chargeback response deadline has passed.');
+        if ($at < $this->openedAt || $at >= $this->responseDeadline) {
+            throw new InvariantViolation('Chargeback evidence request is outside the valid case window.');
         }
         $this->state = 'evidence_due';
         $this->recordVersion++;
@@ -54,8 +58,11 @@ final class ChargebackCase
         if (! in_array($this->state, ['notified', 'evidence_due'], true)) {
             throw new InvariantViolation('Chargeback evidence cannot be submitted from the current state.');
         }
-        if ($at > $this->responseDeadline || preg_match('/^[a-f0-9]{64}$/', $evidenceSha256) !== 1) {
-            throw new InvariantViolation('Chargeback evidence is late or invalid.');
+        if ($at < $this->openedAt
+            || $at > $this->responseDeadline
+            || preg_match('/^[a-f0-9]{64}$/', $evidenceSha256) !== 1
+        ) {
+            throw new InvariantViolation('Chargeback evidence is outside the case window or invalid.');
         }
         $this->evidenceSha256 = $evidenceSha256;
         $this->state = 'submitted';
@@ -109,6 +116,8 @@ final class ChargebackCase
     public function state(): string { return $this->state; }
     public function recordVersion(): int { return $this->recordVersion; }
     public function providerFee(): ?Money { return $this->providerFee; }
+    public function openedAt(): DateTimeImmutable { return $this->openedAt; }
+    public function responseDeadline(): DateTimeImmutable { return $this->responseDeadline; }
 
     private function assertVersion(int $expectedVersion): void
     {
