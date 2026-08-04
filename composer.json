@@ -1,22 +1,17 @@
 {
   "name": "sabri-homeopathy/cf-03-financial-operations",
-  "description": "Complete free-platform financial governance, voluntary donation, ledger, reconciliation and fail-closed financial operations for the Sabri Social Homeopathy Platform.",
+  "description": "Founder-owned voluntary donation, financial transparency, ledger, reconciliation and fail-closed financial operations for the Sabri Social Homeopathy Platform.",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
-  "require": {
-    "php": ">=8.1"
-  },
-  "autoload": {
-    "psr-4": {
-      "Sabri\\CF03\\": "src/"
-    }
-  },
+  "require": {"php": ">=8.1"},
+  "autoload": {"psr-4": {"Sabri\\CF03\\": "src/"}},
   "scripts": {
     "test": [
       "php tests/run.php",
       "php tests/run-0.2.php",
       "php tests/run-1.0.php",
       "php tests/run-free-donation-policy.php",
+      "php tests/run-founder-donation-transparency.php",
       "php tests/run-plan-completion.php",
       "php tests/run-adversarial-2.php",
       "php tests/run-review-40.php"
