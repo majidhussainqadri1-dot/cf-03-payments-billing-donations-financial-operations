@@ -34,7 +34,7 @@ $tests['strict activation accepts only hash-bound evidence'] = static function (
 };
 $tests['strict activation rejects hash mismatch'] = static function () use ($now): void {
     $record = activationRecord($now);
-    $gate = new EvidenceBoundActivationGate(true, static fn (): array => $record, str_repeat('b', 64), '1.0.0-rc.2', static fn () => $now);
+    $gate = new EvidenceBoundActivationGate(true, static fn (): array => $record, str_repeat('b', 64), '1.0.0-rc.3', static fn () => $now);
     same(false, $gate->evaluate()->approved());
 };
 $tests['strict activation rejects expired evidence'] = static function () use ($now): void {
@@ -137,9 +137,9 @@ $tests['audit envelope permits minimized hashes'] = static function () use ($now
     same('succeeded', $event->toPayload()['outcome']);
 };
 $tests['hosted checkout URL requires HTTPS and allowed host'] = static function () use ($now): void {
-    $reference = new HostedCheckoutReference('provider.sandbox', 'session:100', 'https://payments.example.test/session/100', $now->modify('+30 minutes'), ['payments.example.test']);
+    $reference = new HostedCheckoutReference('provider.sandbox', 'session:100', 'https://payments.example.test/session/100', $now, $now->modify('+30 minutes'), ['payments.example.test']);
     same('provider.sandbox', $reference->providerCode());
-    throws(static fn () => new HostedCheckoutReference('provider.sandbox', 'session:101', 'https://evil.example.test/session/101', $now->modify('+30 minutes'), ['payments.example.test']), InvalidArgumentException::class);
+    throws(static fn () => new HostedCheckoutReference('provider.sandbox', 'session:101', 'https://evil.example.test/session/101', $now, $now->modify('+30 minutes'), ['payments.example.test']), InvalidArgumentException::class);
 };
 
 $failures = 0;
@@ -169,12 +169,12 @@ function providerEvidence(DateTimeImmutable $now, string $eventId, string $event
 function activationRecord(DateTimeImmutable $now): array
 {
     $approval = static fn (string $id): array => ['approved' => true, 'evidence_id' => 'evidence:' . $id, 'approver_ref' => 'approver:' . $id, 'approved_at' => $now->modify('-1 hour')->format(DATE_ATOM), 'expires_at' => $now->modify('+30 days')->format(DATE_ATOM)];
-    return ['schema_version' => '1.0', 'module_version' => '1.0.0-rc.2', 'record_id' => 'activation:cf03:production:1', 'configuration_hash' => str_repeat('a', 64), 'approvals' => ['founder_change_control' => $approval('founder'), 'legal_tax_accounting_review' => $approval('legal'), 'pci_scope_validation' => $approval('pci'), 'independent_security_acceptance' => $approval('security'), 'staging_acceptance' => $approval('staging'), 'rollback_rehearsal' => $approval('rollback')], 'provider' => ['mode' => 'hosted', 'provider_ref' => 'provider:sandbox', 'evidence_id' => 'evidence:provider:1', 'validated_at' => $now->modify('-1 hour')->format(DATE_ATOM), 'expires_at' => $now->modify('+30 days')->format(DATE_ATOM)]];
+    return ['schema_version' => '1.0', 'module_version' => '1.0.0-rc.3', 'record_id' => 'activation:cf03:production:1', 'configuration_hash' => str_repeat('a', 64), 'approvals' => ['founder_change_control' => $approval('founder'), 'legal_tax_accounting_review' => $approval('legal'), 'pci_scope_validation' => $approval('pci'), 'independent_security_acceptance' => $approval('security'), 'staging_acceptance' => $approval('staging'), 'rollback_rehearsal' => $approval('rollback')], 'provider' => ['mode' => 'hosted', 'provider_ref' => 'provider:sandbox', 'evidence_id' => 'evidence:provider:1', 'validated_at' => $now->modify('-1 hour')->format(DATE_ATOM), 'expires_at' => $now->modify('+30 days')->format(DATE_ATOM)]];
 }
 /** @param array<string,mixed> $record */
 function strictGate(array $record, DateTimeImmutable $now): EvidenceBoundActivationGate
 {
-    return new EvidenceBoundActivationGate(true, static fn (): array => $record, ActivationEvidenceRecord::canonicalHash($record), '1.0.0-rc.2', static fn () => $now);
+    return new EvidenceBoundActivationGate(true, static fn (): array => $record, ActivationEvidenceRecord::canonicalHash($record), '1.0.0-rc.3', static fn () => $now);
 }
 function same(mixed $expected, mixed $actual): void
 {
