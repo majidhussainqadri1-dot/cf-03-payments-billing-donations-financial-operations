@@ -79,13 +79,28 @@ final class WordPressRestApi
     {
         $monthly = false;
         $amountMinor = null;
+        $currency = 'USD';
         if (is_object($request) && method_exists($request, 'get_param')) {
-            $monthly = filter_var($request->get_param('monthly'), FILTER_VALIDATE_BOOL);
+            $rawMonthly = $request->get_param('monthly');
+            $parsedMonthly = self::strictBoolean($rawMonthly);
+            if ($parsedMonthly === null && $rawMonthly !== null) {
+                return self::error('sabri_cf03_invalid_monthly_consent', 'Monthly donation consent must be an explicit boolean value.', 422);
+            }
+            $monthly = $parsedMonthly ?? false;
             $amountMinor = $request->get_param('amount_minor');
+            $rawCurrency = $request->get_param('currency');
+            if ($rawCurrency !== null) {
+                $currency = $rawCurrency;
+            }
         }
-        if ($amountMinor !== null && (! is_numeric($amountMinor) || (int) $amountMinor <= 0)) {
-            return self::error('sabri_cf03_invalid_donation_amount', 'Donation amount must be a positive USD amount.', 422);
+
+        if (! is_string($currency) || $currency !== 'USD') {
+            return self::error('sabri_cf03_invalid_donation_currency', 'Donation currency must be USD.', 422);
         }
+        if ($amountMinor !== null && self::positiveIntegerOrNull($amountMinor) === null) {
+            return self::error('sabri_cf03_invalid_donation_amount', 'Donation amount must be a positive integer number of USD minor units.', 422);
+        }
+
         return self::error(
             'sabri_cf03_donation_preparing',
             $monthly
@@ -116,7 +131,7 @@ final class WordPressRestApi
 
     public static function manageFinance(): bool
     {
-        return function_exists('current_user_can') && current_user_can('manage_options');
+        return function_exists('current_user_can') && current_user_can('sabri_manage_finance');
     }
 
     private static function error(string $code, string $message, int $status): mixed
@@ -125,5 +140,28 @@ final class WordPressRestApi
             return new \WP_Error($code, $message, ['status' => $status]);
         }
         return ['code' => $code, 'message' => $message, 'status' => $status];
+    }
+
+    private static function strictBoolean(mixed $value): ?bool
+    {
+        return match (true) {
+            $value === true, $value === 1, $value === '1' => true,
+            $value === false, $value === 0, $value === '0' => false,
+            default => null,
+        };
+    }
+
+    private static function positiveIntegerOrNull(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value > 0 ? $value : null;
+        }
+        if (! is_string($value)
+            || preg_match('/^[1-9][0-9]{0,18}$/', $value) !== 1
+        ) {
+            return null;
+        }
+        $validated = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        return is_int($validated) ? $validated : null;
     }
 }
