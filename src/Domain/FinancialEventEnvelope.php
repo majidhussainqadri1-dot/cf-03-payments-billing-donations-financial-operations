@@ -21,9 +21,14 @@ final class FinancialEventEnvelope
         private readonly DateTimeImmutable $occurredAt,
         private readonly array $payload
     ) {
-        foreach ([$eventId, $eventType, $aggregateId, $aggregateVersion, $schemaVersion, $traceId] as $reference) {
+        foreach ([$eventId, $eventType, $aggregateId, $traceId] as $reference) {
             if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $reference) !== 1) {
                 throw new InvalidArgumentException('Financial event envelope reference is invalid.');
+            }
+        }
+        foreach ([$aggregateVersion, $schemaVersion] as $version) {
+            if (preg_match('/^[0-9][0-9A-Za-z._-]{0,31}$/', $version) !== 1) {
+                throw new InvalidArgumentException('Financial event envelope version is invalid.');
             }
         }
         if (preg_match('/(?:Create|Update|Delete|Grant|Approve|Execute|Set|Change)$/', $eventType) === 1) {
