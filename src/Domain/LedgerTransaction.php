@@ -46,25 +46,39 @@ final class LedgerTransaction
         return $this->entries;
     }
 
-    public function assertBalanced(): void
+    /** @return array<string,array{debit:int,credit:int}> */
+    public function totalsByCurrency(): array
     {
-        /** @var array<string,array{debit:int,credit:int}> $totals */
         $totals = [];
-
         foreach ($this->entries as $entry) {
             $currency = $entry->amount()->currency();
             $totals[$currency] ??= ['debit' => 0, 'credit' => 0];
             $direction = $entry->direction();
             $amount = $entry->amount()->minorUnits();
-
             if ($amount > PHP_INT_MAX - $totals[$currency][$direction]) {
                 throw new InvariantViolation('Ledger totals exceed supported integer range.');
             }
-
             $totals[$currency][$direction] += $amount;
         }
+        ksort($totals);
+        return $totals;
+    }
 
-        foreach ($totals as $currency => $total) {
+    public function assertRepresents(Money $amount): void
+    {
+        $totals = $this->totalsByCurrency();
+        if (count($totals) !== 1
+            || ! isset($totals[$amount->currency()])
+            || $totals[$amount->currency()]['debit'] !== $amount->minorUnits()
+            || $totals[$amount->currency()]['credit'] !== $amount->minorUnits()
+        ) {
+            throw new InvariantViolation('Ledger transaction amount and currency do not match the financial aggregate.');
+        }
+    }
+
+    public function assertBalanced(): void
+    {
+        foreach ($this->totalsByCurrency() as $currency => $total) {
             if ($total['debit'] !== $total['credit']) {
                 throw new InvariantViolation(sprintf(
                     'Ledger transaction is unbalanced for %s.',
