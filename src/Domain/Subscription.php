@@ -62,11 +62,15 @@ final class Subscription
 
     public function activate(
         string $providerReference,
+        DateTimeImmutable $activatedAt,
         DateTimeImmutable $periodEnd,
         int $expectedVersion
     ): void {
         if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $providerReference) !== 1) {
             throw new InvalidArgumentException('Subscription provider reference is invalid.');
+        }
+        if ($periodEnd <= $activatedAt || $periodEnd > $activatedAt->modify('+2 years')) {
+            throw new InvalidArgumentException('Subscription period end must follow activation and remain within two years.');
         }
         $this->transition('active', $expectedVersion);
         $this->providerReference = $providerReference;
