@@ -23,6 +23,9 @@ final class ActivationEvidenceRecord
     ];
 
     /** @var list<string> */
+    private const NON_EXPIRING_APPROVALS = ['founder_change_control'];
+
+    /** @var list<string> */
     private const TOP_LEVEL_KEYS = [
         'schema_version', 'module_version', 'record_id', 'configuration_hash', 'approvals', 'provider',
     ];
@@ -76,7 +79,8 @@ final class ActivationEvidenceRecord
             }
             foreach (self::REQUIRED_APPROVALS as $key => $label) {
                 $block = $approvals[$key] ?? null;
-                if (! self::validApprovalBlock($block, $now)) {
+                $requiresExpiry = ! in_array($key, self::NON_EXPIRING_APPROVALS, true);
+                if (! self::validApprovalBlock($block, $now, $requiresExpiry)) {
                     $missing[] = $label;
                     continue;
                 }
@@ -117,8 +121,11 @@ final class ActivationEvidenceRecord
         return hash('sha256', $encoded);
     }
 
-    private static function validApprovalBlock(mixed $block, DateTimeImmutable $now): bool
-    {
+    private static function validApprovalBlock(
+        mixed $block,
+        DateTimeImmutable $now,
+        bool $requiresExpiry
+    ): bool {
         if (! is_array($block)
             || self::hasUnknownKeys($block, self::APPROVAL_KEYS)
             || ($block['approved'] ?? false) !== true
@@ -137,9 +144,18 @@ final class ActivationEvidenceRecord
             return false;
         }
 
-        if (array_key_exists('expires_at', $block) && $block['expires_at'] !== null) {
+        $hasExpiry = array_key_exists('expires_at', $block) && $block['expires_at'] !== null;
+        if ($requiresExpiry && ! $hasExpiry) {
+            return false;
+        }
+
+        if ($hasExpiry) {
             $expiresAt = self::parseDate($block['expires_at']);
-            if ($expiresAt === null || $expiresAt <= $now || $expiresAt <= $approvedAt) {
+            if ($expiresAt === null
+                || $expiresAt <= $now
+                || $expiresAt <= $approvedAt
+                || $expiresAt > $approvedAt->modify('+366 days')
+            ) {
                 return false;
             }
         }
@@ -164,15 +180,15 @@ final class ActivationEvidenceRecord
         }
 
         $validatedAt = self::parseDate($block['validated_at'] ?? null);
-        if ($validatedAt === null || $validatedAt > $now->modify('+5 minutes')) {
+        $expiresAt = self::parseDate($block['expires_at'] ?? null);
+        if ($validatedAt === null
+            || $validatedAt > $now->modify('+5 minutes')
+            || $expiresAt === null
+            || $expiresAt <= $now
+            || $expiresAt <= $validatedAt
+            || $expiresAt > $validatedAt->modify('+90 days')
+        ) {
             return false;
-        }
-
-        if (array_key_exists('expires_at', $block) && $block['expires_at'] !== null) {
-            $expiresAt = self::parseDate($block['expires_at']);
-            if ($expiresAt === null || $expiresAt <= $now || $expiresAt <= $validatedAt) {
-                return false;
-            }
         }
 
         return true;
