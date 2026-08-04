@@ -57,8 +57,7 @@ final class ProductLifecycle
     public function activate(
         string $actorReference,
         DateTimeImmutable $effectiveAt,
-        int $expectedVersion,
-        bool $paidActivationApproved = false
+        int $expectedVersion
     ): void {
         $this->assertVersion($expectedVersion);
         if ($this->state !== 'approved') {
@@ -68,8 +67,12 @@ final class ProductLifecycle
         if ($actorReference === $this->stagedBy || $actorReference === $this->approvedBy) {
             throw new InvariantViolation('Product activation requires a distinct authorized actor.');
         }
-        if ($this->product->kind() !== ProductKind::DONATION && ! $paidActivationApproved) {
-            throw new InvariantViolation('Paid product activation is suspended by the governing free-platform policy.');
+        if ($this->product->kind() !== ProductKind::DONATION) {
+            throw new InvariantViolation(
+                'Paid product activation is prohibited while Founder Decision '
+                . PlatformFinancialPolicy::DECISION_ID
+                . ' is active; a new change-control release must replace this policy before activation.'
+            );
         }
         $this->effectiveAt = $effectiveAt;
         $this->state = 'active';
