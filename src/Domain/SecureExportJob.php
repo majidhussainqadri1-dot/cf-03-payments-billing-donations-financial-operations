@@ -103,11 +103,10 @@ final class SecureExportJob
         if ($this->state !== 'running') {
             throw new InvariantViolation('Finance export is not running.');
         }
-        if (preg_match('/^[a-f0-9]{64}$/', $manifestSha256) !== 1
-            || preg_match('/^[A-Za-z0-9][A-Za-z0-9._:\/-]{2,255}$/', $encryptedObjectReference) !== 1
-        ) {
-            throw new InvalidArgumentException('Finance export artifact evidence is invalid.');
+        if (preg_match('/^[a-f0-9]{64}$/', $manifestSha256) !== 1) {
+            throw new InvalidArgumentException('Finance export manifest evidence is invalid.');
         }
+        self::assertEncryptedObjectReference($encryptedObjectReference);
         $this->manifestSha256 = $manifestSha256;
         $this->encryptedObjectReference = $encryptedObjectReference;
         $this->state = 'ready';
@@ -190,5 +189,22 @@ final class SecureExportJob
             throw new InvalidArgumentException('Finance export date filter is invalid.');
         }
         return true;
+    }
+
+    private static function assertEncryptedObjectReference(string $reference): void
+    {
+        if (strlen($reference) < 3
+            || strlen($reference) > 255
+            || preg_match('/[\x00-\x20\x7F\\?#%]/', $reference) === 1
+            || str_contains($reference, '..')
+        ) {
+            throw new InvalidArgumentException('Finance export encrypted-object reference is unsafe.');
+        }
+        $opaque = preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $reference) === 1;
+        $vault = preg_match('#^vault://[A-Za-z0-9][A-Za-z0-9._-]{1,62}/[A-Za-z0-9][A-Za-z0-9._/-]{1,180}$#', $reference) === 1
+            && ! str_contains(substr($reference, 8), '//');
+        if (! $opaque && ! $vault) {
+            throw new InvalidArgumentException('Finance export artifact must use an approved opaque or vault reference.');
+        }
     }
 }
