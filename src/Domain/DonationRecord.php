@@ -24,7 +24,9 @@ final class DonationRecord
         private string $state = 'intent_created',
         private int $recordVersion = 1,
         private ?string $providerReference = null,
-        private ?string $receiptReference = null
+        private ?string $receiptReference = null,
+        private ?string $paymentIntentId = null,
+        private ?string $providerCode = null
     ) {
         foreach ([$donationId, $donorReference, $purposeCode] as $reference) {
             if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $reference) !== 1) {
@@ -37,6 +39,35 @@ final class DonationRecord
         if ($recurring !== $explicitRecurringConsent) {
             throw new InvariantViolation('Recurring donation requires explicit consent and one-time donation cannot carry recurring consent.');
         }
+        if (($paymentIntentId === null) !== ($providerCode === null)) {
+            throw new InvalidArgumentException('Donation payment-intent and provider bindings must be supplied together.');
+        }
+        if ($paymentIntentId !== null) {
+            self::assertIdentifier($paymentIntentId, 'Donation payment-intent reference');
+            self::assertIdentifier((string) $providerCode, 'Donation provider code');
+        }
+    }
+
+    public function bindPaymentIntent(
+        string $paymentIntentId,
+        string $providerCode,
+        int $expectedVersion
+    ): void {
+        $this->assertVersion($expectedVersion);
+        self::assertIdentifier($paymentIntentId, 'Donation payment-intent reference');
+        self::assertIdentifier($providerCode, 'Donation provider code');
+        if ($this->state !== 'intent_created') {
+            throw new InvariantViolation('Donation payment intent can be bound only before donor confirmation.');
+        }
+        if ($this->paymentIntentId !== null || $this->providerCode !== null) {
+            if ($this->paymentIntentId === $paymentIntentId && $this->providerCode === $providerCode) {
+                return;
+            }
+            throw new InvariantViolation('Donation payment-intent binding is immutable.');
+        }
+        $this->paymentIntentId = $paymentIntentId;
+        $this->providerCode = $providerCode;
+        $this->recordVersion++;
     }
 
     public function confirmDonor(int $expectedVersion): void
@@ -45,6 +76,7 @@ final class DonationRecord
         if ($this->state !== 'intent_created') {
             throw new InvariantViolation('Donation donor confirmation is invalid for the current state.');
         }
+        $this->assertBound();
         $this->state = 'donor_confirmed';
         $this->recordVersion++;
     }
@@ -55,15 +87,17 @@ final class DonationRecord
         if ($this->state !== 'donor_confirmed') {
             throw new InvariantViolation('Donation cannot settle before donor confirmation.');
         }
+        $this->assertFactBinding($fact);
+        if ($fact->occurredAt() < $this->createdAt) {
+            throw new InvariantViolation('Donation settlement fact cannot predate the donation record.');
+        }
         if (! in_array($fact->type(), [DonationFinancialFactType::ONE_TIME_COMPLETED, DonationFinancialFactType::MONTHLY_STARTED], true)) {
             throw new InvariantViolation('Trusted donation fact does not represent settlement.');
         }
         if ($this->recurring !== ($fact->type() === DonationFinancialFactType::MONTHLY_STARTED)) {
             throw new InvariantViolation('Donation settlement recurrence does not match donor consent.');
         }
-        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $providerReference) !== 1) {
-            throw new InvalidArgumentException('Donation provider reference is invalid.');
-        }
+        self::assertIdentifier($providerReference, 'Donation provider reference');
         $this->providerReference = $providerReference;
         $this->state = 'settled';
         $this->recordVersion++;
@@ -75,9 +109,7 @@ final class DonationRecord
         if ($this->state !== 'settled') {
             throw new InvariantViolation('Donation receipt requires settled donation.');
         }
-        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $receiptReference) !== 1) {
-            throw new InvalidArgumentException('Donation receipt reference is invalid.');
-        }
+        self::assertIdentifier($receiptReference, 'Donation receipt reference');
         $this->receiptReference = $receiptReference;
         $this->state = 'receipt_issued';
         $this->recordVersion++;
@@ -89,6 +121,7 @@ final class DonationRecord
         if (! in_array($this->state, ['settled', 'receipt_issued'], true)) {
             throw new InvariantViolation('Donation is not refundable from the current state.');
         }
+        $this->assertFactBinding($fact);
         if ($fact->type() !== DonationFinancialFactType::REFUNDED) {
             throw new InvariantViolation('Donation refund requires a trusted refund fact.');
         }
@@ -102,6 +135,7 @@ final class DonationRecord
         if (! in_array($this->state, ['settled', 'receipt_issued'], true)) {
             throw new InvariantViolation('Donation chargeback is invalid for the current state.');
         }
+        $this->assertFactBinding($fact);
         if ($fact->type() !== DonationFinancialFactType::CHARGEDBACK) {
             throw new InvariantViolation('Donation chargeback requires a trusted chargeback fact.');
         }
@@ -127,6 +161,8 @@ final class DonationRecord
         return [
             'donation_id' => $this->donationId,
             'donor_reference' => $this->donorReference,
+            'payment_intent_id' => $this->paymentIntentId,
+            'provider_code' => $this->providerCode,
             'amount_minor' => $this->amount->minorUnits(),
             'currency' => $this->amount->currency(),
             'purpose_code' => $this->purposeCode,
@@ -142,10 +178,30 @@ final class DonationRecord
     public function state(): string { return $this->state; }
     public function recordVersion(): int { return $this->recordVersion; }
 
+    private function assertBound(): void
+    {
+        if ($this->paymentIntentId === null || $this->providerCode === null) {
+            throw new InvariantViolation('Donation record is not bound to a payment intent and provider.');
+        }
+    }
+
+    private function assertFactBinding(TrustedDonationFact $fact): void
+    {
+        $this->assertBound();
+        $fact->assertMatches((string) $this->providerCode, (string) $this->paymentIntentId, $this->amount);
+    }
+
     private function assertVersion(int $expectedVersion): void
     {
         if ($expectedVersion !== $this->recordVersion) {
             throw new InvariantViolation('Stale donation record version.');
+        }
+    }
+
+    private static function assertIdentifier(string $value, string $label): void
+    {
+        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $value) !== 1) {
+            throw new InvalidArgumentException($label . ' is invalid.');
         }
     }
 }
