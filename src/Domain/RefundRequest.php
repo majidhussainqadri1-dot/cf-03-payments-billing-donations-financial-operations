@@ -95,6 +95,9 @@ final class RefundRequest
             throw new InvariantViolation('Refund is not reviewable.');
         }
         $this->assertReviewer($reviewer);
+        if ($this->reviewer !== null && $this->reviewer !== $reviewer) {
+            throw new InvariantViolation('Refund reviewer cannot be silently replaced during denial.');
+        }
         if (trim($decisionReason) === '') {
             throw new InvalidArgumentException('Refund denial requires a reason.');
         }
