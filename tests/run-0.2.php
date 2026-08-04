@@ -26,16 +26,15 @@ use Sabri\CF03\Integration\File00FinancialFact;
 use Sabri\CF03\Integration\FinancialFactType;
 
 $tests = [];
-$now = new DateTimeImmutable('2026-08-04T01:43:00+05:00');
+$now = new DateTimeImmutable('2026-08-04T11:39:00+05:00');
 
 $tests['strict activation accepts only hash-bound evidence'] = static function () use ($now): void {
     $record = activationRecord($now);
-    $gate = strictGate($record, $now);
-    same(true, $gate->evaluate()->approved());
+    same(true, strictGate($record, $now)->evaluate()->approved());
 };
 $tests['strict activation rejects hash mismatch'] = static function () use ($now): void {
     $record = activationRecord($now);
-    $gate = new EvidenceBoundActivationGate(true, static fn (): array => $record, str_repeat('b', 64), '0.2.0', static fn () => $now);
+    $gate = new EvidenceBoundActivationGate(true, static fn (): array => $record, str_repeat('b', 64), '1.0.0-rc.2', static fn () => $now);
     same(false, $gate->evaluate()->approved());
 };
 $tests['strict activation rejects expired evidence'] = static function () use ($now): void {
@@ -56,36 +55,34 @@ $tests['provider evidence ID cannot reuse approval evidence ID'] = static functi
 $tests['donation cannot map to an entitlement'] = static function (): void {
     throws(static fn () => new FinancialProduct('donation.general', ProductKind::DONATION, BillingType::VOLUNTARY, 'cf03.finance', 'membership.vip', 'refund.donation.v1', 'cancel.donation.v1', true, true, 'approval.product.1'), DomainException::class);
 };
-$tests['education membership must remain recurring'] = static function () use ($now): void {
+$tests['education membership remains a dormant recurring registry product'] = static function () use ($now): void {
     [$product, $price] = educationProductAndPrice($now);
     same(BillingType::RECURRING, $product->billingType());
     same(40000, $price->amount()->minorUnits());
 };
-$tests['AI usage is a separate metered product'] = static function (): void {
+$tests['AI usage remains a separate dormant metered product'] = static function (): void {
     $product = new FinancialProduct('ai.usage.standard', ProductKind::AI_USAGE, BillingType::METERED, 'file16.ai', 'ai.usage.standard', 'refund.ai.v1', 'cancel.ai.v1', true, true, 'approval.ai.1');
     same(ProductKind::AI_USAGE, $product->kind());
 };
-$tests['approved price versions cannot overlap'] = static function () use ($now): void {
+$tests['approved historical price versions cannot overlap'] = static function () use ($now): void {
     [$product, $price] = educationProductAndPrice($now);
     $overlap = new PriceVersion($product->productId(), 'price.pkr.2026b', Money::fromDecimal('450.00', 'PKR'), 'GLOBAL', TaxMode::NOT_APPLICABLE, $now->modify('-1 day'), null, $product->refundPolicyVersion(), $product->cancellationPolicyVersion(), true, 'approval.price.2');
     throws(static fn () => new PriceCatalog($product, [$price, $overlap]), DomainException::class);
 };
-$tests['catalog resolves an approved immutable snapshot'] = static function () use ($now): void {
+$tests['catalog retains an approved dormant historical snapshot'] = static function () use ($now): void {
     [$product, $price] = educationProductAndPrice($now);
     $catalog = new PriceCatalog($product, [$price]);
     same($price->snapshotHash(), $catalog->resolve($now, 'PK', 'PKR')->snapshotHash());
 };
-$tests['checkout rejects client-tampered amount'] = static function () use ($now): void {
+$tests['paid checkout rejects client-tampered amount'] = static function () use ($now): void {
     [$product, $price] = educationProductAndPrice($now);
     throws(static fn () => checkout($product, $price, Money::fromDecimal('399.00', 'PKR'), $now), DomainException::class);
 };
-$tests['provider request excludes canonical user reference'] = static function () use ($now): void {
+$tests['paid checkout is dormant under current founder policy'] = static function () use ($now): void {
     [$product, $price] = educationProductAndPrice($now);
-    $payload = checkout($product, $price, $price->amount(), $now)->toProviderRequest();
-    same(false, array_key_exists('user_reference', $payload));
-    same($price->snapshotHash(), $payload['price_snapshot_hash']);
+    throws(static fn () => checkout($product, $price, $price->amount(), $now), DomainException::class);
 };
-$tests['checkout return path must remain same-origin'] = static function () use ($now): void {
+$tests['checkout return path must remain same-origin before policy evaluation'] = static function () use ($now): void {
     [$product, $price] = educationProductAndPrice($now);
     throws(static fn () => new CheckoutCommand('intent:2', 'user:42', $product, $price, $price->amount(), 'idem-checkout-0002', $now, $now->modify('+30 minutes'), '//evil.test'), InvalidArgumentException::class);
 };
@@ -121,12 +118,10 @@ $tests['provider evidence cannot cross provider boundaries'] = static function (
     throws(static fn () => $evidence->assertMatches('provider.other', 'intent:100', Money::fromDecimal('400.00', 'PKR')), DomainException::class);
 };
 $tests['unknown trusted provider event maps to quarantine'] = static function () use ($now): void {
-    $mapper = new ProviderEventStateMapper();
-    same(PaymentIntentState::QUARANTINED, $mapper->mapTrusted(providerEvidence($now, 'event:104', 'provider.unknown', true, true, '-10 seconds')));
+    same(PaymentIntentState::QUARANTINED, (new ProviderEventStateMapper())->mapTrusted(providerEvidence($now, 'event:104', 'provider.unknown', true, true, '-10 seconds')));
 };
 $tests['untrusted event cannot be mapped into financial state'] = static function () use ($now): void {
-    $mapper = new ProviderEventStateMapper();
-    throws(static fn () => $mapper->mapTrusted(providerEvidence($now, 'event:105', 'payment.settled', false, true, '-10 seconds')), DomainException::class);
+    throws(static fn () => (new ProviderEventStateMapper())->mapTrusted(providerEvidence($now, 'event:105', 'payment.settled', false, true, '-10 seconds')), DomainException::class);
 };
 $tests['File 00 receives facts and never entitlement commands'] = static function () use ($now): void {
     $fact = new File00FinancialFact('event:financial:1', FinancialFactType::PAYMENT_SETTLED, 'user:42', 'education.membership.monthly', 'price.pkr.2026a', 'payment:100', Money::fromDecimal('400.00', 'PKR'), 1, $now, 'correlation:100');
@@ -174,12 +169,12 @@ function providerEvidence(DateTimeImmutable $now, string $eventId, string $event
 function activationRecord(DateTimeImmutable $now): array
 {
     $approval = static fn (string $id): array => ['approved' => true, 'evidence_id' => 'evidence:' . $id, 'approver_ref' => 'approver:' . $id, 'approved_at' => $now->modify('-1 hour')->format(DATE_ATOM), 'expires_at' => $now->modify('+30 days')->format(DATE_ATOM)];
-    return ['schema_version' => '1.0', 'module_version' => '0.2.0', 'record_id' => 'activation:cf03:production:1', 'configuration_hash' => str_repeat('a', 64), 'approvals' => ['founder_change_control' => $approval('founder'), 'legal_tax_accounting_review' => $approval('legal'), 'pci_scope_validation' => $approval('pci'), 'independent_security_acceptance' => $approval('security'), 'staging_acceptance' => $approval('staging'), 'rollback_rehearsal' => $approval('rollback')], 'provider' => ['mode' => 'hosted', 'provider_ref' => 'provider:sandbox', 'evidence_id' => 'evidence:provider:1', 'validated_at' => $now->modify('-1 hour')->format(DATE_ATOM), 'expires_at' => $now->modify('+30 days')->format(DATE_ATOM)]];
+    return ['schema_version' => '1.0', 'module_version' => '1.0.0-rc.2', 'record_id' => 'activation:cf03:production:1', 'configuration_hash' => str_repeat('a', 64), 'approvals' => ['founder_change_control' => $approval('founder'), 'legal_tax_accounting_review' => $approval('legal'), 'pci_scope_validation' => $approval('pci'), 'independent_security_acceptance' => $approval('security'), 'staging_acceptance' => $approval('staging'), 'rollback_rehearsal' => $approval('rollback')], 'provider' => ['mode' => 'hosted', 'provider_ref' => 'provider:sandbox', 'evidence_id' => 'evidence:provider:1', 'validated_at' => $now->modify('-1 hour')->format(DATE_ATOM), 'expires_at' => $now->modify('+30 days')->format(DATE_ATOM)]];
 }
 /** @param array<string,mixed> $record */
 function strictGate(array $record, DateTimeImmutable $now): EvidenceBoundActivationGate
 {
-    return new EvidenceBoundActivationGate(true, static fn (): array => $record, ActivationEvidenceRecord::canonicalHash($record), '0.2.0', static fn () => $now);
+    return new EvidenceBoundActivationGate(true, static fn (): array => $record, ActivationEvidenceRecord::canonicalHash($record), '1.0.0-rc.2', static fn () => $now);
 }
 function same(mixed $expected, mixed $actual): void
 {
@@ -192,6 +187,10 @@ function truth(bool $condition): void
 /** @param class-string<Throwable> $class */
 function throws(callable $callback, string $class): void
 {
-    try { $callback(); } catch (Throwable $error) { if ($error instanceof $class) { return; } throw new RuntimeException(sprintf('Expected %s, got %s.', $class, $error::class)); }
+    try { $callback(); }
+    catch (Throwable $error) {
+        if ($error instanceof $class) { return; }
+        throw new RuntimeException(sprintf('Expected %s, got %s.', $class, $error::class));
+    }
     throw new RuntimeException(sprintf('Expected %s to be thrown.', $class));
 }
