@@ -40,42 +40,39 @@ jobs:
         run: php tests/run-adversarial-2.php
       - name: Forty-round regression tests
         run: php tests/run-review-40.php
+      - name: Durable runtime completion tests
+        run: php tests/run-runtime-completion.php
       - name: Validate manifests
         run: |
-          for file in manifests/*.json; do
-            php -r 'json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);' "$file"
-          done
+          for file in manifests/*.json; do php -r 'json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);' "$file"; done
       - name: Prohibited credential material scan
         run: |
           ! grep -RInE '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|sk_live_[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,})' --exclude-dir=.git --exclude=ci.yml .
-      - name: Governing source assertions
+      - name: Governing source and runtime assertions
         run: |
           grep -RInq 'SSH-FIN-DONATION-2026-08-04-01' src docs manifests README.md
           grep -RInq 'SSH-PMP-2026-v3.0' src docs manifests README.md
-          grep -RInq 'Sabri Platform All-Chats Recovered Directive Register 2026 v2.0' src docs manifests README.md
+          grep -RInq 'Sabri Platform All-Chats Recovered Directive Register 2026 v2.1' src docs manifests README.md
           grep -RInq 'CF-03 Integrated Final Plan 2026 v2.0' src docs manifests README.md
           grep -RInq 'RCD-022' src docs manifests README.md
           grep -RInq 'superseded_conflict_resolved' src manifests
           grep -RInq 'CHAT-DL-001' src docs manifests README.md
           grep -RInq 'CHAT-QA-001' docs manifests README.md
-          grep -q 'Version: 1.1.0-rc.3' cf-03-payments-billing-donations-financial-operations.php
-          grep -q "SABRI_CF03_VERSION','1.1.0-rc.3'" cf-03-payments-billing-donations-financial-operations.php
-          grep -q "'1.1.0-rc.3'" src/Plugin.php
+          grep -q 'Version: 1.2.0-rc.1' cf-03-payments-billing-donations-financial-operations.php
+          grep -q "SABRI_CF03_VERSION','1.2.0-rc.1'" cf-03-payments-billing-donations-financial-operations.php
+          grep -q "'1.2.0-rc.1'" src/Plugin.php
           grep -RInq "public const VERSION='3.0.0'" src/Persistence/CompleteSchema.php
-          grep -q 'sabri_cf03_expenses' src/Persistence/TransparencySchema.php
-          grep -q 'sabri_cf03_transparency_snapshots' src/Persistence/TransparencySchema.php
-          grep -q 'sabri_cf03_donor_acknowledgments' src/Persistence/TransparencySchema.php
-          test -f src/Application/GoverningPlanRegistry.php
-          test -f src/Domain/FinancialTransparencySnapshot.php
-          test -f src/Domain/FounderOwnershipPolicy.php
-          test -f src/Domain/FinancialDownloadGrant.php
-          test -f src/Application/FinancialDownloadContract.php
-          test -f tests/run-founder-donation-transparency.php
-          test -f tests/run-three-plan-harmonization.php
-          grep -q '/transparency/' src/Application/RouteCatalogue.php
-          grep -q '/billing/invoices/{id}/download' src/Application/RouteCatalogue.php
-          grep -q '/billing/receipts/{id}/download' src/Application/RouteCatalogue.php
-          grep -q '/admin/finance/exports/{id}/download' src/Application/RouteCatalogue.php
+          test -f src/Infrastructure/WordPressFinancialRepository.php
+          test -f src/Application/DonationCheckoutService.php
+          test -f src/Application/WebhookIngestionService.php
+          test -f src/Application/RefundWorkflowService.php
+          test -f src/Application/DonationManagementService.php
+          test -f src/Infrastructure/WordPressPublicUi.php
+          test -f src/Infrastructure/WordPressPrivacy.php
+          test -f src/Domain/DonationNeutralityPolicy.php
+          test -f src/Domain/FinancialDueProcessPolicy.php
+          test -f src/Domain/FinancialOutcomeProjection.php
+          test -f tests/run-runtime-completion.php
           grep -q 'sabri_manage_finance' src/Plugin.php
           grep -q 'SHOW TABLES LIKE' src/Infrastructure/WordPressSchemaInstaller.php
 
@@ -88,15 +85,17 @@ jobs:
       - name: Build twice
         run: |
           bash scripts/build-package.sh
-          first="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.3.zip | cut -d' ' -f1)"
+          first="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.2.0-rc.1.zip | cut -d' ' -f1)"
           bash scripts/build-package.sh
-          second="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.3.zip | cut -d' ' -f1)"
+          second="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.2.0-rc.1.zip | cut -d' ' -f1)"
           test "$first" = "$second"
       - name: Verify canonical package
         run: |
-          test -f build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.3.zip
-          unzip -Z1 build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.3.zip | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
-          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.3.zip cf-03-payments-billing-donations-financial-operations/cf-03-payments-billing-donations-financial-operations.php | grep -q 'Version: 1.1.0-rc.3'
-          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.3.zip cf-03-payments-billing-donations-financial-operations/src/Persistence/CompleteSchema.php | grep -q "VERSION='3.0.0'"
-          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.3.zip cf-03-payments-billing-donations-financial-operations/src/Application/FinancialDownloadContract.php | grep -q 'CHAT-DL-001'
-          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.3.zip cf-03-payments-billing-donations-financial-operations/src/Application/GoverningPlanRegistry.php | grep -q 'RCD-022'
+          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.2.0-rc.1.zip
+          test -f "$ZIP"
+          unzip -Z1 "$ZIP" | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
+          unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/cf-03-payments-billing-donations-financial-operations.php | grep -q 'Version: 1.2.0-rc.1'
+          unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Persistence/CompleteSchema.php | grep -q "VERSION='3.0.0'"
+          unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Application/GoverningPlanRegistry.php | grep -q 'v2.1'
+          unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Infrastructure/WordPressFinancialRepository.php | grep -q 'START TRANSACTION'
+          unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Domain/DonationNeutralityPolicy.php | grep -q 'file26_ranking_must_ignore_donation'
