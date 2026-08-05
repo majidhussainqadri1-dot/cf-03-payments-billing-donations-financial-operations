@@ -38,7 +38,7 @@ jobs:
         run: php tests/run-plan-completion.php
       - name: Second adversarial integrity tests
         run: php tests/run-adversarial-2.php
-      - name: Forty-round regression tests
+      - name: First forty-round regression tests
         run: php tests/run-review-40.php
       - name: Durable runtime completion tests
         run: php tests/run-runtime-completion.php
@@ -46,6 +46,8 @@ jobs:
         run: php tests/run-source-completion.php
       - name: Fresh adversarial source tests
         run: php tests/run-adversarial-source.php
+      - name: Second forty-round review tests
+        run: php tests/run-review-40-second.php
       - name: Validate manifests
         run: |
           for file in manifests/*.json; do php -r 'json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);' "$file"; done
@@ -56,7 +58,7 @@ jobs:
         run: |
           grep -RInq 'SSH-FIN-DONATION-2026-08-04-01' src docs manifests README.md
           grep -RInq 'SSH-PMP-2026-v3.0' src docs manifests README.md
-          grep -RInq 'Sabri Platform All-Chats Recovered Directive Register 2026 v2.1' src docs manifests README.md
+          grep -RInq 'All-Chats Recovered Directive Register 2026 v2.1' src docs manifests README.md
           grep -RInq 'CF-03 Integrated Final Plan 2026 v2.0' src docs manifests README.md
           grep -RInq 'RCD-022' src docs manifests README.md
           grep -RInq 'superseded_conflict_resolved' src manifests
@@ -65,7 +67,16 @@ jobs:
           grep -q 'Version: 1.2.0-rc.1' cf-03-payments-billing-donations-financial-operations.php
           grep -Eq "define\('SABRI_CF03_VERSION',[[:space:]]*'1.2.0-rc.1'\)" cf-03-payments-billing-donations-financial-operations.php
           grep -Eq "define\('SABRI_CF03_SCHEMA_VERSION',[[:space:]]*'3.2.0'\)" cf-03-payments-billing-donations-financial-operations.php
-          grep -q "'1.2.0-rc.1'" src/Plugin.php
+          grep -q 'Source candidate.*1.2.0-rc.1' README.md
+          grep -q 'Complete runtime schema.*3.2.0' README.md
+          grep -q '364 tests per PHP version' README.md
+          grep -q '1,092 test executions' README.md
+          grep -q '# CF-03 Architecture — 1.2.0-rc.1' docs/architecture.md
+          grep -q 'CompleteSchema::VERSION = 3.2.0' docs/architecture.md
+          test -f docs/review-evidence-40-rounds-1.2.0-rc.1.md
+          test -f tests/run-review-40-second.php
+          test ! -e docs/push-files-probe.tmp
+          grep -q "! -name '\*.tmp'" scripts/build-package.sh
           grep -RInq "public const VERSION = RuntimeSchemaExtension::VERSION" src/Persistence/CompleteSchema.php
           grep -RInq "public const VERSION = '3.2.0'" src/Persistence/RuntimeSchemaExtension.php
           test -f src/Infrastructure/WordPressFinancialRepository.php
@@ -89,9 +100,6 @@ jobs:
           test -f src/Domain/DonationNeutralityPolicy.php
           test -f src/Domain/FinancialDueProcessPolicy.php
           test -f src/Domain/FinancialOutcomeProjection.php
-          test -f tests/run-runtime-completion.php
-          test -f tests/run-source-completion.php
-          test -f tests/run-adversarial-source.php
           grep -q 'sabri_import_settlements' src/Plugin.php
           grep -q 'sabri_close_finance' src/Plugin.php
           grep -q 'sabri_manage_finance_adjustments' src/Plugin.php
@@ -99,6 +107,11 @@ jobs:
           grep -q 'SHOW COLUMNS FROM' src/Infrastructure/WordPressSchemaInstaller.php
           grep -q "UNIQUE KEY previous_hash(previous_hash)" src/Persistence/RuntimeSchemaExtension.php
           grep -q "imported_by varchar(191) NOT NULL" src/Persistence/RuntimeSchemaExtension.php
+          grep -q 'operational_details_redacted' src/Infrastructure/WordPressRestApi.php
+          grep -q 'MAX_WEBHOOK_HEADERS = 64' src/Infrastructure/WordPressRestApi.php
+          grep -q 'GUEST_REFERENCE_TTL_SECONDS = 2592000' src/Infrastructure/WordPressRestApi.php
+          grep -q "form.dataset.submitting==='1'" assets/js/public.js
+          grep -q '<fieldset class="sabri-cf03-amounts">' src/Infrastructure/WordPressPublicUi.php
 
   package:
     name: Deterministic package and parity
@@ -118,8 +131,11 @@ jobs:
           ZIP=build/cf-03-payments-billing-donations-financial-operations-1.2.0-rc.1.zip
           test -f "$ZIP"
           unzip -Z1 "$ZIP" | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
+          ! unzip -Z1 "$ZIP" | grep -Eq '(\.tmp$|\.log$|\.map$|/\.DS_Store$|push-files-probe)'
           unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/cf-03-payments-billing-donations-financial-operations.php | grep -q 'Version: 1.2.0-rc.1'
           unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/cf-03-payments-billing-donations-financial-operations.php | grep -Eq "define\('SABRI_CF03_SCHEMA_VERSION',[[:space:]]*'3.2.0'\)"
+          unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/README.md | grep -q '364 tests per PHP version'
+          unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/docs/review-evidence-40-rounds-1.2.0-rc.1.md | grep -q 'Round'
           unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Persistence/RuntimeSchemaExtension.php | grep -q "VERSION = '3.2.0'"
           unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Application/GoverningPlanRegistry.php | grep -q 'v2.1'
           unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Infrastructure/WordPressFinancialRepository.php | grep -q 'START TRANSACTION'
