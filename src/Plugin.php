@@ -7,6 +7,7 @@ namespace Sabri\CF03;
 use RuntimeException;
 use Sabri\CF03\Application\EvidenceBoundActivationGate;
 use Sabri\CF03\Domain\PlatformFinancialPolicy;
+use Sabri\CF03\Infrastructure\WordPressDailyReconciliation;
 use Sabri\CF03\Infrastructure\WordPressFinanceAdminApi;
 use Sabri\CF03\Infrastructure\WordPressFinancialDashboardApi;
 use Sabri\CF03\Infrastructure\WordPressFinancialDocumentApi;
@@ -82,11 +83,13 @@ final class Plugin
         ], false);
         update_option(self::OPTION_RUNTIME_STATUS, self::RUNTIME_STATUS, false);
         WordPressScheduler::schedule();
+        WordPressDailyReconciliation::schedule();
     }
 
     public static function deactivate(): void
     {
         WordPressScheduler::unschedule();
+        WordPressDailyReconciliation::unschedule();
     }
 
     public static function boot(): void
@@ -100,6 +103,7 @@ final class Plugin
             add_action('rest_api_init', [WordPressFinancialDashboardApi::class, 'register']);
             add_action('admin_notices', [self::class, 'renderConditionalNotice']);
             add_action(WordPressScheduler::HOOK, [WordPressScheduler::class, 'run']);
+            add_action(WordPressDailyReconciliation::HOOK, [WordPressDailyReconciliation::class, 'run']);
         }
         if (function_exists('add_filter')) {
             add_filter('site_status_tests', [self::class, 'registerSiteHealthTest']);
@@ -108,6 +112,7 @@ final class Plugin
             add_filter('wp_privacy_personal_data_erasers', [WordPressPrivacy::class, 'erasers']);
         }
         WordPressScheduler::schedule();
+        WordPressDailyReconciliation::schedule();
     }
 
     public static function registerDonationPromptMeta(): void
