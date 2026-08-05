@@ -12,5 +12,19 @@
  */
 
 declare(strict_types=1);
-if(!defined('ABSPATH')){exit;}
-define('SABRI_CF03_VERSION','1.2.0-rc.1');define('SABRI_CF03_SCHEMA_VERSION','3.0.0');define('SABRI_CF03_FILE',__FILE__);define('SABRI_CF03_DIR',plugin_dir_path(__FILE__));require_once SABRI_CF03_DIR.'src/Autoloader.php';\Sabri\CF03\Autoloader::register(SABRI_CF03_DIR.'src');register_activation_hook(SABRI_CF03_FILE,[\Sabri\CF03\Plugin::class,'activate']);register_deactivation_hook(SABRI_CF03_FILE,[\Sabri\CF03\Plugin::class,'deactivate']);add_action('plugins_loaded',[\Sabri\CF03\Plugin::class,'boot']);
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+define('SABRI_CF03_VERSION', '1.2.0-rc.1');
+define('SABRI_CF03_SCHEMA_VERSION', '3.1.0');
+define('SABRI_CF03_FILE', __FILE__);
+define('SABRI_CF03_DIR', plugin_dir_path(__FILE__));
+
+require_once SABRI_CF03_DIR.'src/Autoloader.php';
+\Sabri\CF03\Autoloader::register(SABRI_CF03_DIR.'src');
+
+register_activation_hook(SABRI_CF03_FILE, [\Sabri\CF03\Plugin::class, 'activate']);
+register_deactivation_hook(SABRI_CF03_FILE, [\Sabri\CF03\Plugin::class, 'deactivate']);
+add_action('plugins_loaded', [\Sabri\CF03\Plugin::class, 'boot']);
