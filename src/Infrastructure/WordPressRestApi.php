@@ -12,6 +12,7 @@ use Sabri\CF03\Application\DonationCheckoutService;
 use Sabri\CF03\Application\DonationIntentDraft;
 use Sabri\CF03\Application\DonationManagementService;
 use Sabri\CF03\Application\FinancialDownloadContract;
+use Sabri\CF03\Application\IncidentPathGuard;
 use Sabri\CF03\Application\RefundWorkflowService;
 use Sabri\CF03\Application\RouteCatalogue;
 use Sabri\CF03\Application\WebhookIngestionService;
@@ -90,6 +91,7 @@ final class WordPressRestApi
             'prohibited_uses' => $policy->prohibitedUses(),
             'monthly_prompt_minimum_days' => PlatformFinancialPolicy::MONTHLY_PROMPT_MINIMUM_DAYS,
             'runtime' => $runtime->toArray(),
+            'incident' => (new WordPressIncidentStateStore())->get(),
             'live_collection_enabled' => $runtime->state()->value === 'live'
                 && $runtime->missingFinancialGates() === [],
         ];
@@ -163,10 +165,6 @@ final class WordPressRestApi
         );
     }
 
-    /**
-     * Backward-compatible fail-closed preparation endpoint used by older integrations.
-     * It validates the request strictly but never starts collection.
-     */
     public static function donationPreparing(mixed $request = null): mixed
     {
         try {
@@ -189,6 +187,7 @@ final class WordPressRestApi
     public static function donationIntent(mixed $request = null): mixed
     {
         try {
+            self::incident()->assertAvailable('checkout');
             $amount = self::positiveInteger(self::param($request, 'amount_minor'));
             $currency = (string)(self::param($request, 'currency') ?? 'USD');
             if ($currency !== 'USD') {
@@ -215,12 +214,11 @@ final class WordPressRestApi
                 $key,
                 new DateTimeImmutable('now')
             );
-            $service = new DonationCheckoutService(
+            return (new DonationCheckoutService(
                 $runtime,
                 WordPressProviderRegistryFactory::donations(),
                 WordPressFinancialRepository::fromWordPress()
-            );
-            return $service->create($draft, $runtime->providerCode());
+            ))->create($draft, $runtime->providerCode());
         } catch (Throwable $error) {
             return self::safeError($error);
         }
@@ -262,6 +260,7 @@ final class WordPressRestApi
                 return $service->cancel($consent, $actor, $key, $version, new DateTimeImmutable('now'));
             }
             if ($action === 'change_amount') {
+                self::incident()->assertAvailable('checkout');
                 return $service->changeAmount(
                     $consent,
                     $actor,
@@ -280,12 +279,12 @@ final class WordPressRestApi
     public static function refundRequest(mixed $request = null): mixed
     {
         try {
-            $service = new RefundWorkflowService(
+            self::incident()->assertAvailable('refunds');
+            return (new RefundWorkflowService(
                 WordPressFinancialRepository::fromWordPress(),
                 WordPressProviderRegistryFactory::payments(),
                 WordPressRuntimeConfiguration::load()
-            );
-            return $service->request(
+            ))->request(
                 (string)self::param($request, 'refund_id'),
                 (string)self::param($request, 'intent_id'),
                 self::actorReference(),
@@ -304,12 +303,12 @@ final class WordPressRestApi
     public static function refundDecision(mixed $request = null): mixed
     {
         try {
-            $service = new RefundWorkflowService(
+            self::incident()->assertAvailable('refunds');
+            return (new RefundWorkflowService(
                 WordPressFinancialRepository::fromWordPress(),
                 WordPressProviderRegistryFactory::payments(),
                 WordPressRuntimeConfiguration::load()
-            );
-            return $service->review(
+            ))->review(
                 (string)self::param($request, 'id'),
                 'user:'.self::currentUserId(),
                 self::boolean(self::param($request, 'approve'), false),
@@ -325,17 +324,17 @@ final class WordPressRestApi
     public static function refundExecute(mixed $request = null): mixed
     {
         try {
-            $service = new RefundWorkflowService(
-                WordPressFinancialRepository::fromWordPress(),
-                WordPressProviderRegistryFactory::payments(),
-                WordPressRuntimeConfiguration::load()
-            );
+            self::incident()->assertAvailable('refunds');
             $key = (string)(
                 self::header($request, 'Idempotency-Key')
                 ?? self::param($request, 'idempotency_key')
                 ?? ''
             );
-            return $service->execute(
+            return (new RefundWorkflowService(
+                WordPressFinancialRepository::fromWordPress(),
+                WordPressProviderRegistryFactory::payments(),
+                WordPressRuntimeConfiguration::load()
+            ))->execute(
                 (string)self::param($request, 'id'),
                 'user:'.self::currentUserId(),
                 self::positiveInteger(self::param($request, 'expected_version')),
@@ -350,6 +349,7 @@ final class WordPressRestApi
     public static function webhook(mixed $request = null): mixed
     {
         try {
+            self::incident()->assertAvailable('webhooks');
             $provider = (string)self::param($request, 'provider');
             $body = is_object($request) && method_exists($request, 'get_body')
                 ? (string)$request->get_body()
@@ -379,6 +379,7 @@ final class WordPressRestApi
             'routes' => RouteCatalogue::definitions(),
             'download_contract' => self::downloadContract(),
             'runtime' => $runtime->toArray(),
+            'incident' => (new WordPressIncidentStateStore())->get(),
             'providers' => WordPressProviderRegistryFactory::payments()->health(),
             'transparency_snapshot' => self::transparency()['status'],
             'schema_version' => defined('SABRI_CF03_SCHEMA_VERSION')
@@ -405,6 +406,11 @@ final class WordPressRestApi
     public static function executeRefunds(): bool
     {
         return function_exists('current_user_can') && current_user_can('sabri_execute_refunds');
+    }
+
+    private static function incident(): IncidentPathGuard
+    {
+        return new IncidentPathGuard(new WordPressIncidentStateStore());
     }
 
     private static function actorReference(): string
