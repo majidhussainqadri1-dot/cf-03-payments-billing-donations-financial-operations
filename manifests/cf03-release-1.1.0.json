@@ -1,10 +1,14 @@
 {
   "module": "CF-03",
-  "version": "1.1.0-rc.1",
+  "version": "1.1.0-rc.2",
   "base_schema_version": "2.0.0",
   "complete_schema_version": "3.0.0",
-  "status": "final-founder-donation-transparency-source-complete-runtime-fail-closed",
-  "governing_plans": ["SSH-PMP-2026-v3.0", "CF-03-v1.0", "CF-03-v2.0"],
+  "status": "three-plan-harmonized-founder-donation-transparency-download-source-complete-runtime-fail-closed",
+  "governing_plans": [
+    "SSH-PMP-2026-v3.0",
+    "Consolidated Current-Chat Directive Register v1.0 — 2026-08-05",
+    "CF-03 Integrated Final Plan 2026 v2.0"
+  ],
   "governing_decision": "SSH-FIN-DONATION-2026-08-04-01",
   "supersedes_decision": "SSH-FIN-2026-08-04-01",
   "constitutional_rules": {
@@ -24,19 +28,49 @@
     "founder_financial_categories_separate": true,
     "public_aggregate_transparency_required": true,
     "donor_identity_public_by_default": false,
+    "eligible_financial_assets_downloadable_by_policy": true,
+    "financial_download_directive": "CHAT-DL-001",
     "hosted_or_tokenized_provider_only": true,
     "raw_card_or_bank_secrets": false,
     "browser_return_proves_payment": false
   },
   "source_scope": {
-    "functional_requirements": "CF03-FR-001-through-CF03-FR-042",
+    "functional_requirements": "CF03-FR-001-through-CF03-FR-043",
     "expense_ledger": true,
     "founder_disclosure_categories": true,
     "transparency_snapshots": true,
     "donor_acknowledgment_consent": true,
     "recurring_donation_management_contract": true,
+    "financial_download_grant_contract": true,
+    "financial_download_routes": 4,
     "complete_table_count": 31
   },
-  "runtime": {"live_collection_enabled": false, "paid_checkout_enabled": false, "provider_selected": false, "webhook_route_enabled": false, "default_provider": "provider.unconfigured", "failure_mode": "fail_closed"},
-  "external_gates_required": ["legal_entity_and_receiving_account", "founder_collection_activation", "legal_tax_accounting", "pci_scope", "provider_selection_and_sandbox", "independent_security", "hostinger_staging", "browser_rtl_accessibility_performance", "backup_restore_provider_exit_rollback", "operational_staffing"]
+  "qa": {
+    "tests_per_php_version": 248,
+    "php_versions": ["8.1", "8.2", "8.3"],
+    "domain_test_executions": 744,
+    "current_chat_post_github_harmonization_directive": "CHAT-QA-001"
+  },
+  "runtime": {
+    "live_collection_enabled": false,
+    "live_financial_download_delivery_enabled": false,
+    "paid_checkout_enabled": false,
+    "provider_selected": false,
+    "webhook_route_enabled": false,
+    "default_provider": "provider.unconfigured",
+    "failure_mode": "fail_closed"
+  },
+  "external_gates_required": [
+    "legal_entity_and_receiving_account",
+    "founder_collection_activation",
+    "legal_tax_accounting",
+    "pci_scope",
+    "provider_selection_and_sandbox",
+    "independent_security",
+    "hostinger_staging",
+    "file20_file25_download_presentation_integration",
+    "browser_rtl_accessibility_performance",
+    "backup_restore_provider_exit_rollback",
+    "operational_staffing"
+  ]
 }
