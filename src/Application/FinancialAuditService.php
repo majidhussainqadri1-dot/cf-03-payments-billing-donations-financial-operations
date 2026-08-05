@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sabri\CF03\Application;
 
 use DateTimeImmutable;
+use DateTimeInterface;
 use JsonException;
 use Sabri\CF03\Contracts\QueryableFinancialRepository;
 use Sabri\CF03\Domain\AuditEnvelope;
@@ -76,7 +77,7 @@ final class FinancialAuditService
             if (!hash_equals($metadataHash, (string)$record['metadata_hash'])) {
                 throw new InvariantViolation('Financial audit metadata hash mismatch.');
             }
-            $createdAt = $record['created_at'] instanceof DateTimeImmutable
+            $createdAt = $record['created_at'] instanceof DateTimeInterface
                 ? $record['created_at']->format(DATE_ATOM)
                 : (new DateTimeImmutable((string)$record['created_at']))->format(DATE_ATOM);
             $entryMaterial = [
@@ -102,17 +103,7 @@ final class FinancialAuditService
     /** @return list<array<string,mixed>> */
     private function orderedRecords(): array
     {
-        $records = $this->repository->all('audit');
-        usort($records, static function (array $left, array $right): int {
-            $leftTime = $left['created_at'] instanceof DateTimeImmutable
-                ? $left['created_at']->getTimestamp()
-                : strtotime((string)$left['created_at']);
-            $rightTime = $right['created_at'] instanceof DateTimeImmutable
-                ? $right['created_at']->getTimestamp()
-                : strtotime((string)$right['created_at']);
-            return [$leftTime, (string)$left['audit_id']] <=> [$rightTime, (string)$right['audit_id']];
-        });
-        return $records;
+        return $this->repository->all('audit');
     }
 
     private function canonicalJson(mixed $value): string
@@ -127,6 +118,9 @@ final class FinancialAuditService
 
     private function sortRecursively(mixed $value): mixed
     {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format(DATE_ATOM);
+        }
         if (!is_array($value)) {
             return $value;
         }
