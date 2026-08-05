@@ -12,15 +12,8 @@ use Sabri\CF03\Support\InvariantViolation;
 
 final class NullDonationPaymentProvider implements DonationPaymentProvider
 {
-    public function providerCode(): string { return 'provider.unconfigured'; }
-
-    public function createHostedDonationCheckout(DonationIntentDraft $intent): HostedCheckoutReference
-    {
-        throw new InvariantViolation('No approved hosted donation provider is configured; collection remains fail closed.');
-    }
-
-    public function queryDonationEvidence(string $providerPaymentReference): ProviderEvidence
-    {
-        throw new InvariantViolation('No approved hosted donation provider is configured; provider evidence is unavailable.');
-    }
+    public function providerCode():string{return 'provider.unconfigured';}
+    public function createHostedDonationCheckout(DonationIntentDraft $intent):HostedCheckoutReference{throw new InvariantViolation('No approved hosted donation provider is configured; collection remains fail closed.');}
+    public function resumeHostedDonationCheckout(string $providerSessionReference):HostedCheckoutReference{throw new InvariantViolation('No approved hosted donation provider is configured; checkout resumption is unavailable.');}
+    public function queryDonationEvidence(string $providerPaymentReference):ProviderEvidence{throw new InvariantViolation('No approved hosted donation provider is configured; provider evidence is unavailable.');}
 }

@@ -15,118 +15,15 @@ use Sabri\CF03\Support\InvariantViolation;
 
 final class WebhookIngestionService
 {
-    public function __construct(
-        private readonly RuntimeConfiguration $configuration,
-        private readonly ProviderRegistry $providers,
-        private readonly QueryableFinancialRepository $repository,
-        private readonly ProviderEventStateMapper $mapper = new ProviderEventStateMapper(),
-        private readonly PaymentIntentTransition $transitions = new PaymentIntentTransition()
-    ) {}
-
+    public function __construct(private readonly RuntimeConfiguration $configuration,private readonly ProviderRegistry $providers,private readonly QueryableFinancialRepository $repository,private readonly ProviderEventStateMapper $mapper=new ProviderEventStateMapper(),private readonly PaymentIntentTransition $transitions=new PaymentIntentTransition()){}
     /** @param array<string,string> $headers @return array<string,mixed> */
-    public function ingest(string $providerCode, string $rawBody, array $headers, int $receivedAt): array
+    public function ingest(string $providerCode,string $rawBody,array $headers,int $receivedAt):array
     {
-        $this->configuration->assertWebhookReady();
-        if ($providerCode !== $this->configuration->providerCode()) { throw new InvariantViolation('Webhook provider is not the approved runtime provider.'); }
-        $evidence = $this->providers->get($providerCode)->verifyWebhook($rawBody, $headers, $receivedAt);
-        if ($evidence->providerCode() !== $providerCode) { throw new InvariantViolation('Verified webhook provider identity mismatch.'); }
-        $duplicates = $this->repository->find('provider_events', ['provider'=>$providerCode,'provider_event_id'=>$evidence->providerEventId()], 1);
-        if ($duplicates !== []) { return ['status'=>'duplicate_acknowledged','provider_event_id'=>$evidence->providerEventId()]; }
-        $mapped = $this->mapper->mapTrusted($evidence);
-        $intent = $this->repository->get('intents', $evidence->paymentIntentId());
-        $traceId = 'trace.'.substr(hash('sha256', $providerCode.'|'.$evidence->providerEventId()), 0, 40);
-        if ($intent === null) {
-            $this->recordEvent($evidence, $mapped, 'quarantined_missing_intent', $traceId, null);
-            return ['status'=>'quarantined','reason'=>'missing_intent','provider_event_id'=>$evidence->providerEventId()];
-        }
-        $expectedAmount = new Money((int)$intent['amount_minor'], (string)$intent['currency']);
-        $evidence->assertMatches((string)$intent['provider'], (string)$intent['intent_id'], $expectedAmount);
-        $from = PaymentIntentState::from((string)$intent['state']);
-        $this->transitions->assertAllowed($from, $mapped);
-        $version = (int)($intent['version'] ?? $intent['record_version'] ?? 0);
-        if ($version < 1) { throw new InvariantViolation('Payment intent version is missing.'); }
-
-        $this->repository->transaction(function () use ($evidence,$mapped,$traceId,$intent,$version): void {
-            $this->recordEvent($evidence, $mapped, 'accepted', $traceId, (string)$intent['intent_id']);
-            $this->repository->compareAndSwap('intents', (string)$intent['intent_id'], $version, static function(array $current) use ($mapped,$evidence): array {
-                $current['state']=$mapped->value;
-                $current['failure_code']=$mapped===PaymentIntentState::FAILED?'provider_failed':null;
-                $current['updated_at']=$evidence->receivedAt();
-                return $current;
-            });
-            if ($mapped === PaymentIntentState::SETTLED) { $this->postSettlement($intent, $evidence, $traceId, $version + 1); }
-            if ($mapped === PaymentIntentState::REFUNDED) { $this->postRefund($intent, $evidence, $traceId, $version + 1); }
-            $this->repository->updateWhere('provider_events', ['provider'=>$evidence->providerCode(),'provider_event_id'=>$evidence->providerEventId(),'status'=>'accepted'], ['status'=>'processed','processed_at'=>$evidence->receivedAt()]);
-        });
-        return ['status'=>'processed','intent_id'=>$evidence->paymentIntentId(),'mapped_state'=>$mapped->value,'provider_event_id'=>$evidence->providerEventId()];
+        $this->configuration->assertWebhookReady();if($providerCode!==$this->configuration->providerCode()){throw new InvariantViolation('Webhook provider is not the approved runtime provider.');}$evidence=$this->providers->get($providerCode)->verifyWebhook($rawBody,$headers,$receivedAt);if($evidence->providerCode()!==$providerCode){throw new InvariantViolation('Verified webhook provider identity mismatch.');}$duplicates=$this->repository->find('provider_events',['provider'=>$providerCode,'provider_event_id'=>$evidence->providerEventId()],1);if($duplicates!==[]){return ['status'=>'duplicate_acknowledged','provider_event_id'=>$evidence->providerEventId()];}$mapped=$this->mapper->mapTrusted($evidence);$intent=$this->repository->get('intents',$evidence->paymentIntentId());$traceId='trace.'.substr(hash('sha256',$providerCode.'|'.$evidence->providerEventId()),0,40);if($intent===null){$this->recordEvent($evidence,$mapped,'quarantined_missing_intent',$traceId,null);return ['status'=>'quarantined','reason'=>'missing_intent','provider_event_id'=>$evidence->providerEventId()];}$expectedAmount=new Money((int)$intent['amount_minor'],(string)$intent['currency']);$evidence->assertMatches((string)$intent['provider'],(string)$intent['intent_id'],$expectedAmount);$from=PaymentIntentState::from((string)$intent['state']);$this->transitions->assertAllowed($from,$mapped);$version=(int)($intent['version']??$intent['record_version']??0);if($version<1){throw new InvariantViolation('Payment intent version is missing.');}
+        $this->repository->transaction(function()use($evidence,$mapped,$traceId,$intent,$version):void{$this->recordEvent($evidence,$mapped,'accepted',$traceId,(string)$intent['intent_id']);$this->repository->compareAndSwap('intents',(string)$intent['intent_id'],$version,static function(array $current)use($mapped,$evidence):array{$current['state']=$mapped->value;$current['failure_code']=$mapped===PaymentIntentState::FAILED?'provider_failed':null;$current['updated_at']=$evidence->receivedAt();return $current;});if($mapped===PaymentIntentState::SETTLED){$this->postSettlement($intent,$evidence,$traceId,$version+1);}if($mapped===PaymentIntentState::REFUNDED){$this->postRefund($intent,$evidence,$traceId,$version+1);}$this->repository->updateWhere('provider_events',['provider'=>$evidence->providerCode(),'provider_event_id'=>$evidence->providerEventId(),'status'=>'accepted'],['status'=>'processed','processed_at'=>$evidence->receivedAt()]);});return ['status'=>'processed','intent_id'=>$evidence->paymentIntentId(),'mapped_state'=>$mapped->value,'provider_event_id'=>$evidence->providerEventId()];
     }
-
-    private function recordEvent(ProviderEvidence $evidence, PaymentIntentState $mapped, string $status, string $traceId, ?string $intentId): void
-    {
-        $this->repository->insert('provider_events', $evidence->providerEventId(), [
-            'provider'=>$evidence->providerCode(),'provider_event_id'=>$evidence->providerEventId(),'event_type'=>$evidence->eventType(),
-            'raw_body_hash'=>$evidence->rawBodySha256(),'signature_key_version'=>$evidence->signatureKeyVersion(),
-            'signature_timestamp'=>$evidence->signatureTimestamp(),'received_at'=>$evidence->receivedAt(),'mapped_state'=>$mapped->value,
-            'status'=>$status,'intent_id'=>$intentId,'trace_id'=>$traceId,'processed_at'=>null,
-        ]);
-    }
-
-    /** @param array<string,mixed> $intent */
-    private function postSettlement(array $intent, ProviderEvidence $evidence, string $traceId, int $aggregateVersion): void
-    {
-        $transactionId='txn.'.substr(hash('sha256', 'settled|'.$evidence->providerCode().'|'.$evidence->providerEventId()),0,40);
-        if ($this->repository->get('ledger_transactions',$transactionId) !== null) { return; }
-        $amount=$evidence->amount(); $now=$evidence->receivedAt(); $intentId=(string)$intent['intent_id'];
-        $this->repository->insert('ledger_transactions',$transactionId,[
-            'transaction_id'=>$transactionId,'source_type'=>'provider_settlement','source_ref'=>$evidence->providerCode().':'.$evidence->providerEventId(),
-            'effective_at'=>$evidence->occurredAt(),'recorded_at'=>$now,'actor_ref'=>'system:provider','reason'=>'trusted_provider_settlement',
-            'period_id'=>$now->format('Y-m'),'reversal_of'=>null,'trace_id'=>$traceId,
-        ]);
-        $this->repository->insert('ledger_entries',$intentId.':asset',[
-            'transaction_id'=>$transactionId,'account'=>'asset.provider_clearing','direction'=>'debit','amount_minor'=>$amount->minorUnits(),'currency'=>$amount->currency(),'source_ref'=>$intentId.':asset',
-        ]);
-        $this->repository->insert('ledger_entries',$intentId.':income',[
-            'transaction_id'=>$transactionId,'account'=>'income.donation','direction'=>'credit','amount_minor'=>$amount->minorUnits(),'currency'=>$amount->currency(),'source_ref'=>$intentId.':income',
-        ]);
-        $invoiceId='invoice.'.substr(hash('sha256',$intentId),0,40);
-        $snapshot=['kind'=>'donation_receipt','intent_id'=>$intentId,'product_id'=>$intent['product_id'],'amount_minor'=>$amount->minorUnits(),'currency'=>$amount->currency(),'settled_at'=>$now->format(DATE_ATOM),'policy'=>'SSH-FIN-DONATION-2026-08-04-01'];
-        $this->repository->insert('invoices',$invoiceId,[
-            'invoice_id'=>$invoiceId,'invoice_number'=>'DON-'.strtoupper(substr(hash('sha256',$intentId),0,12)),'actor_ref'=>$intent['actor_ref'],'status'=>'paid',
-            'amount_minor'=>$amount->minorUnits(),'currency'=>$amount->currency(),'snapshot_hash'=>hash('sha256',json_encode($snapshot,JSON_UNESCAPED_SLASHES)),'snapshot_json'=>$snapshot,'issued_at'=>$now,'voided_at'=>null,
-        ]);
-        $donationId=DonationCheckoutService::donationIdForIntent($intentId);
-        $donation=$this->repository->get('donations',$donationId);
-        if ($donation !== null) {
-            $this->repository->compareAndSwap('donations',$donationId,(int)$donation['version'],static function(array $current) use ($invoiceId,$now): array {
-                $current['state']='settled';$current['receipt_ref']=$invoiceId;$current['updated_at']=$now;return $current;
-            });
-        }
-        $this->outbox('DonationSettled',$intentId,$aggregateVersion,$traceId,[
-            'actor_ref'=>$intent['actor_ref'],'intent_id'=>$intentId,'donation_id'=>$donationId,'receipt_id'=>$invoiceId,'amount_minor'=>$amount->minorUnits(),'currency'=>$amount->currency(),'monthly'=>$intent['product_id']==='donation.monthly','occurred_at'=>$evidence->occurredAt()->format(DATE_ATOM),
-        ],$now);
-    }
-
-    /** @param array<string,mixed> $intent */
-    private function postRefund(array $intent, ProviderEvidence $evidence, string $traceId, int $aggregateVersion): void
-    {
-        $intentId=(string)$intent['intent_id'];$now=$evidence->receivedAt();$donationId=DonationCheckoutService::donationIdForIntent($intentId);
-        $donation=$this->repository->get('donations',$donationId);
-        if ($donation !== null) {
-            $this->repository->compareAndSwap('donations',$donationId,(int)$donation['version'],static function(array $current) use ($now): array {$current['state']='refunded';$current['updated_at']=$now;return $current;});
-        }
-        $this->outbox('DonationRefunded',$intentId,$aggregateVersion,$traceId,[
-            'actor_ref'=>$intent['actor_ref'],'intent_id'=>$intentId,'donation_id'=>$donationId,'amount_minor'=>$evidence->amount()->minorUnits(),'currency'=>$evidence->amount()->currency(),'occurred_at'=>$evidence->occurredAt()->format(DATE_ATOM),
-        ],$now);
-    }
-
-    /** @param array<string,mixed> $payload */
-    private function outbox(string $type,string $aggregateId,int $version,string $traceId,array $payload,DateTimeImmutable $now): void
-    {
-        $eventId='event.'.substr(hash('sha256',$type.'|'.$aggregateId.'|'.$version),0,40);
-        $payloadHash=hash('sha256',json_encode($payload,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
-        $this->repository->insert('outbox',$eventId,[
-            'event_id'=>$eventId,'event_type'=>$type,'aggregate_id'=>$aggregateId,'aggregate_version'=>(string)$version,'schema_version'=>'1.0',
-            'trace_id'=>$traceId,'payload_json'=>$payload,'payload_hash'=>$payloadHash,'state'=>'pending','attempts'=>0,'available_at'=>$now,'leased_until'=>null,'last_error_code'=>null,'created_at'=>$now,'delivered_at'=>null,
-        ]);
-    }
+    private function recordEvent(ProviderEvidence $evidence,PaymentIntentState $mapped,string $status,string $traceId,?string $intentId):void{$this->repository->insert('provider_events',$evidence->providerEventId(),['provider'=>$evidence->providerCode(),'provider_event_id'=>$evidence->providerEventId(),'event_type'=>$evidence->eventType(),'raw_body_hash'=>$evidence->rawBodySha256(),'signature_key_version'=>$evidence->signatureKeyVersion(),'signature_timestamp'=>$evidence->signatureTimestamp(),'received_at'=>$evidence->receivedAt(),'mapped_state'=>$mapped->value,'status'=>$status,'intent_id'=>$intentId,'trace_id'=>$traceId,'processed_at'=>null]);}
+    /** @param array<string,mixed> $intent */ private function postSettlement(array $intent,ProviderEvidence $evidence,string $traceId,int $aggregateVersion):void{$transactionId='txn.'.substr(hash('sha256','settled|'.$evidence->providerCode().'|'.$evidence->providerEventId()),0,40);if($this->repository->get('ledger_transactions',$transactionId)!==null){return;}$amount=$evidence->amount();$now=$evidence->receivedAt();$intentId=(string)$intent['intent_id'];$this->repository->insert('ledger_transactions',$transactionId,['transaction_id'=>$transactionId,'source_type'=>'provider_settlement','source_ref'=>$evidence->providerCode().':'.$evidence->providerEventId(),'effective_at'=>$evidence->occurredAt(),'recorded_at'=>$now,'actor_ref'=>'system:provider','reason'=>'trusted_provider_settlement','period_id'=>$now->format('Y-m'),'reversal_of'=>null,'trace_id'=>$traceId]);$this->repository->insert('ledger_entries',$intentId.':asset',['transaction_id'=>$transactionId,'account'=>'asset.provider_clearing','direction'=>'debit','amount_minor'=>$amount->minorUnits(),'currency'=>$amount->currency(),'source_ref'=>$intentId.':asset']);$this->repository->insert('ledger_entries',$intentId.':income',['transaction_id'=>$transactionId,'account'=>'income.donation','direction'=>'credit','amount_minor'=>$amount->minorUnits(),'currency'=>$amount->currency(),'source_ref'=>$intentId.':income']);$invoiceId='invoice.'.substr(hash('sha256',$intentId),0,40);$snapshot=['kind'=>'donation_receipt','intent_id'=>$intentId,'product_id'=>$intent['product_id'],'amount_minor'=>$amount->minorUnits(),'currency'=>$amount->currency(),'settled_at'=>$now->format(DATE_ATOM),'policy'=>'SSH-FIN-DONATION-2026-08-04-01'];$encoded=json_encode($snapshot,JSON_UNESCAPED_SLASHES);if(!is_string($encoded)){throw new InvariantViolation('Receipt snapshot could not be encoded.');}$this->repository->insert('invoices',$invoiceId,['invoice_id'=>$invoiceId,'invoice_number'=>'DON-'.strtoupper(substr(hash('sha256',$intentId),0,12)),'actor_ref'=>$intent['actor_ref'],'status'=>'paid','amount_minor'=>$amount->minorUnits(),'currency'=>$amount->currency(),'snapshot_hash'=>hash('sha256',$encoded),'snapshot_json'=>$snapshot,'issued_at'=>$now,'voided_at'=>null]);$donationId=DonationCheckoutService::donationIdForIntent($intentId);$donation=$this->repository->get('donations',$donationId);if($donation!==null){$this->repository->compareAndSwap('donations',$donationId,(int)$donation['version'],static function(array $current)use($invoiceId,$now):array{$current['state']='settled';$current['receipt_ref']=$invoiceId;$current['updated_at']=$now;return $current;});}if(($intent['product_id']??null)==='donation.monthly'){$consentId=DonationCheckoutService::consentIdForIntent($intentId);$consent=$this->repository->get('recurring_consents',$consentId);if($consent!==null&&($consent['state']??null)==='pending_provider'){$this->repository->compareAndSwap('recurring_consents',$consentId,(int)$consent['version'],static function(array $current):array{$current['state']='active';return $current;});}}$this->outbox('DonationSettled',$intentId,$aggregateVersion,$traceId,['actor_ref'=>$intent['actor_ref'],'intent_id'=>$intentId,'donation_id'=>$donationId,'receipt_id'=>$invoiceId,'amount_minor'=>$amount->minorUnits(),'currency'=>$amount->currency(),'monthly'=>$intent['product_id']==='donation.monthly','occurred_at'=>$evidence->occurredAt()->format(DATE_ATOM)],$now);}
+    /** @param array<string,mixed> $intent */ private function postRefund(array $intent,ProviderEvidence $evidence,string $traceId,int $aggregateVersion):void{$intentId=(string)$intent['intent_id'];$now=$evidence->receivedAt();$donationId=DonationCheckoutService::donationIdForIntent($intentId);$donation=$this->repository->get('donations',$donationId);if($donation!==null){$this->repository->compareAndSwap('donations',$donationId,(int)$donation['version'],static function(array $current)use($now):array{$current['state']='refunded';$current['updated_at']=$now;return $current;});}$this->outbox('DonationRefunded',$intentId,$aggregateVersion,$traceId,['actor_ref'=>$intent['actor_ref'],'intent_id'=>$intentId,'donation_id'=>$donationId,'amount_minor'=>$evidence->amount()->minorUnits(),'currency'=>$evidence->amount()->currency(),'occurred_at'=>$evidence->occurredAt()->format(DATE_ATOM)],$now);}
+    /** @param array<string,mixed> $payload */ private function outbox(string $type,string $aggregateId,int $version,string $traceId,array $payload,DateTimeImmutable $now):void{$eventId='event.'.substr(hash('sha256',$type.'|'.$aggregateId.'|'.$version),0,40);$encoded=json_encode($payload,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);if(!is_string($encoded)){throw new InvariantViolation('Financial outbox payload could not be encoded.');}$this->repository->insert('outbox',$eventId,['event_id'=>$eventId,'event_type'=>$type,'aggregate_id'=>$aggregateId,'aggregate_version'=>(string)$version,'schema_version'=>'1.0','trace_id'=>$traceId,'payload_json'=>$payload,'payload_hash'=>hash('sha256',$encoded),'state'=>'pending','attempts'=>0,'available_at'=>$now,'leased_until'=>null,'last_error_code'=>null,'created_at'=>$now,'delivered_at'=>null]);}
 }

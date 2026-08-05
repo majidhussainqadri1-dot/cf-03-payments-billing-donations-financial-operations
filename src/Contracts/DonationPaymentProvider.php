@@ -10,9 +10,8 @@ use Sabri\CF03\Domain\ProviderEvidence;
 
 interface DonationPaymentProvider
 {
-    public function providerCode(): string;
-
-    public function createHostedDonationCheckout(DonationIntentDraft $intent): HostedCheckoutReference;
-
-    public function queryDonationEvidence(string $providerPaymentReference): ProviderEvidence;
+    public function providerCode():string;
+    public function createHostedDonationCheckout(DonationIntentDraft $intent):HostedCheckoutReference;
+    public function resumeHostedDonationCheckout(string $providerSessionReference):HostedCheckoutReference;
+    public function queryDonationEvidence(string $providerPaymentReference):ProviderEvidence;
 }
