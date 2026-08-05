@@ -54,7 +54,7 @@ jobs:
           path.write_text(text)
 
           path = Path('tests/run-review-40-fourth.php')
-          text = path.read_text().replace("before4($s,\"'state' => 'provider_pending'\",'$provider->refund(')", "before4($s,\"$current['state'] = 'provider_pending'\",'$provider->refund(')")
+          text = path.read_text().replace("before4($s,\"'state' => 'provider_pending'\",'$provider->refund(')", "before4($s,\"'state'] = 'provider_pending'\",'$provider->refund(')")
           path.write_text(text)
           PY
           rm -rf .automation
