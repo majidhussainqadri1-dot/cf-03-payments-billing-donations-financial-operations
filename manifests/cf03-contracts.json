@@ -1,9 +1,14 @@
 {
   "module": "CF-03",
-  "software_version": "1.1.0-rc.1",
+  "software_version": "1.1.0-rc.2",
   "base_schema_version": "2.0.0",
   "complete_schema_version": "3.0.0",
-  "status": "final-founder-donation-transparency-source-complete-runtime-fail-closed",
+  "status": "three-plan-harmonized-founder-donation-transparency-download-source-complete-runtime-fail-closed",
+  "governing_sources": [
+    "SSH-PMP-2026-v3.0",
+    "Consolidated Current-Chat Directive Register v1.0 — 2026-08-05",
+    "CF-03 Integrated Final Plan 2026 v2.0"
+  ],
   "governing_decision": "SSH-FIN-DONATION-2026-08-04-01",
   "runtime_collection_enabled": false,
   "contracts": {
@@ -13,6 +18,22 @@
     "public_transparency": {"version": "1.0", "route": "/transparency/", "aggregate_only": true, "fabricated_values": false, "donor_identity_public": false},
     "donor_acknowledgment": {"version": "1.0", "explicit_consent": true, "revocable": true, "privilege": false},
     "recurring_donation_management": {"version": "1.0", "easy_cancellation": true, "next_date": true, "receipts": true, "provider_dependent_amount_change": true},
+    "financial_download": {
+      "version": "1.0",
+      "directive_id": "CHAT-DL-001",
+      "eligible_assets": ["invoice", "receipt", "finance_export", "transparency_snapshot"],
+      "owner_or_explicit_scope": true,
+      "click_time_revalidation": true,
+      "safe_filename": true,
+      "sha256": true,
+      "signed_or_same_origin_expiring_delivery": true,
+      "audit": true,
+      "visual_owner": "File 25",
+      "global_download_manager_owner": "File 20",
+      "assurance_owner": "File 24",
+      "secure_delivery_owner_after_activation": "CF-04",
+      "live_delivery_enabled": false
+    },
     "complete_schema": {"version": "3.0.0", "base_tables": 28, "extension_tables": 3, "total_tables": 31},
     "hosted_payment_provider": {"version": "2.0", "implementation_present": false, "fallback": "NullPaymentProvider", "modes": ["hosted", "tokenized"]}
   },
