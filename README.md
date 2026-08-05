@@ -2,15 +2,24 @@
 
 Canonical financial owner for the **Sabri Social Homeopathy Platform**.
 
-> **Source status:** `1.1.0-rc.2`, complete schema `3.0.0`. Live collection and financial file delivery remain disabled and fail closed pending external acceptance.
+> **Source status:** `1.1.0-rc.3`, complete schema `3.0.0`. Live collection and financial file delivery remain disabled and fail closed pending external acceptance.
 
 ## Three governing plans
 
 1. **Sabri Social Homeopathy Platform Definitive Master Plan 2026 v3.0** — `SSH-PMP-2026-v3.0`;
-2. **Consolidated Current-Chat Directive Register v1.0**, dated 5 August 2026;
+2. **Sabri Platform All-Chats Recovered Directive Register 2026 v2.0**, dated 5 August 2026;
 3. **CF-03 Integrated Final Plan 2026 v2.0**, governed by `SSH-FIN-DONATION-2026-08-04-01`.
 
-The repository correction evidence is recorded in `docs/review-evidence-three-plan-harmonization-1.1.0-rc.2.md`. The current-chat post-GitHub harmonization and zero-known-defect rule is `CHAT-QA-001`.
+The repository correction evidence is recorded in `docs/review-evidence-three-plan-harmonization-1.1.0-rc.3.md`. The platform-wide post-GitHub harmonization and zero-known-defect rule is `CHAT-QA-001`.
+
+## Explicit recovered-directive resolution
+
+The All-Chats register contains `RCD-022`, which repeats the earlier seven-day Donation Appeal wording. It is **superseded for CF-03** by the later, dated and more specific Founder decision `SSH-FIN-DONATION-2026-08-04-01`. The active rule is:
+
+- at most one Donation Appeal in each calendar month; and
+- at least 30 days after Remind Me Later, Not Now, Close or a completed donation.
+
+`RCD-020`, `RCD-021` and `RCD-023` remain active and consistent: the platform is free, donation amounts are USD 10/USD 14/USD 50/custom with no preselection, and Clinic/Marketplace commission is 0% with no donor advantage.
 
 ## Governing financial law
 
@@ -67,7 +76,7 @@ find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
 bash scripts/build-package.sh
 ```
 
-The nine suites execute **248 tests per PHP version** and **744 domain-test executions** across PHP 8.1, 8.2 and 8.3, plus manifest validation, prohibited-secret scanning, governing-source assertions and deterministic package parity.
+The nine suites execute **253 tests per PHP version** and **759 domain-test executions** across PHP 8.1, 8.2 and 8.3, plus manifest validation, prohibited-secret scanning, all-three-plan assertions, explicit `RCD-022` precedence assertions and deterministic package parity.
 
 ## External acceptance boundary
 
