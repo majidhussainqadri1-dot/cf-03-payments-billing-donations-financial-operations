@@ -10,119 +10,14 @@ use Sabri\CF03\Support\InvariantViolation;
 
 final class ChargebackCase
 {
-    private const STATES = ['notified', 'evidence_due', 'submitted', 'accepted', 'won', 'lost', 'ledger_adjusted', 'closed'];
-
-    public function __construct(
-        private readonly string $caseId,
-        private readonly string $providerCode,
-        private readonly string $providerCaseReference,
-        private readonly string $paymentIntentId,
-        private readonly Money $disputedAmount,
-        private readonly string $reasonCode,
-        private readonly DateTimeImmutable $openedAt,
-        private readonly DateTimeImmutable $responseDeadline,
-        private string $state = 'notified',
-        private int $recordVersion = 1,
-        private ?string $evidenceSha256 = null,
-        private ?Money $providerFee = null
-    ) {
-        foreach ([$caseId, $providerCode, $providerCaseReference, $paymentIntentId, $reasonCode] as $reference) {
-            if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $reference) !== 1) {
-                throw new InvalidArgumentException('Chargeback reference is invalid.');
-            }
-        }
-        if ($disputedAmount->minorUnits() <= 0 || ! in_array($state, self::STATES, true) || $recordVersion < 1) {
-            throw new InvalidArgumentException('Chargeback amount, state or version is invalid.');
-        }
-        if ($responseDeadline <= $openedAt || $responseDeadline > $openedAt->modify('+180 days')) {
-            throw new InvalidArgumentException('Chargeback response deadline must follow opening and remain within 180 days.');
-        }
-    }
-
-    public function requireEvidence(DateTimeImmutable $at, int $expectedVersion): void
-    {
-        $this->assertVersion($expectedVersion);
-        if ($this->state !== 'notified') {
-            throw new InvariantViolation('Chargeback evidence cannot be requested from the current state.');
-        }
-        if ($at < $this->openedAt || $at >= $this->responseDeadline) {
-            throw new InvariantViolation('Chargeback evidence request is outside the valid case window.');
-        }
-        $this->state = 'evidence_due';
-        $this->recordVersion++;
-    }
-
-    public function submitEvidence(string $evidenceSha256, DateTimeImmutable $at, int $expectedVersion): void
-    {
-        $this->assertVersion($expectedVersion);
-        if (! in_array($this->state, ['notified', 'evidence_due'], true)) {
-            throw new InvariantViolation('Chargeback evidence cannot be submitted from the current state.');
-        }
-        if ($at < $this->openedAt
-            || $at > $this->responseDeadline
-            || preg_match('/^[a-f0-9]{64}$/', $evidenceSha256) !== 1
-        ) {
-            throw new InvariantViolation('Chargeback evidence is outside the case window or invalid.');
-        }
-        $this->evidenceSha256 = $evidenceSha256;
-        $this->state = 'submitted';
-        $this->recordVersion++;
-    }
-
-    public function recordProviderAcceptance(int $expectedVersion): void
-    {
-        $this->assertVersion($expectedVersion);
-        if ($this->state !== 'submitted') {
-            throw new InvariantViolation('Chargeback evidence is not submitted.');
-        }
-        $this->state = 'accepted';
-        $this->recordVersion++;
-    }
-
-    public function recordOutcome(bool $won, Money $providerFee, int $expectedVersion): void
-    {
-        $this->assertVersion($expectedVersion);
-        if ($this->state !== 'accepted') {
-            throw new InvariantViolation('Chargeback outcome requires provider acceptance of the submitted case.');
-        }
-        if ($providerFee->currency() !== $this->disputedAmount->currency()) {
-            throw new InvariantViolation('Chargeback provider fee currency mismatch.');
-        }
-        $this->providerFee = $providerFee;
-        $this->state = $won ? 'won' : 'lost';
-        $this->recordVersion++;
-    }
-
-    public function markLedgerAdjusted(int $expectedVersion): void
-    {
-        $this->assertVersion($expectedVersion);
-        if (! in_array($this->state, ['won', 'lost'], true)) {
-            throw new InvariantViolation('Chargeback outcome is not final.');
-        }
-        $this->state = 'ledger_adjusted';
-        $this->recordVersion++;
-    }
-
-    public function close(int $expectedVersion): void
-    {
-        $this->assertVersion($expectedVersion);
-        if ($this->state !== 'ledger_adjusted') {
-            throw new InvariantViolation('Chargeback cannot close before ledger adjustment.');
-        }
-        $this->state = 'closed';
-        $this->recordVersion++;
-    }
-
-    public function state(): string { return $this->state; }
-    public function recordVersion(): int { return $this->recordVersion; }
-    public function providerFee(): ?Money { return $this->providerFee; }
-    public function openedAt(): DateTimeImmutable { return $this->openedAt; }
-    public function responseDeadline(): DateTimeImmutable { return $this->responseDeadline; }
-
-    private function assertVersion(int $expectedVersion): void
-    {
-        if ($expectedVersion !== $this->recordVersion) {
-            throw new InvariantViolation('Stale chargeback record version.');
-        }
-    }
+    private const STATES=['notified','evidence_due','submitted','accepted','won','lost','ledger_adjusted','closed'];
+    public function __construct(private readonly string $caseId,private readonly string $providerCode,private readonly string $providerCaseReference,private readonly string $paymentIntentId,private readonly Money $disputedAmount,private readonly string $reasonCode,private readonly DateTimeImmutable $openedAt,private readonly DateTimeImmutable $responseDeadline,private string $state='notified',private int $recordVersion=1,private ?string $evidenceSha256=null,private ?Money $providerFee=null){foreach([$caseId,$providerCode,$providerCaseReference,$paymentIntentId,$reasonCode] as $reference){if(preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/',$reference)!==1){throw new InvalidArgumentException('Chargeback reference is invalid.');}}if($disputedAmount->minorUnits()<=0||!in_array($state,self::STATES,true)||$recordVersion<1){throw new InvalidArgumentException('Chargeback amount, state or version is invalid.');}if($responseDeadline<=$openedAt||$responseDeadline>$openedAt->modify('+180 days')){throw new InvalidArgumentException('Chargeback response deadline must follow opening and remain within 180 days.');}}
+    public function requireEvidence(DateTimeImmutable $at,int $expectedVersion):void{$this->assertVersion($expectedVersion);if($this->state!=='notified'){throw new InvariantViolation('Chargeback evidence cannot be requested from the current state.');}if($at<$this->openedAt||$at>=$this->responseDeadline){throw new InvariantViolation('Chargeback evidence request is outside the valid case window.');}$this->state='evidence_due';$this->recordVersion++;}
+    public function submitEvidence(string $evidenceSha256,DateTimeImmutable $at,int $expectedVersion):void{$this->assertVersion($expectedVersion);if(!in_array($this->state,['notified','evidence_due'],true)){throw new InvariantViolation('Chargeback evidence cannot be submitted from the current state.');}if($at<$this->openedAt||$at>$this->responseDeadline||preg_match('/^[a-f0-9]{64}$/',$evidenceSha256)!==1){throw new InvariantViolation('Chargeback evidence is outside the case window or invalid.');}$this->evidenceSha256=$evidenceSha256;$this->state='submitted';$this->recordVersion++;}
+    public function recordProviderAcceptance(int $expectedVersion):void{$this->assertVersion($expectedVersion);if($this->state!=='submitted'){throw new InvariantViolation('Chargeback evidence is not submitted.');}$this->state='accepted';$this->recordVersion++;}
+    public function recordOutcome(bool $won,Money $providerFee,int $expectedVersion):void{$this->assertVersion($expectedVersion);if($this->state!=='accepted'){throw new InvariantViolation('Chargeback outcome requires provider acceptance of the submitted case.');}if($providerFee->currency()!==$this->disputedAmount->currency()){throw new InvariantViolation('Chargeback provider fee currency mismatch.');}$this->providerFee=$providerFee;$this->state=$won?'won':'lost';$this->recordVersion++;}
+    public function markLedgerAdjusted(int $expectedVersion):void{$this->assertVersion($expectedVersion);if(!in_array($this->state,['won','lost'],true)){throw new InvariantViolation('Chargeback outcome is not final.');}$this->state='ledger_adjusted';$this->recordVersion++;}
+    public function close(int $expectedVersion):void{$this->assertVersion($expectedVersion);if($this->state!=='ledger_adjusted'){throw new InvariantViolation('Chargeback cannot close before ledger adjustment.');}$this->state='closed';$this->recordVersion++;}
+    public function caseId():string{return $this->caseId;}public function providerCode():string{return $this->providerCode;}public function providerCaseReference():string{return $this->providerCaseReference;}public function paymentIntentId():string{return $this->paymentIntentId;}public function disputedAmount():Money{return $this->disputedAmount;}public function reasonCode():string{return $this->reasonCode;}public function evidenceSha256():?string{return $this->evidenceSha256;}public function state():string{return $this->state;}public function recordVersion():int{return $this->recordVersion;}public function providerFee():?Money{return $this->providerFee;}public function openedAt():DateTimeImmutable{return $this->openedAt;}public function responseDeadline():DateTimeImmutable{return $this->responseDeadline;}
+    private function assertVersion(int $expectedVersion):void{if($expectedVersion!==$this->recordVersion){throw new InvariantViolation('Stale chargeback record version.');}}
 }
