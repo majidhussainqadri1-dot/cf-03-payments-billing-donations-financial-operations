@@ -9,9 +9,6 @@ use InvalidArgumentException;
 
 final class DonationExpense
 {
-    /** @var list<string> */
-    private const RECEIPT_STATUSES=['pending','received','not_applicable'];
-
     public function __construct(
         private readonly string $expenseId,
         private readonly DateTimeImmutable $occurredAt,
@@ -24,23 +21,47 @@ final class DonationExpense
         private readonly bool $founderRelated,
         private readonly string $publicDisclosureCategory
     ) {
-        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/',$expenseId)!==1) { throw new InvalidArgumentException('Donation expense ID is invalid.'); }
-        if ($amount->minorUnits()<=0) { throw new InvalidArgumentException('Donation expense amount must be positive.'); }
+        foreach ([$expenseId, $payeeReference, $approvalReference, $publicDisclosureCategory] as $reference) {
+            if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $reference) !== 1) {
+                throw new InvalidArgumentException('Donation expense reference is invalid.');
+            }
+        }
         DonationExpenseCategory::assertAllowed($category);
-        if (trim($purpose)==='' || strlen($purpose)>500) { throw new InvalidArgumentException('Donation expense purpose is required and bounded.'); }
-        foreach([$payeeReference,$approvalReference,$publicDisclosureCategory] as $value){if(preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,190}$/',$value)!==1){throw new InvalidArgumentException('Donation expense reference is invalid.');}}
-        if(!in_array($receiptStatus,self::RECEIPT_STATUSES,true)){throw new InvalidArgumentException('Donation expense receipt status is invalid.');}
-        if($founderRelated!==DonationExpenseCategory::isFounderRelated($category)){throw new InvalidArgumentException('Founder-related indicator must match the approved expense category.');}
+        if ($amount->minorUnits() <= 0 || trim($purpose) === '' || strlen($purpose) > 500) {
+            throw new InvalidArgumentException('Donation expense amount or purpose is invalid.');
+        }
+        if (!in_array($receiptStatus, ['not_required', 'requested', 'received', 'verified', 'missing'], true)) {
+            throw new InvalidArgumentException('Donation expense receipt status is invalid.');
+        }
+        if ($founderRelated !== DonationExpenseCategory::isFounderRelated($category)) {
+            throw new InvalidArgumentException('Founder-related expense indicator does not match the approved category.');
+        }
     }
 
-    public function expenseId(): string{return $this->expenseId;}
-    public function amount(): Money{return $this->amount;}
-    public function category(): string{return $this->category;}
-    public function founderRelated(): bool{return $this->founderRelated;}
+    public function expenseId(): string { return $this->expenseId; }
+    public function occurredAt(): DateTimeImmutable { return $this->occurredAt; }
+    public function amount(): Money { return $this->amount; }
+    public function category(): string { return $this->category; }
+    public function purpose(): string { return $this->purpose; }
+    public function payeeReference(): string { return $this->payeeReference; }
+    public function approvalReference(): string { return $this->approvalReference; }
+    public function receiptStatus(): string { return $this->receiptStatus; }
+    public function founderRelated(): bool { return $this->founderRelated; }
+    public function publicDisclosureCategory(): string { return $this->publicDisclosureCategory; }
 
     /** @return array<string,mixed> */
     public function toPublicProjection(): array
     {
-        return ['expense_id'=>$this->expenseId,'date'=>$this->occurredAt->format('Y-m-d'),'amount_minor'=>$this->amount->minorUnits(),'currency'=>$this->amount->currency(),'category'=>$this->category,'purpose'=>$this->purpose,'receipt_status'=>$this->receiptStatus,'founder_related'=>$this->founderRelated,'public_disclosure_category'=>$this->publicDisclosureCategory];
+        return [
+            'expense_id' => $this->expenseId,
+            'occurred_at' => $this->occurredAt->format(DATE_ATOM),
+            'amount_minor' => $this->amount->minorUnits(),
+            'currency' => $this->amount->currency(),
+            'category' => $this->category,
+            'public_disclosure_category' => $this->publicDisclosureCategory,
+            'founder_related' => $this->founderRelated,
+            'purpose' => $this->purpose,
+            'receipt_status' => $this->receiptStatus,
+        ];
     }
 }
