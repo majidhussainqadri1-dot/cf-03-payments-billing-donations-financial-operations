@@ -79,6 +79,9 @@ final class ProviderEvidence
     public function eventType(): string { return $this->eventType; }
     public function paymentIntentId(): string { return $this->paymentIntentId; }
     public function amount(): Money { return $this->amount; }
+    public function signatureKeyVersion(): string { return $this->signatureKeyVersion; }
+    public function signatureVerified(): bool { return $this->signatureVerified; }
+    public function eventIdUnique(): bool { return $this->eventIdUnique; }
     public function rawBodySha256(): string { return $this->rawBodySha256; }
     public function occurredAt(): DateTimeImmutable { return $this->occurredAt; }
     public function signatureTimestamp(): DateTimeImmutable { return $this->signatureTimestamp; }
