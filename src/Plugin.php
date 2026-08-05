@@ -8,6 +8,8 @@ use RuntimeException;
 use Sabri\CF03\Application\EvidenceBoundActivationGate;
 use Sabri\CF03\Domain\PlatformFinancialPolicy;
 use Sabri\CF03\Infrastructure\WordPressFinanceAdminApi;
+use Sabri\CF03\Infrastructure\WordPressFinancialDashboardApi;
+use Sabri\CF03\Infrastructure\WordPressFinancialDocumentApi;
 use Sabri\CF03\Infrastructure\WordPressIncidentStateStore;
 use Sabri\CF03\Infrastructure\WordPressPrivacy;
 use Sabri\CF03\Infrastructure\WordPressPublicUi;
@@ -94,6 +96,8 @@ final class Plugin
             add_action('init', [WordPressPublicUi::class, 'register']);
             add_action('rest_api_init', [WordPressRestApi::class, 'register']);
             add_action('rest_api_init', [WordPressFinanceAdminApi::class, 'register']);
+            add_action('rest_api_init', [WordPressFinancialDocumentApi::class, 'register']);
+            add_action('rest_api_init', [WordPressFinancialDashboardApi::class, 'register']);
             add_action('admin_notices', [self::class, 'renderConditionalNotice']);
             add_action(WordPressScheduler::HOOK, [WordPressScheduler::class, 'run']);
         }
@@ -113,10 +117,7 @@ final class Plugin
         }
         foreach (self::DONATION_PROMPT_META as $key) {
             register_meta('user', $key, [
-                'type' => 'string',
-                'single' => true,
-                'show_in_rest' => false,
-                'default' => '',
+                'type' => 'string','single' => true,'show_in_rest' => false,'default' => '',
                 'auth_callback' => static function (bool $allowed, string $metaKey, int $objectId): bool {
                     if (!function_exists('get_current_user_id') || !function_exists('current_user_can')) {
                         return false;

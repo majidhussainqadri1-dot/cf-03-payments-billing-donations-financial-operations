@@ -15,19 +15,13 @@ final class FinancialDownloadGrant
         'application/pdf',
         'application/json',
         'text/csv',
+        'text/html',
         'application/zip',
     ];
 
     private const DENIAL_REASONS = [
-        'not_owner',
-        'not_authorized',
-        'expired',
-        'revoked',
-        'not_ready',
-        'rights_restricted',
-        'privacy_restricted',
-        'legal_hold',
-        'live_delivery_disabled',
+        'not_owner','not_authorized','expired','revoked','not_ready','rights_restricted',
+        'privacy_restricted','legal_hold','live_delivery_disabled',
     ];
 
     public function __construct(
@@ -50,10 +44,10 @@ final class FinancialDownloadGrant
                 throw new InvalidArgumentException('Financial download identity reference is invalid.');
             }
         }
-        if (! in_array($assetType, FinancialDownloadContract::eligibleAssetTypes(), true)) {
+        if (!in_array($assetType, FinancialDownloadContract::eligibleAssetTypes(), true)) {
             throw new InvalidArgumentException('Financial download asset type is not approved.');
         }
-        if (! in_array($mediaType, self::MEDIA_TYPES, true)) {
+        if (!in_array($mediaType, self::MEDIA_TYPES, true)) {
             throw new InvalidArgumentException('Financial download media type is not approved.');
         }
         if (preg_match('/^[a-f0-9]{64}$/', $sha256) !== 1) {
@@ -66,32 +60,29 @@ final class FinancialDownloadGrant
         if (preg_match('/^[0-9]+\.[0-9]+$/', $policyVersion) !== 1) {
             throw new InvalidArgumentException('Financial download policy version is invalid.');
         }
-
         if ($downloadAllowed) {
             if ($denialReason !== null || $deliveryReference === null) {
                 throw new InvariantViolation('Allowed financial download requires delivery evidence and no denial reason.');
             }
             self::assertDeliveryReference($deliveryReference);
-        } else {
-            if ($deliveryReference !== null
-                || $denialReason === null
-                || ! in_array($denialReason, self::DENIAL_REASONS, true)
-            ) {
-                throw new InvariantViolation('Denied financial download requires an approved reason and no delivery reference.');
-            }
+        } elseif ($deliveryReference !== null
+            || $denialReason === null
+            || !in_array($denialReason, self::DENIAL_REASONS, true)
+        ) {
+            throw new InvariantViolation('Denied financial download requires an approved reason and no delivery reference.');
         }
     }
 
     public function assertUsableBy(string $audienceReference, DateTimeImmutable $now): void
     {
-        if (! $this->downloadAllowed || $this->deliveryReference === null) {
+        if (!$this->downloadAllowed || $this->deliveryReference === null) {
             throw new InvariantViolation('Financial download is not permitted.');
         }
         if ($now >= $this->expiresAt) {
             throw new InvariantViolation('Financial download grant has expired.');
         }
         if ($this->audienceReference !== 'public'
-            && ! hash_equals($this->audienceReference, $audienceReference)
+            && !hash_equals($this->audienceReference, $audienceReference)
         ) {
             throw new InvariantViolation('Financial download audience does not match.');
         }
@@ -141,8 +132,8 @@ final class FinancialDownloadGrant
         }
         $opaque = preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $reference) === 1;
         $vault = preg_match('#^vault://[A-Za-z0-9][A-Za-z0-9._-]{1,62}/[A-Za-z0-9][A-Za-z0-9._/-]{1,180}$#', $reference) === 1
-            && ! str_contains(substr($reference, 8), '//');
-        if (! $opaque && ! $vault) {
+            && !str_contains(substr($reference, 8), '//');
+        if (!$opaque && !$vault) {
             throw new InvalidArgumentException('Financial download delivery reference must be opaque or vault-scoped.');
         }
     }
