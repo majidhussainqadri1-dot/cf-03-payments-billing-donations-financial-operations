@@ -11,6 +11,14 @@ interface QueryableFinancialRepository extends FinancialRepository
     /** @param array<string,mixed> $criteria @return list<array<string,mixed>> */
     public function find(string $collection, array $criteria, int $limit = 100): array;
 
+    /**
+     * Stable ascending page for bounded full-ledger scans and exports.
+     *
+     * @param array<string,mixed> $criteria
+     * @return list<array<string,mixed>>
+     */
+    public function page(string $collection, array $criteria, int $limit, int $offset): array;
+
     /** @param array<string,mixed> $criteria @param array<string,mixed> $changes */
     public function updateWhere(string $collection, array $criteria, array $changes): int;
 
