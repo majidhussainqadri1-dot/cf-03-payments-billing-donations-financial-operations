@@ -50,6 +50,7 @@ final class FinancialAdjustmentService
         if ($this->repository->get('ledger_transactions', $sourceTransactionId) === null) {
             throw new InvariantViolation('Financial adjustment source transaction was not found.');
         }
+
         $adjustment = new FinancialAdjustment(
             $adjustmentId,
             $sourceTransactionId,
@@ -102,11 +103,10 @@ final class FinancialAdjustmentService
     ): array {
         $record = $this->require($adjustmentId, $expectedVersion);
         $adjustment = $this->hydrate($record);
-        if ($approve) {
-            $adjustment->approve($reviewerReference, $expectedVersion);
-        } else {
-            $adjustment->reject($reviewerReference, $expectedVersion);
-        }
+        $approve
+            ? $adjustment->approve($reviewerReference, $expectedVersion)
+            : $adjustment->reject($reviewerReference, $expectedVersion);
+
         $updated = $this->repository->compareAndSwap(
             'adjustments',
             $adjustmentId,
@@ -144,13 +144,14 @@ final class FinancialAdjustmentService
         if (($record['state'] ?? null) === 'executed') {
             return self::safe($record) + ['reused' => true];
         }
+
         $adjustment = $this->hydrate($record);
         $adjustment->execute($executorReference, $expectedVersion);
-
         $source = $this->repository->get('ledger_transactions', $adjustment->sourceTransactionId());
         if ($source === null) {
             throw new InvariantViolation('Financial adjustment source transaction disappeared.');
         }
+
         $sourcePeriod = (string)($source['period_id'] ?? '');
         $targetPeriod = $sourcePeriod;
         $sourcePeriodRecord = $this->repository->get('finance_periods', $sourcePeriod);
@@ -191,21 +192,21 @@ final class FinancialAdjustmentService
             ]);
             $this->entry(
                 $transactionId,
-                $adjustmentId.':debit',
+                $adjustment->adjustmentId().':debit',
                 (string)$record['debit_account'],
                 'debit',
                 $adjustment->amount()
             );
             $this->entry(
                 $transactionId,
-                $adjustmentId.':credit',
+                $adjustment->adjustmentId().':credit',
                 (string)$record['credit_account'],
                 'credit',
                 $adjustment->amount()
             );
             $this->repository->compareAndSwap(
                 'adjustments',
-                $adjustmentId,
+                $adjustment->adjustmentId(),
                 $expectedVersion,
                 static function (array $current) use ($adjustment, $executorReference, $executedAt): array {
                     $current['state'] = $adjustment->state();
