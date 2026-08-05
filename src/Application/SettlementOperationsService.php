@@ -12,7 +12,6 @@ use Sabri\CF03\Domain\AuditOutcome;
 use Sabri\CF03\Domain\DonationExpense;
 use Sabri\CF03\Domain\DonationExpenseCategory;
 use Sabri\CF03\Domain\Money;
-use Sabri\CF03\Domain\ReconciliationResult;
 use Sabri\CF03\Domain\SettlementBatch;
 use Sabri\CF03\Support\InvariantViolation;
 
@@ -49,16 +48,17 @@ final class SettlementOperationsService
             $this->repository->insert('settlements', $batch->batchId(), [
                 'batch_id' => $batch->batchId(),
                 'provider' => $batch->providerCode(),
-                'gross_minor' => $batch->grossAmount()->minorUnits(),
-                'fee_minor' => $batch->providerFee()->minorUnits(),
-                'refund_minor' => $batch->refundAmount()->minorUnits(),
-                'net_minor' => $batch->netAmount()->minorUnits(),
-                'currency' => $batch->currency(),
-                'source_hash' => $batch->sourceHash(),
+                'gross_minor' => $batch->gross()->minorUnits(),
+                'fee_minor' => $batch->fees()->minorUnits(),
+                'refund_minor' => $batch->refunds()->minorUnits(),
+                'net_minor' => $batch->net()->minorUnits(),
+                'currency' => $batch->gross()->currency(),
+                'source_hash' => $batch->sourceSha256(),
                 'settled_at' => $batch->settledAt(),
                 'imported_at' => $importedAt,
                 'status' => $status,
             ]);
+
             foreach ($batch->lines() as $line) {
                 $this->repository->insert('settlement_lines', $line['reference'], [
                     'batch_id' => $batch->batchId(),
@@ -68,9 +68,13 @@ final class SettlementOperationsService
                     'currency' => $line['currency'],
                 ]);
             }
+
             foreach ($result->exceptions() as $exception) {
                 $exceptionId = 'recon.'.substr(hash('sha256', implode('|', [
-                    $batch->batchId(), $exception['type'], $exception['reference'], $exception['currency'],
+                    $batch->batchId(),
+                    $exception['type'],
+                    $exception['reference'],
+                    $exception['currency'],
                 ])), 0, 40);
                 $this->repository->insert('reconciliation_exceptions', $exceptionId, [
                     'exception_id' => $exceptionId,
@@ -89,9 +93,7 @@ final class SettlementOperationsService
                     'resolved_at' => null,
                 ]);
             }
-            if ($result->count() === 0) {
-                $this->postProviderSettlement($batch, $operatorReference, $importedAt);
-            }
+
             $this->audit->append(new AuditEnvelope(
                 'audit:settlement:'.substr(hash('sha256', $batch->batchId().'|'.$importedAt->format(DATE_ATOM)), 0, 32),
                 $operatorReference,
@@ -102,7 +104,11 @@ final class SettlementOperationsService
                 AuditOutcome::SUCCEEDED,
                 $importedAt,
                 'trace:settlement:'.substr(hash('sha256', $batch->batchId()), 0, 24),
-                ['status' => $status, 'exception_count' => $result->count(), 'source_hash' => $batch->sourceHash()]
+                [
+                    'status' => $status,
+                    'exception_count' => $result->count(),
+                    'source_hash' => $batch->sourceSha256(),
+                ]
             ));
         });
 
@@ -111,11 +117,11 @@ final class SettlementOperationsService
             'status' => $status,
             'exception_count' => $result->count(),
             'may_close' => $result->mayClose(),
-            'currency' => $batch->currency(),
-            'gross_minor' => $batch->grossAmount()->minorUnits(),
-            'refund_minor' => $batch->refundAmount()->minorUnits(),
-            'fee_minor' => $batch->providerFee()->minorUnits(),
-            'net_minor' => $batch->netAmount()->minorUnits(),
+            'currency' => $batch->gross()->currency(),
+            'gross_minor' => $batch->gross()->minorUnits(),
+            'refund_minor' => $batch->refunds()->minorUnits(),
+            'fee_minor' => $batch->fees()->minorUnits(),
+            'net_minor' => $batch->net()->minorUnits(),
         ];
     }
 
@@ -136,6 +142,7 @@ final class SettlementOperationsService
         if ((bool)$exception['material'] && $acceptedRisk) {
             throw new InvariantViolation('Material reconciliation exceptions cannot be closed through accepted risk.');
         }
+
         $updated = $this->repository->updateWhere('reconciliation_exceptions', [
             'exception_id' => $exceptionId,
             'state' => 'open',
@@ -159,6 +166,7 @@ final class SettlementOperationsService
                 'batch_id' => (string)$exception['batch_id'],
             ], ['status' => 'reconciled_pending_posting']);
         }
+
         return [
             'exception_id' => $exceptionId,
             'state' => 'resolved',
@@ -169,23 +177,47 @@ final class SettlementOperationsService
     }
 
     /** @return array<string,mixed> */
-    public function postResolvedBatch(string $batchId, string $operatorReference, DateTimeImmutable $postedAt): array
-    {
+    public function postResolvedBatch(
+        string $batchId,
+        string $operatorReference,
+        DateTimeImmutable $postedAt
+    ): array {
         $this->configuration->assertFinancialMutationReady();
         self::assertReference($operatorReference, 'Settlement posting operator');
         $record = $this->repository->get('settlements', $batchId);
         if ($record === null || !in_array((string)$record['status'], ['reconciled', 'reconciled_pending_posting'], true)) {
             throw new InvariantViolation('Settlement batch is not ready for posting.');
         }
-        if ($this->repository->find('reconciliation_exceptions', ['batch_id' => $batchId, 'state' => 'open'], 1) !== []) {
+        if ($this->repository->find('reconciliation_exceptions', [
+            'batch_id' => $batchId,
+            'state' => 'open',
+        ], 1) !== []) {
             throw new InvariantViolation('Open reconciliation exceptions block settlement posting.');
         }
+
         $batch = $this->hydrateBatch($record);
         $this->repository->transaction(function () use ($batch, $operatorReference, $postedAt): void {
             $this->postProviderSettlement($batch, $operatorReference, $postedAt);
-            $this->repository->updateWhere('settlements', ['batch_id' => $batch->batchId()], ['status' => 'posted']);
+            $updated = $this->repository->updateWhere('settlements', [
+                'batch_id' => $batch->batchId(),
+                'status' => 'reconciled',
+            ], ['status' => 'posted']);
+            if ($updated === 0) {
+                $updated = $this->repository->updateWhere('settlements', [
+                    'batch_id' => $batch->batchId(),
+                    'status' => 'reconciled_pending_posting',
+                ], ['status' => 'posted']);
+            }
+            if ($updated !== 1) {
+                throw new InvariantViolation('Settlement posting status could not be committed exactly once.');
+            }
         });
-        return ['batch_id' => $batchId, 'status' => 'posted', 'posted_at' => $postedAt->format(DATE_ATOM)];
+
+        return [
+            'batch_id' => $batchId,
+            'status' => 'posted',
+            'posted_at' => $postedAt->format(DATE_ATOM),
+        ];
     }
 
     /** @return array<string,mixed> */
@@ -212,11 +244,11 @@ final class SettlementOperationsService
             if (($batch['status'] ?? null) !== 'posted') {
                 throw new InvariantViolation('Every settlement batch must be posted before finance period close.');
             }
-            foreach ($this->repository->find('reconciliation_exceptions', ['batch_id' => $batch['batch_id'], 'state' => 'open'], 500) as $exception) {
-                if ((bool)$exception['material']) {
-                    throw new InvariantViolation('Material reconciliation exception blocks finance period close.');
-                }
-                throw new InvariantViolation('Open reconciliation exception blocks finance period close.');
+            if ($this->repository->find('reconciliation_exceptions', [
+                'batch_id' => $batch['batch_id'],
+                'state' => 'open',
+            ], 1) !== []) {
+                throw new InvariantViolation('Open reconciliation exceptions block finance period close.');
             }
         }
 
@@ -235,10 +267,16 @@ final class SettlementOperationsService
         ];
         if ($existing === null) {
             $this->repository->insert('finance_periods', $periodId, $record);
-        } else {
-            $this->repository->compareAndSwap('finance_periods', $periodId, (int)$existing['version'], static fn (array $current): array => array_replace($current, $record));
+            return $record + ['version' => 1, 'reused' => false];
         }
-        return $record + ['reused' => false];
+
+        $updated = $this->repository->compareAndSwap(
+            'finance_periods',
+            $periodId,
+            (int)$existing['version'],
+            static fn (array $current): array => array_replace($current, $record)
+        );
+        return $updated + ['reused' => false];
     }
 
     /** @return array<string,mixed> */
@@ -254,25 +292,39 @@ final class SettlementOperationsService
         if ($requesterReference === $approverReference) {
             throw new InvariantViolation('Finance period reopen requires dual control.');
         }
+
         $period = $this->repository->get('finance_periods', $periodId);
         if ($period === null || ($period['state'] ?? null) !== 'locked') {
             throw new InvariantViolation('Only a locked finance period may be reopened.');
         }
-        $updated = $this->repository->compareAndSwap('finance_periods', $periodId, (int)$period['version'], static function (array $current) use ($reasonReference): array {
-            $current['state'] = 'exception_review';
-            $current['accepted_risk_ref'] = $reasonReference;
-            $current['closed_at'] = null;
-            return $current;
-        });
-        return ['period_id' => $periodId, 'state' => $updated['state'], 'version' => $updated['version']];
+        $updated = $this->repository->compareAndSwap(
+            'finance_periods',
+            $periodId,
+            (int)$period['version'],
+            static function (array $current) use ($reasonReference): array {
+                $current['state'] = 'exception_review';
+                $current['accepted_risk_ref'] = $reasonReference;
+                $current['closed_at'] = null;
+                return $current;
+            }
+        );
+        return [
+            'period_id' => $periodId,
+            'state' => $updated['state'],
+            'version' => $updated['version'],
+        ];
     }
 
-    private function postProviderSettlement(SettlementBatch $batch, string $operatorReference, DateTimeImmutable $postedAt): void
-    {
+    private function postProviderSettlement(
+        SettlementBatch $batch,
+        string $operatorReference,
+        DateTimeImmutable $postedAt
+    ): void {
         $transactionId = 'txn.settlement.'.substr(hash('sha256', $batch->providerCode().'|'.$batch->batchId()), 0, 32);
         if ($this->repository->get('ledger_transactions', $transactionId) !== null) {
             return;
         }
+
         $this->repository->insert('ledger_transactions', $transactionId, [
             'transaction_id' => $transactionId,
             'source_type' => 'provider_settlement_batch',
@@ -285,17 +337,18 @@ final class SettlementOperationsService
             'reversal_of' => null,
             'trace_id' => 'trace:settlement:'.substr(hash('sha256', $batch->batchId()), 0, 24),
         ]);
-        if ($batch->netAmount()->minorUnits() > 0) {
-            $this->entry($transactionId, $batch->batchId().':bank', 'asset.bank_receivable', 'debit', $batch->netAmount());
-            $this->entry($transactionId, $batch->batchId().':clearing-net', 'asset.provider_clearing', 'credit', $batch->netAmount());
+
+        if ($batch->net()->minorUnits() > 0) {
+            $this->entry($transactionId, $batch->batchId().':bank', 'asset.bank_receivable', 'debit', $batch->net());
+            $this->entry($transactionId, $batch->batchId().':clearing-net', 'asset.provider_clearing', 'credit', $batch->net());
         }
-        if ($batch->providerFee()->minorUnits() > 0) {
-            $this->entry($transactionId, $batch->batchId().':fee', 'expense.payment_processing', 'debit', $batch->providerFee());
-            $this->entry($transactionId, $batch->batchId().':clearing-fee', 'asset.provider_clearing', 'credit', $batch->providerFee());
+        if ($batch->fees()->minorUnits() > 0) {
+            $this->entry($transactionId, $batch->batchId().':fee', 'expense.payment_processing', 'debit', $batch->fees());
+            $this->entry($transactionId, $batch->batchId().':clearing-fee', 'asset.provider_clearing', 'credit', $batch->fees());
             $expense = new DonationExpense(
                 'expense.fee.'.substr(hash('sha256', $batch->batchId()), 0, 32),
                 $batch->settledAt(),
-                $batch->providerFee(),
+                $batch->fees(),
                 DonationExpenseCategory::ADMINISTRATION_PAYMENT_CHARGES,
                 'Payment provider settlement fee',
                 'provider:'.$batch->providerCode(),
@@ -326,15 +379,20 @@ final class SettlementOperationsService
         }
     }
 
-    private function entry(string $transactionId, string $sourceRef, string $account, string $direction, Money $amount): void
-    {
-        $this->repository->insert('ledger_entries', $sourceRef, [
+    private function entry(
+        string $transactionId,
+        string $sourceReference,
+        string $account,
+        string $direction,
+        Money $amount
+    ): void {
+        $this->repository->insert('ledger_entries', $sourceReference, [
             'transaction_id' => $transactionId,
             'account' => $account,
             'direction' => $direction,
             'amount_minor' => $amount->minorUnits(),
             'currency' => $amount->currency(),
-            'source_ref' => $sourceRef,
+            'source_ref' => $sourceReference,
         ]);
     }
 
@@ -342,7 +400,9 @@ final class SettlementOperationsService
     private function hydrateBatch(array $record): SettlementBatch
     {
         $lines = [];
-        foreach ($this->repository->find('settlement_lines', ['batch_id' => $record['batch_id']], 500) as $line) {
+        foreach ($this->repository->find('settlement_lines', [
+            'batch_id' => $record['batch_id'],
+        ], 500) as $line) {
             $lines[] = [
                 'reference' => (string)$line['line_ref'],
                 'type' => (string)$line['line_type'],
@@ -353,12 +413,11 @@ final class SettlementOperationsService
         return new SettlementBatch(
             (string)$record['batch_id'],
             (string)$record['provider'],
-            new DateTimeImmutable((string)$record['settled_at']),
-            (string)$record['currency'],
-            (int)$record['gross_minor'],
-            (int)$record['refund_minor'],
-            (int)$record['fee_minor'],
-            (int)$record['net_minor'],
+            new Money((int)$record['gross_minor'], (string)$record['currency']),
+            new Money((int)$record['fee_minor'], (string)$record['currency']),
+            new Money((int)$record['refund_minor'], (string)$record['currency']),
+            new Money((int)$record['net_minor'], (string)$record['currency']),
+            self::date($record['settled_at']),
             (string)$record['source_hash'],
             $lines
         );
@@ -369,14 +428,22 @@ final class SettlementOperationsService
     {
         $result = [];
         foreach ($this->repository->all('settlements') as $batch) {
-            $date = $batch['settled_at'] instanceof DateTimeImmutable
-                ? $batch['settled_at']
-                : new DateTimeImmutable((string)$batch['settled_at']);
-            if ($date->format('Y-m') === $periodId) {
+            if (self::date($batch['settled_at'])->format('Y-m') === $periodId) {
                 $result[] = $batch;
             }
         }
         return $result;
+    }
+
+    private static function date(mixed $value): DateTimeImmutable
+    {
+        if ($value instanceof DateTimeImmutable) {
+            return $value;
+        }
+        if (!is_string($value) || $value === '') {
+            throw new InvariantViolation('Settlement timestamp is missing.');
+        }
+        return new DateTimeImmutable($value);
     }
 
     private static function assertReference(string $value, string $label): void
