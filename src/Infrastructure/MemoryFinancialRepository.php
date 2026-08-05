@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sabri\CF03\Infrastructure;
 
+use DateTimeInterface;
 use InvalidArgumentException;
 use Sabri\CF03\Contracts\QueryableFinancialRepository;
 use Sabri\CF03\Support\InvariantViolation;
@@ -14,6 +15,8 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
     /** @var array<string,array<string,array<string,mixed>>> */
     private array $data = [];
 
+    public function __construct(private readonly bool $normalizeDates = false) {}
+
     public function insert(string $collection, string $id, array $record): void
     {
         if (isset($this->data[$collection][$id])) {
@@ -23,7 +26,7 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
         if (array_key_exists('record_version', $record)) {
             $record['record_version'] = $record['version'];
         }
-        $this->data[$collection][$id] = $record;
+        $this->data[$collection][$id] = $this->normalize($record);
     }
 
     public function get(string $collection, string $id): ?array
@@ -48,6 +51,7 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
         if (array_key_exists('record_version', $current) || array_key_exists('record_version', $next)) {
             $next['record_version'] = $expectedVersion + 1;
         }
+        $next = $this->normalize($next);
         $this->data[$collection][$id] = $next;
         return $next;
     }
@@ -81,7 +85,7 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
         if ($offset < 0) {
             throw new InvalidArgumentException('Financial page offset cannot be negative.');
         }
-
+        $criteria = $this->normalize($criteria);
         $matches = [];
         foreach ($this->data[$collection] ?? [] as $record) {
             foreach ($criteria as $field => $value) {
@@ -99,6 +103,8 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
         if ($criteria === [] || $changes === []) {
             throw new InvalidArgumentException('Financial update requires criteria and changes.');
         }
+        $criteria = $this->normalize($criteria);
+        $changes = $this->normalize($changes);
         $updated = 0;
         foreach ($this->data[$collection] ?? [] as $id => $record) {
             foreach ($criteria as $field => $value) {
@@ -126,6 +132,7 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
         if ($criteria === []) {
             throw new InvalidArgumentException('Financial deletion requires bounded criteria.');
         }
+        $criteria = $this->normalize($criteria);
         $deleted = 0;
         foreach ($this->data[$collection] ?? [] as $id => $record) {
             foreach ($criteria as $field => $value) {
@@ -137,5 +144,25 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
             $deleted++;
         }
         return $deleted;
+    }
+
+    /** @param array<string,mixed> $record @return array<string,mixed> */
+    private function normalize(array $record): array
+    {
+        if (!$this->normalizeDates) {
+            return $record;
+        }
+        $normalize = static function (mixed $value) use (&$normalize): mixed {
+            if ($value instanceof DateTimeInterface) {
+                return $value->format(DATE_ATOM);
+            }
+            if (is_array($value)) {
+                foreach ($value as $key => $child) {
+                    $value[$key] = $normalize($child);
+                }
+            }
+            return $value;
+        };
+        return $normalize($record);
     }
 }
