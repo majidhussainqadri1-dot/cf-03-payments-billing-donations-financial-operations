@@ -26,6 +26,11 @@ use Throwable;
 final class WordPressRestApi
 {
     public const NAMESPACE = 'sabri-finance/v1';
+    private const MAX_PUBLIC_JSON_BYTES = 65536;
+    private const MAX_WEBHOOK_BYTES = 1048576;
+    private const MAX_WEBHOOK_HEADERS = 64;
+    private const MAX_WEBHOOK_HEADER_BYTES = 8192;
+    private const GUEST_REFERENCE_TTL_SECONDS = 2592000;
 
     public static function register(): void
     {
@@ -72,6 +77,11 @@ final class WordPressRestApi
     {
         $policy = new PlatformFinancialPolicy();
         $runtime = WordPressRuntimeConfiguration::load();
+        $incident = (new WordPressIncidentStateStore())->get();
+        $liveCollectionEnabled = $runtime->state()->value === 'live'
+            && $runtime->missingFinancialGates() === []
+            && (bool)($incident['checkout_enabled'] ?? false);
+
         return [
             'policy_name' => PlatformFinancialPolicy::POLICY_NAME,
             'decision_id' => PlatformFinancialPolicy::DECISION_ID,
@@ -90,10 +100,12 @@ final class WordPressRestApi
             'approved_expense_categories' => $policy->approvedExpenseCategories(),
             'prohibited_uses' => $policy->prohibitedUses(),
             'monthly_prompt_minimum_days' => PlatformFinancialPolicy::MONTHLY_PROMPT_MINIMUM_DAYS,
-            'runtime' => $runtime->toArray(),
-            'incident' => (new WordPressIncidentStateStore())->get(),
-            'live_collection_enabled' => $runtime->state()->value === 'live'
-                && $runtime->missingFinancialGates() === [],
+            'runtime' => [
+                'state' => $runtime->state()->value,
+                'live_collection_enabled' => $liveCollectionEnabled,
+                'operational_details_redacted' => true,
+            ],
+            'live_collection_enabled' => $liveCollectionEnabled,
         ];
     }
 
@@ -168,6 +180,7 @@ final class WordPressRestApi
     public static function donationPreparing(mixed $request = null): mixed
     {
         try {
+            self::assertBodyLimit($request, self::MAX_PUBLIC_JSON_BYTES);
             self::positiveInteger(self::param($request, 'amount_minor'));
             $currency = (string)(self::param($request, 'currency') ?? 'USD');
             if ($currency !== 'USD') {
@@ -180,13 +193,14 @@ final class WordPressRestApi
                 409
             );
         } catch (Throwable $error) {
-            return self::safeError($error);
+            return self::safePublicError($error);
         }
     }
 
     public static function donationIntent(mixed $request = null): mixed
     {
         try {
+            self::assertBodyLimit($request, self::MAX_PUBLIC_JSON_BYTES);
             self::incident()->assertAvailable('checkout');
             $amount = self::positiveInteger(self::param($request, 'amount_minor'));
             $currency = (string)(self::param($request, 'currency') ?? 'USD');
@@ -220,7 +234,7 @@ final class WordPressRestApi
                 WordPressFinancialRepository::fromWordPress()
             ))->create($draft, $runtime->providerCode());
         } catch (Throwable $error) {
-            return self::safeError($error);
+            return self::safePublicError($error);
         }
     }
 
@@ -354,19 +368,17 @@ final class WordPressRestApi
             $body = is_object($request) && method_exists($request, 'get_body')
                 ? (string)$request->get_body()
                 : '';
-            $headers = [];
-            if (is_object($request) && method_exists($request, 'get_headers')) {
-                foreach ((array)$request->get_headers() as $name => $value) {
-                    $headers[(string)$name] = is_array($value) ? implode(',', $value) : (string)$value;
-                }
+            if ($body === '' || strlen($body) > self::MAX_WEBHOOK_BYTES) {
+                throw new InvalidArgumentException('Provider webhook body is empty or exceeds the one-megabyte limit.');
             }
+            $headers = self::boundedHeaders($request);
             return (new WebhookIngestionService(
                 WordPressRuntimeConfiguration::load(),
                 WordPressProviderRegistryFactory::payments(),
                 WordPressFinancialRepository::fromWordPress()
             ))->ingest($provider, $body, $headers, time());
         } catch (Throwable $error) {
-            return self::safeError($error);
+            return self::safePublicError($error);
         }
     }
 
@@ -378,8 +390,8 @@ final class WordPressRestApi
             'policy' => self::policy(),
             'routes' => RouteCatalogue::definitions(),
             'download_contract' => self::downloadContract(),
-            'runtime' => $runtime->toArray(),
-            'incident' => (new WordPressIncidentStateStore())->get(),
+            'runtime_diagnostics' => $runtime->toArray(),
+            'incident_diagnostics' => (new WordPressIncidentStateStore())->get(),
             'providers' => WordPressProviderRegistryFactory::payments()->health(),
             'transparency_snapshot' => self::transparency()['status'],
             'schema_version' => defined('SABRI_CF03_SCHEMA_VERSION')
@@ -431,7 +443,7 @@ final class WordPressRestApi
         }
         if (!headers_sent()) {
             setcookie('sabri_cf03_guest_ref', $actor, [
-                'expires' => time() + 31536000,
+                'expires' => time() + self::GUEST_REFERENCE_TTL_SECONDS,
                 'path' => '/',
                 'secure' => function_exists('is_ssl') && is_ssl(),
                 'httponly' => true,
@@ -468,6 +480,46 @@ final class WordPressRestApi
         return is_string($value) && $value !== '' ? $value : null;
     }
 
+    /** @return array<string,string> */
+    private static function boundedHeaders(mixed $request): array
+    {
+        if (!is_object($request) || !method_exists($request, 'get_headers')) {
+            return [];
+        }
+        $raw = (array)$request->get_headers();
+        if (count($raw) > self::MAX_WEBHOOK_HEADERS) {
+            throw new InvalidArgumentException('Provider webhook contains too many headers.');
+        }
+        $headers = [];
+        foreach ($raw as $name => $value) {
+            $normalizedName = strtolower(trim((string)$name));
+            if (preg_match('/^[a-z0-9][a-z0-9_-]{0,63}$/', $normalizedName) !== 1) {
+                throw new InvalidArgumentException('Provider webhook contains an invalid header name.');
+            }
+            $normalizedValue = is_array($value) ? implode(',', $value) : (string)$value;
+            if (strlen($normalizedValue) > self::MAX_WEBHOOK_HEADER_BYTES
+                || preg_match('/[\x00\r\n]/', $normalizedValue) === 1
+            ) {
+                throw new InvalidArgumentException('Provider webhook contains an invalid or oversized header value.');
+            }
+            $headers[$normalizedName] = $normalizedValue;
+        }
+        return $headers;
+    }
+
+    private static function assertBodyLimit(mixed $request, int $maximumBytes): void
+    {
+        if ($maximumBytes < 1) {
+            throw new InvalidArgumentException('Request body limit is invalid.');
+        }
+        if (is_object($request) && method_exists($request, 'get_body')) {
+            $body = (string)$request->get_body();
+            if (strlen($body) > $maximumBytes) {
+                throw new InvalidArgumentException('Request body exceeds the accepted size limit.');
+            }
+        }
+    }
+
     private static function boolean(mixed $value, bool $default): bool
     {
         if ($value === null) {
@@ -492,6 +544,25 @@ final class WordPressRestApi
             }
         }
         throw new InvalidArgumentException('A positive integer amount or version is required.');
+    }
+
+    private static function safePublicError(Throwable $error): mixed
+    {
+        if ($error instanceof InvalidArgumentException) {
+            return self::error('sabri_cf03_invalid_request', $error->getMessage(), 422);
+        }
+        if ($error instanceof InvariantViolation) {
+            return self::error(
+                'sabri_cf03_unavailable',
+                'The financial service is unavailable or the request conflicts with its current safe state.',
+                409
+            );
+        }
+        return self::error(
+            'sabri_cf03_internal_error',
+            'The financial operation could not be completed safely.',
+            500
+        );
     }
 
     private static function safeError(Throwable $error): mixed
