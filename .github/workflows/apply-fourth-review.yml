@@ -29,7 +29,7 @@ jobs:
           text = text.replace("compareAndSwap('x', '1'", "compareAndSwap('test_records', 'record:1'")
           path.write_text(text)
           path = Path('tests/run-runtime-completion.php')
-          text = path.read_text().replace("$at->modify('-30 seconds')->getTimestamp()", "$at->modify('+30 seconds')->getTimestamp()")
+          text = path.read_text().replace("$at->modify('-30 seconds')->getTimestamp()", "$at->getTimestamp()")
           path.write_text(text)
           PY
           rm -rf .automation
