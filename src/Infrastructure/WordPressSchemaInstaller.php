@@ -77,22 +77,72 @@ final class WordPressSchemaInstaller
         if ($open === false || $close === false || $close <= $open) {
             throw new RuntimeException('CF-03 schema SQL cannot be parsed for column verification.');
         }
-        $body = substr($sql, $open + 1, $close - $open - 1);
-        $segments = preg_split('/,\s*(?=[A-Za-z_])/', $body);
-        if (!is_array($segments)) {
-            throw new RuntimeException('CF-03 schema column list cannot be parsed.');
-        }
+
+        $segments = self::splitTopLevel(substr($sql, $open + 1, $close - $open - 1));
         $columns = [];
         foreach ($segments as $segment) {
             $segment = trim($segment);
             if ($segment === '' || preg_match('/^(PRIMARY|UNIQUE|KEY|CONSTRAINT|FULLTEXT|SPATIAL)\b/i', $segment) === 1) {
                 continue;
             }
-            if (preg_match('/^([a-z][a-z0-9_]*)\s+/i', $segment, $match) !== 1) {
+            if (preg_match('/^`?([a-z][a-z0-9_]*)`?\s+/i', $segment, $match) !== 1) {
                 throw new RuntimeException('CF-03 schema contains an unparseable column definition.');
             }
             $columns[] = $match[1];
         }
         return array_values(array_unique($columns));
+    }
+
+    /** @return list<string> */
+    private static function splitTopLevel(string $body): array
+    {
+        $segments = [];
+        $buffer = '';
+        $depth = 0;
+        $quote = null;
+        $length = strlen($body);
+
+        for ($index = 0; $index < $length; $index++) {
+            $char = $body[$index];
+            if ($quote !== null) {
+                $buffer .= $char;
+                if ($char === $quote && ($index === 0 || $body[$index - 1] !== '\\')) {
+                    $quote = null;
+                }
+                continue;
+            }
+            if ($char === "'" || $char === '"' || $char === '`') {
+                $quote = $char;
+                $buffer .= $char;
+                continue;
+            }
+            if ($char === '(') {
+                $depth++;
+                $buffer .= $char;
+                continue;
+            }
+            if ($char === ')') {
+                $depth--;
+                if ($depth < 0) {
+                    throw new RuntimeException('CF-03 schema contains unbalanced parentheses.');
+                }
+                $buffer .= $char;
+                continue;
+            }
+            if ($char === ',' && $depth === 0) {
+                $segments[] = $buffer;
+                $buffer = '';
+                continue;
+            }
+            $buffer .= $char;
+        }
+
+        if ($quote !== null || $depth !== 0) {
+            throw new RuntimeException('CF-03 schema contains unbalanced quotes or parentheses.');
+        }
+        if (trim($buffer) !== '') {
+            $segments[] = $buffer;
+        }
+        return $segments;
     }
 }
