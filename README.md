@@ -2,7 +2,15 @@
 
 Canonical financial owner for the **Sabri Social Homeopathy Platform**.
 
-> **Source status:** `1.1.0-rc.1`, complete schema `3.0.0`. The final governing decision is `SSH-FIN-DONATION-2026-08-04-01`. Live collection remains disabled and fail closed pending external acceptance.
+> **Source status:** `1.1.0-rc.2`, complete schema `3.0.0`. Live collection and financial file delivery remain disabled and fail closed pending external acceptance.
+
+## Three governing plans
+
+1. **Sabri Social Homeopathy Platform Definitive Master Plan 2026 v3.0** — `SSH-PMP-2026-v3.0`;
+2. **Consolidated Current-Chat Directive Register v1.0**, dated 5 August 2026;
+3. **CF-03 Integrated Final Plan 2026 v2.0**, governed by `SSH-FIN-DONATION-2026-08-04-01`.
+
+The repository correction evidence is recorded in `docs/review-evidence-three-plan-harmonization-1.1.0-rc.2.md`. The current-chat post-GitHub harmonization and zero-known-defect rule is `CHAT-QA-001`.
 
 ## Governing financial law
 
@@ -28,9 +36,20 @@ Canonical financial owner for the **Sabri Social Homeopathy Platform**.
 - Recurring-donation view, supported amount change, next payment date, cancellation, receipts and support contracts.
 - Complete schema `3.0.0`: historical 28-table base plus expenses, transparency snapshots and donor acknowledgments, for 31 canonical tables.
 
+## Universal financial download contract
+
+Directive `CHAT-DL-001` is implemented for eligible CF-03 assets:
+
+- invoice snapshots;
+- receipts;
+- secure finance exports;
+- verified aggregate transparency snapshots.
+
+CF-03 owns asset eligibility and click-time authorization. File 20 owns the Global Download Manager, File 25 owns the green-led Ionicons/RTL/accessibility presentation, File 24 owns assurance, and CF-04 owns secure delivery after activation. The source enforces safe filenames, approved media types, SHA-256, expiry, audience binding, denial/revocation reasons and opaque or vault-scoped delivery references. No Live delivery route is enabled.
+
 ## Canonical ownership
 
-CF-03 owns financial truth. File 00 owns identity, membership and entitlement. File 20 owns the global shell, File 25 presentation/RTL/accessibility, File 24 assurance and File 19 notification delivery. File 26 must not use donation for ranking favoritism.
+CF-03 owns financial truth. File 00 owns identity, membership and entitlement. File 20 owns the global shell and download manager, File 25 presentation/RTL/accessibility, File 24 assurance and File 19 notification delivery. File 26 must not use donation for ranking favoritism.
 
 ## QA
 
@@ -40,6 +59,7 @@ php tests/run-0.2.php
 php tests/run-1.0.php
 php tests/run-free-donation-policy.php
 php tests/run-founder-donation-transparency.php
+php tests/run-three-plan-harmonization.php
 php tests/run-plan-completion.php
 php tests/run-adversarial-2.php
 php tests/run-review-40.php
@@ -47,6 +67,8 @@ find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
 bash scripts/build-package.sh
 ```
 
+The nine suites execute **248 tests per PHP version** and **744 domain-test executions** across PHP 8.1, 8.2 and 8.3, plus manifest validation, prohibited-secret scanning, governing-source assertions and deterministic package parity.
+
 ## External acceptance boundary
 
-No Live provider adapter, webhook route or collection is enabled. Legal/tax/accounting, PCI, independent security, Hostinger staging, browser/RTL/accessibility/performance, backup/restore/rollback and explicit Founder Live approval remain external gates.
+No Live provider adapter, webhook route, collection or financial file delivery is enabled. Legal/tax/accounting, PCI, independent security, Hostinger staging, File 20/File 25 presentation integration, browser/RTL/accessibility/performance, backup/restore/rollback and explicit Founder Live approval remain external gates.
