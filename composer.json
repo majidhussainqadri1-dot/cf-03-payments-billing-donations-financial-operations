@@ -6,7 +6,7 @@
   "require": {"php": ">=8.1"},
   "autoload": {"psr-4": {"Sabri\\CF03\\": "src/"}},
   "scripts": {
-    "test": ["php tests/run.php","php tests/run-0.2.php","php tests/run-1.0.php","php tests/run-free-donation-policy.php","php tests/run-founder-donation-transparency.php","php tests/run-three-plan-harmonization.php","php tests/run-plan-completion.php","php tests/run-adversarial-2.php","php tests/run-review-40.php","php tests/run-runtime-completion.php"],
+    "test": ["php tests/run.php","php tests/run-0.2.php","php tests/run-1.0.php","php tests/run-free-donation-policy.php","php tests/run-founder-donation-transparency.php","php tests/run-three-plan-harmonization.php","php tests/run-plan-completion.php","php tests/run-adversarial-2.php","php tests/run-review-40.php","php tests/run-runtime-completion.php","php tests/run-source-completion.php","php tests/run-adversarial-source.php"],
     "lint": "find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l"
   }
 }
