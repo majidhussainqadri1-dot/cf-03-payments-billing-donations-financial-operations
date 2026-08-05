@@ -13,6 +13,8 @@ use Sabri\CF03\Support\InvariantViolation;
 
 final class DonationIntentDraft
 {
+    private const WITHHELD_PROVIDER_SUBJECT = 'donor:withheld';
+
     public function __construct(
         private readonly string $intentId,
         private readonly string $donorReference,
@@ -33,10 +35,10 @@ final class DonationIntentDraft
         }
 
         (new PlatformFinancialPolicy())->assertSuggestedOrCustomDonation($amount);
-        if ($monthly && ! $explicitMonthlyConsent) {
+        if ($monthly && !$explicitMonthlyConsent) {
             throw new InvariantViolation('Monthly donation requires explicit, unpreselected donor consent.');
         }
-        if (! $monthly && $explicitMonthlyConsent) {
+        if (!$monthly && $explicitMonthlyConsent) {
             throw new InvalidArgumentException('Monthly consent cannot be recorded for a one-time donation.');
         }
     }
@@ -46,6 +48,20 @@ final class DonationIntentDraft
         if ($this->serviceState === DonationServiceState::PREPARING) {
             throw new InvariantViolation('Donation service is being prepared; no live financial collection is available.');
         }
+    }
+
+    public function providerSafeClone(): self
+    {
+        return new self(
+            $this->intentId,
+            self::WITHHELD_PROVIDER_SUBJECT,
+            $this->amount,
+            $this->monthly,
+            $this->explicitMonthlyConsent,
+            $this->serviceState,
+            $this->idempotencyKey,
+            $this->createdAt
+        );
     }
 
     public function intentId(): string { return $this->intentId; }

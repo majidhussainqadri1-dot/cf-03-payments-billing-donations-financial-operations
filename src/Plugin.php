@@ -13,12 +13,14 @@ use Sabri\CF03\Infrastructure\WordPressFinancialDashboardApi;
 use Sabri\CF03\Infrastructure\WordPressFinancialDocumentApi;
 use Sabri\CF03\Infrastructure\WordPressIncidentStateStore;
 use Sabri\CF03\Infrastructure\WordPressPrivacy;
+use Sabri\CF03\Infrastructure\WordPressProviderRegistryFactory;
 use Sabri\CF03\Infrastructure\WordPressPublicUi;
 use Sabri\CF03\Infrastructure\WordPressRestApi;
 use Sabri\CF03\Infrastructure\WordPressRuntimeConfiguration;
 use Sabri\CF03\Infrastructure\WordPressScheduler;
 use Sabri\CF03\Infrastructure\WordPressSchemaInstaller;
 use Sabri\CF03\Persistence\CompleteSchema;
+use Throwable;
 
 final class Plugin
 {
@@ -28,12 +30,16 @@ final class Plugin
     public const OPTION_ACTIVATION_RECORD = 'sabri_cf03_activation_record';
     public const OPTION_FINANCIAL_POLICY_DECISION = 'sabri_cf03_financial_policy_decision';
     public const OPTION_LAST_MIGRATION = 'sabri_cf03_last_migration';
+    public const OPTION_UPGRADE_LOCK = 'sabri_cf03_upgrade_lock';
 
     private const RUNTIME_STATUS = 'source_candidate_runtime_fail_closed_founder_donation_transparency_ready_paid_services_suspended';
     private const DONATION_PROMPT_META = [
-        'last_donation_prompt_at','next_donation_prompt_at','donation_prompt_status',
-        'donation_prompt_snoozed_until','last_donation_completed_at',
-        'recurring_donation_status','donation_frequency_preference',
+        'last_donation_prompt_at',
+        'next_donation_prompt_at',
+        'donation_prompt_status',
+        'donation_prompt_snoozed_until',
+        'last_donation_completed_at',
+        'recurring_donation_status',
     ];
     private const FINANCE_CAPABILITIES = [
         'sabri_manage_finance','sabri_review_refunds','sabri_execute_refunds',
@@ -59,29 +65,8 @@ final class Plugin
         add_option(WordPressRuntimeConfiguration::OPTION_DOWNLOAD, false, '', false);
         add_option(WordPressIncidentStateStore::OPTION, WordPressIncidentStateStore::normal(), '', false);
 
-        $migrations = WordPressSchemaInstaller::install();
-        $expectedCount = count(CompleteSchema::tables(''));
-        if (count($migrations) !== $expectedCount) {
-            update_option(self::OPTION_RUNTIME_STATUS, 'schema_incomplete_fail_closed', false);
-            throw new RuntimeException('CF-03 activation did not verify every canonical schema migration.');
-        }
-        if (function_exists('get_role')) {
-            $administrator = get_role('administrator');
-            if (is_object($administrator) && method_exists($administrator, 'add_cap')) {
-                foreach (self::FINANCE_CAPABILITIES as $capability) {
-                    $administrator->add_cap($capability);
-                }
-            }
-        }
-        update_option(self::OPTION_VERSION, defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.2.0-rc.1', false);
-        update_option(self::OPTION_SCHEMA_VERSION, CompleteSchema::VERSION, false);
-        update_option(self::OPTION_LAST_MIGRATION, [
-            'schema_version' => CompleteSchema::VERSION,
-            'base_schema_version' => CompleteSchema::BASE_VERSION,
-            'migration_ids' => $migrations,
-            'completed_at' => gmdate(DATE_ATOM),
-        ], false);
-        update_option(self::OPTION_RUNTIME_STATUS, self::RUNTIME_STATUS, false);
+        self::installAndRecordSchema();
+        self::grantAdministratorCapabilities();
         WordPressScheduler::schedule();
         WordPressDailyReconciliation::schedule();
     }
@@ -95,6 +80,7 @@ final class Plugin
     public static function boot(): void
     {
         if (function_exists('add_action')) {
+            add_action('init', [self::class, 'maybeUpgrade'], 1);
             add_action('init', [self::class, 'registerDonationPromptMeta']);
             add_action('init', [WordPressPublicUi::class, 'register']);
             add_action('rest_api_init', [WordPressRestApi::class, 'register']);
@@ -115,6 +101,51 @@ final class Plugin
         WordPressDailyReconciliation::schedule();
     }
 
+    public static function maybeUpgrade(): void
+    {
+        foreach (['get_option','add_option','update_option','delete_option'] as $function) {
+            if (!function_exists($function)) {
+                return;
+            }
+        }
+        $currentVersion = (string)get_option(self::OPTION_VERSION, '');
+        $currentSchema = (string)get_option(self::OPTION_SCHEMA_VERSION, '');
+        $targetVersion = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.2.0-rc.2';
+        if (hash_equals($targetVersion, $currentVersion)
+            && hash_equals(CompleteSchema::VERSION, $currentSchema)
+        ) {
+            return;
+        }
+
+        $now = time();
+        $existingLock = get_option(self::OPTION_UPGRADE_LOCK, null);
+        if (is_numeric($existingLock) && $now - (int)$existingLock < 300) {
+            return;
+        }
+        if ($existingLock !== null && $existingLock !== false) {
+            delete_option(self::OPTION_UPGRADE_LOCK);
+        }
+        if (!add_option(self::OPTION_UPGRADE_LOCK, $now, '', false)) {
+            return;
+        }
+
+        try {
+            update_option(self::OPTION_RUNTIME_STATUS, 'schema_upgrade_in_progress_fail_closed', false);
+            update_option(WordPressRuntimeConfiguration::OPTION_MODE, 'preparing', false);
+            update_option(WordPressRuntimeConfiguration::OPTION_WEBHOOK, false, false);
+            update_option(WordPressRuntimeConfiguration::OPTION_DOWNLOAD, false, false);
+            self::installAndRecordSchema();
+            self::grantAdministratorCapabilities();
+        } catch (Throwable) {
+            update_option(self::OPTION_RUNTIME_STATUS, 'schema_upgrade_failed_fail_closed', false);
+            update_option(WordPressRuntimeConfiguration::OPTION_MODE, 'preparing', false);
+            update_option(WordPressRuntimeConfiguration::OPTION_WEBHOOK, false, false);
+            update_option(WordPressRuntimeConfiguration::OPTION_DOWNLOAD, false, false);
+        } finally {
+            delete_option(self::OPTION_UPGRADE_LOCK);
+        }
+    }
+
     public static function registerDonationPromptMeta(): void
     {
         if (!function_exists('register_meta')) {
@@ -122,7 +153,10 @@ final class Plugin
         }
         foreach (self::DONATION_PROMPT_META as $key) {
             register_meta('user', $key, [
-                'type' => 'string','single' => true,'show_in_rest' => false,'default' => '',
+                'type' => 'string',
+                'single' => true,
+                'show_in_rest' => false,
+                'default' => '',
                 'auth_callback' => static function (bool $allowed, string $metaKey, int $objectId): bool {
                     if (!function_exists('get_current_user_id') || !function_exists('current_user_can')) {
                         return false;
@@ -146,7 +180,7 @@ final class Plugin
             ': founder-owned, not a Trust; fixed fees prohibited; commission 0%; donations voluntary; aggregate transparency required. Runtime state: '.
             $runtime->state()->value.'. Schema '.CompleteSchema::VERSION.'. '.
             ($status->approved()
-                ? 'Activation evidence exists; provider, staging and every runtime gate must still pass.'
+                ? 'Activation evidence exists; provider, webhook, staging and every runtime gate must still pass.'
                 : 'Missing activation gates: '.implode(', ', $status->missingGates()).'.');
         echo '<div class="notice notice-info"><p>'.esc_html($message).'</p></div>';
     }
@@ -165,17 +199,65 @@ final class Plugin
     public static function runSiteHealthTest(): array
     {
         $runtime = WordPressRuntimeConfiguration::load();
-        $missing = $runtime->missingFinancialGates();
+        $missing = $runtime->missingDonationCollectionGates();
+        $incident = (new WordPressIncidentStateStore())->get();
+        $donations = WordPressProviderRegistryFactory::donations()->registeredProviderCodes();
+        $paymentHealth = WordPressProviderRegistryFactory::payments()->health();
+        $provider = $runtime->providerCode();
+        $providerReady = in_array($provider, $donations, true)
+            && ($paymentHealth[$provider] ?? null) === 'healthy';
+        $pathsReady = ($incident['checkout_enabled'] ?? false) === true
+            && ($incident['webhooks_enabled'] ?? false) === true;
+        $schemaReady = function_exists('get_option')
+            && hash_equals(CompleteSchema::VERSION, (string)get_option(self::OPTION_SCHEMA_VERSION, ''));
+        $ready = $missing === [] && $providerReady && $pathsReady && $schemaReady;
+
         return [
-            'label' => $missing === [] ? 'CF-03 configured gates are complete' : 'CF-03 remains fail closed',
-            'status' => $missing === [] ? 'good' : 'recommended',
+            'label' => $ready ? 'CF-03 donation collection gates are complete' : 'CF-03 remains fail closed',
+            'status' => $ready ? 'good' : 'recommended',
             'badge' => ['label' => 'Sabri CF-03', 'color' => 'blue'],
             'description' => '<p>'.esc_html(
                 'Policy '.PlatformFinancialPolicy::DECISION_ID.'; schema '.CompleteSchema::VERSION.
-                '; runtime '.$runtime->state()->value.'; missing gates: '.($missing === [] ? 'none' : implode(', ', $missing)).'.'
+                '; runtime '.$runtime->state()->value.'; missing gates: '.($missing === [] ? 'none' : implode(', ', $missing)).
+                '; provider adapter: '.($providerReady ? 'ready' : 'not ready').
+                '; incident paths: '.($pathsReady ? 'ready' : 'blocked').'.'
             ).'</p>',
             'actions' => '',
             'test' => 'sabri_cf03_activation_gate',
         ];
+    }
+
+    private static function installAndRecordSchema(): void
+    {
+        $migrations = WordPressSchemaInstaller::install();
+        $expectedCount = count(CompleteSchema::tables(''));
+        if (count($migrations) !== $expectedCount) {
+            update_option(self::OPTION_RUNTIME_STATUS, 'schema_incomplete_fail_closed', false);
+            throw new RuntimeException('CF-03 schema installation did not verify every canonical schema migration.');
+        }
+        $version = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.2.0-rc.2';
+        update_option(self::OPTION_VERSION, $version, false);
+        update_option(self::OPTION_SCHEMA_VERSION, CompleteSchema::VERSION, false);
+        update_option(self::OPTION_LAST_MIGRATION, [
+            'schema_version' => CompleteSchema::VERSION,
+            'base_schema_version' => CompleteSchema::BASE_VERSION,
+            'migration_ids' => $migrations,
+            'completed_at' => gmdate(DATE_ATOM),
+        ], false);
+        update_option(self::OPTION_RUNTIME_STATUS, self::RUNTIME_STATUS, false);
+    }
+
+    private static function grantAdministratorCapabilities(): void
+    {
+        if (!function_exists('get_role')) {
+            return;
+        }
+        $administrator = get_role('administrator');
+        if (!is_object($administrator) || !method_exists($administrator, 'add_cap')) {
+            return;
+        }
+        foreach (self::FINANCE_CAPABILITIES as $capability) {
+            $administrator->add_cap($capability);
+        }
     }
 }

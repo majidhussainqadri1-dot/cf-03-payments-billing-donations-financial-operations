@@ -53,6 +53,7 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
     /** @var array<string,list<string>> */
     private array $columnCache = [];
     private int $transactionDepth = 0;
+    private bool $rollbackOnly = false;
 
     public function __construct(private readonly object $wpdb, private readonly string $prefix)
     {
@@ -93,9 +94,15 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
     public function get(string $collection, string $id): ?array
     {
         [$table, $idField] = $this->spec($collection);
-        $sql = $this->wpdb->prepare("SELECT * FROM {$table} WHERE {$idField} = %s LIMIT 1", $id);
-        $row = $this->wpdb->get_row($sql, defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
-        return is_array($row) ? $this->hydrate($row) : null;
+        $sql = $this->wpdb->prepare("SELECT * FROM {$table} WHERE {$idField} = %s LIMIT 2", $id);
+        $rows = $this->wpdb->get_results($sql, defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
+        if (!is_array($rows) || $rows === []) {
+            return null;
+        }
+        if (count($rows) !== 1 || !is_array($rows[0])) {
+            throw new InvariantViolation('Canonical financial identifier is not unique.');
+        }
+        return $this->hydrate($rows[0]);
     }
 
     public function compareAndSwap(string $collection, string $id, int $expectedVersion, callable $mutator): array
@@ -159,23 +166,45 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
     {
         $outermost = $this->transactionDepth === 0;
         if ($outermost) {
-            $this->wpdb->query('START TRANSACTION');
+            $this->rollbackOnly = false;
+            if ($this->wpdb->query('START TRANSACTION') === false) {
+                throw new RuntimeException('Financial database transaction could not start.');
+            }
         }
+
         $this->transactionDepth++;
         try {
             $result = $work();
-            $this->transactionDepth--;
-            if ($outermost) {
-                $this->wpdb->query('COMMIT');
-            }
-            return $result;
         } catch (Throwable $error) {
             $this->transactionDepth--;
+            $this->rollbackOnly = true;
             if ($outermost) {
-                $this->wpdb->query('ROLLBACK');
+                $rollbackResult = $this->wpdb->query('ROLLBACK');
+                $this->rollbackOnly = false;
+                if ($rollbackResult === false) {
+                    throw new RuntimeException('Financial transaction failed and rollback could not be confirmed.', 0, $error);
+                }
             }
             throw $error;
         }
+
+        $this->transactionDepth--;
+        if (!$outermost) {
+            return $result;
+        }
+        if ($this->rollbackOnly) {
+            $rollbackResult = $this->wpdb->query('ROLLBACK');
+            $this->rollbackOnly = false;
+            if ($rollbackResult === false) {
+                throw new RuntimeException('Nested financial failure required rollback, but rollback could not be confirmed.');
+            }
+            throw new InvariantViolation('Financial transaction was marked rollback-only by a nested failure.');
+        }
+        if ($this->wpdb->query('COMMIT') === false) {
+            $this->wpdb->query('ROLLBACK');
+            throw new RuntimeException('Financial database transaction could not commit safely.');
+        }
+        return $result;
     }
 
     public function find(string $collection, array $criteria, int $limit = 100): array
@@ -219,14 +248,16 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
 
     public function updateWhere(string $collection, array $criteria, array $changes): int
     {
-        if ($criteria === [] || $changes === []) {
-            throw new InvalidArgumentException('Financial update requires bounded criteria and changes.');
+        if ($criteria === [] || $changes === [] || array_key_exists('id', $criteria) || array_key_exists('id', $changes)) {
+            throw new InvalidArgumentException('Financial update requires bounded canonical criteria and changes.');
         }
         [$table] = $this->spec($collection);
         $data = $this->normalize($table, $changes);
-        unset($data['id']);
         $where = $this->normalize($table, $criteria);
-        unset($where['id']);
+        unset($data['id'], $where['id']);
+        if ($data === [] || $where === []) {
+            throw new InvalidArgumentException('Financial update became unbounded after schema normalization.');
+        }
         $affected = $this->wpdb->update($table, $data, $where);
         if ($affected === false) {
             throw new InvariantViolation('Financial bounded update failed.');
@@ -236,12 +267,15 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
 
     public function deleteWhere(string $collection, array $criteria): int
     {
-        if ($criteria === []) {
-            throw new InvalidArgumentException('Financial deletion requires bounded criteria.');
+        if ($criteria === [] || array_key_exists('id', $criteria)) {
+            throw new InvalidArgumentException('Financial deletion requires bounded canonical criteria.');
         }
         [$table] = $this->spec($collection);
         $where = $this->normalize($table, $criteria);
         unset($where['id']);
+        if ($where === []) {
+            throw new InvalidArgumentException('Financial deletion became unbounded after schema normalization.');
+        }
         $affected = $this->wpdb->delete($table, $where);
         if ($affected === false) {
             throw new InvariantViolation('Financial bounded deletion failed.');

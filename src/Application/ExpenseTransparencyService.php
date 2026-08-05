@@ -34,10 +34,6 @@ final class ExpenseTransparencyService
         if ($sourceTransactionId !== null) {
             self::assertReference($sourceTransactionId, 'Expense source transaction');
         }
-        $existing = $this->repository->get('expenses', $expense->expenseId());
-        if ($existing !== null) {
-            return $existing + ['reused' => true];
-        }
         $record = [
             'expense_id' => $expense->expenseId(),
             'occurred_at' => $expense->occurredAt(),
@@ -55,6 +51,12 @@ final class ExpenseTransparencyService
             'created_at' => $recordedAt,
             'updated_at' => $recordedAt,
         ];
+        $existing = $this->repository->get('expenses', $expense->expenseId());
+        if ($existing !== null) {
+            self::assertExpenseParity($existing, $record);
+            return $existing + ['reused' => true];
+        }
+
         $this->repository->transaction(function () use ($record, $expense, $recordedBy, $recordedAt): void {
             $this->repository->insert('expenses', $expense->expenseId(), $record);
             $this->audit->append(new AuditEnvelope(
@@ -192,23 +194,39 @@ final class ExpenseTransparencyService
         );
         $public = $snapshot->toPublicProjection();
         $storage = $public + ['source_hash' => $sourceHash];
+        $snapshotHash = hash('sha256', self::canonicalJson($storage));
         $existing = $this->repository->get('transparency_snapshots', $snapshotId);
         if ($existing !== null) {
             if (($existing['source_hash'] ?? null) === $sourceHash
+                && ($existing['snapshot_hash'] ?? null) === $snapshotHash
                 && ($existing['publication_state'] ?? null) === 'published'
             ) {
-                return $public + ['source_hash' => $sourceHash, 'reused' => true];
+                return $public + [
+                    'source_hash' => $sourceHash,
+                    'snapshot_hash' => $snapshotHash,
+                    'reused' => true,
+                ];
             }
-            throw new InvariantViolation('Transparency period already has a different immutable published snapshot.');
+            throw new InvariantViolation('Transparency period and currency already have a different immutable published snapshot.');
         }
 
-        $this->repository->transaction(function () use ($snapshotId, $periodKey, $currency, $storage, $sourceHash, $asOf, $publisherReference): void {
+        $this->repository->transaction(function () use (
+            $snapshotId,
+            $periodKey,
+            $currency,
+            $storage,
+            $sourceHash,
+            $snapshotHash,
+            $asOf,
+            $publisherReference
+        ): void {
             $this->repository->insert('transparency_snapshots', $snapshotId, [
                 'snapshot_id' => $snapshotId,
                 'period_key' => $periodKey,
                 'currency' => $currency,
                 'snapshot_json' => $storage,
                 'source_hash' => $sourceHash,
+                'snapshot_hash' => $snapshotHash,
                 'publication_state' => 'published',
                 'published_at' => $asOf,
                 'created_at' => $asOf,
@@ -223,10 +241,18 @@ final class ExpenseTransparencyService
                 AuditOutcome::SUCCEEDED,
                 $asOf,
                 'trace:transparency:'.substr(hash('sha256', $snapshotId), 0, 24),
-                ['source_hash' => $sourceHash, 'currency' => $currency]
+                [
+                    'source_hash' => $sourceHash,
+                    'snapshot_hash' => $snapshotHash,
+                    'currency' => $currency,
+                ]
             ));
         });
-        return $public + ['source_hash' => $sourceHash, 'reused' => false];
+        return $public + [
+            'source_hash' => $sourceHash,
+            'snapshot_hash' => $snapshotHash,
+            'reused' => false,
+        ];
     }
 
     /** @return array<string,mixed> */
@@ -282,7 +308,29 @@ final class ExpenseTransparencyService
         if ($updated !== 1) {
             throw new InvariantViolation('Donor acknowledgment is already revoked or changed.');
         }
-        return ['acknowledgment_id' => $acknowledgmentId, 'state' => 'revoked', 'revoked_at' => $revokedAt->format(DATE_ATOM)];
+        return [
+            'acknowledgment_id' => $acknowledgmentId,
+            'state' => 'revoked',
+            'revoked_at' => $revokedAt->format(DATE_ATOM),
+        ];
+    }
+
+    /** @param array<string,mixed> $existing @param array<string,mixed> $expected */
+    private static function assertExpenseParity(array $existing, array $expected): void
+    {
+        foreach ([
+            'expense_id','amount_minor','currency','category','purpose','payee_ref','approval_ref',
+            'receipt_status','founder_related','public_disclosure_category','source_transaction_id',
+        ] as $field) {
+            if ((string)($existing[$field] ?? '') !== (string)($expected[$field] ?? '')) {
+                throw new InvariantViolation('Expense identifier was reused with different financial evidence.');
+            }
+        }
+        if (self::date($existing['occurred_at'] ?? null)->format(DATE_ATOM)
+            !== self::date($expected['occurred_at'] ?? null)->format(DATE_ATOM)
+        ) {
+            throw new InvariantViolation('Expense identifier was reused with a different occurrence time.');
+        }
     }
 
     private static function date(mixed $value): DateTimeImmutable

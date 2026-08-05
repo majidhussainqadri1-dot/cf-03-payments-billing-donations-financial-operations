@@ -8,7 +8,7 @@ use RuntimeException;
 
 final class RuntimeSchemaExtension
 {
-    public const VERSION = '3.2.0';
+    public const VERSION = '3.3.0';
 
     /** @param array<string,string> $tables @return array<string,string> */
     public static function apply(array $tables): array
@@ -22,6 +22,7 @@ final class RuntimeSchemaExtension
             'finance_periods',
             'audit',
             'adjustments',
+            'transparency_snapshots',
         ] as $required) {
             if (!isset($tables[$required])) {
                 throw new RuntimeException('CF-03 runtime schema extension is missing '.$required.'.');

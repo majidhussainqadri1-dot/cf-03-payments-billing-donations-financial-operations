@@ -69,8 +69,17 @@ final class FinancialDocumentService
             throw new InvariantViolation('Published financial transparency snapshot was not found.');
         }
         $snapshot = $record['snapshot_json'] ?? null;
-        if (!is_array($snapshot)) {
-            throw new InvariantViolation('Financial transparency snapshot payload is unavailable.');
+        $sourceHash = $record['source_hash'] ?? null;
+        $snapshotHash = $record['snapshot_hash'] ?? null;
+        if (!is_array($snapshot)
+            || !is_string($sourceHash)
+            || !is_string($snapshotHash)
+            || preg_match('/^[a-f0-9]{64}$/', $sourceHash) !== 1
+            || preg_match('/^[a-f0-9]{64}$/', $snapshotHash) !== 1
+            || ($snapshot['source_hash'] ?? null) !== $sourceHash
+            || !hash_equals($snapshotHash, hash('sha256', $this->canonicalJson($snapshot)))
+        ) {
+            throw new InvariantViolation('Financial transparency snapshot integrity verification failed.');
         }
         $this->assertNoSensitiveKeys($snapshot, 'snapshot');
         $contents = $this->canonicalJson($snapshot)."\n";

@@ -15,6 +15,7 @@ use Sabri\CF03\Application\FinancialDownloadContract;
 use Sabri\CF03\Application\IncidentPathGuard;
 use Sabri\CF03\Application\RefundWorkflowService;
 use Sabri\CF03\Application\RouteCatalogue;
+use Sabri\CF03\Application\RuntimeConfiguration;
 use Sabri\CF03\Application\WebhookIngestionService;
 use Sabri\CF03\Domain\DonationNeutralityPolicy;
 use Sabri\CF03\Domain\FounderOwnershipPolicy;
@@ -31,6 +32,10 @@ final class WordPressRestApi
     private const MAX_WEBHOOK_HEADERS = 64;
     private const MAX_WEBHOOK_HEADER_BYTES = 8192;
     private const GUEST_REFERENCE_TTL_SECONDS = 2592000;
+    private const SENSITIVE_WEBHOOK_HEADERS = [
+        'authorization', 'proxy-authorization', 'cookie', 'set-cookie', 'x-wp-nonce',
+        'php-auth-user', 'php-auth-pw', 'x-forwarded-authorization',
+    ];
 
     public static function register(): void
     {
@@ -79,8 +84,10 @@ final class WordPressRestApi
         $runtime = WordPressRuntimeConfiguration::load();
         $incident = (new WordPressIncidentStateStore())->get();
         $liveCollectionEnabled = $runtime->state()->value === 'live'
-            && $runtime->missingFinancialGates() === []
-            && (bool)($incident['checkout_enabled'] ?? false);
+            && $runtime->missingDonationCollectionGates() === []
+            && ($incident['checkout_enabled'] ?? false) === true
+            && ($incident['webhooks_enabled'] ?? false) === true
+            && self::providerReady($runtime);
 
         return [
             'policy_name' => PlatformFinancialPolicy::POLICY_NAME,
@@ -210,14 +217,13 @@ final class WordPressRestApi
 
             $monthly = self::boolean(self::param($request, 'monthly'), false);
             $consent = self::boolean(self::param($request, 'monthly_consent'), false);
-            $key = (string)(
-                self::header($request, 'Idempotency-Key')
-                ?? self::param($request, 'idempotency_key')
-                ?? ''
-            );
+            $key = self::idempotencyKey($request);
             $actor = self::actorReference();
             $intent = 'intent.'.substr(hash('sha256', $actor.'|'.$key), 0, 40);
             $runtime = WordPressRuntimeConfiguration::load();
+            if (!self::providerReady($runtime)) {
+                throw new InvariantViolation('The configured donation provider is not ready.');
+            }
             $draft = new DonationIntentDraft(
                 $intent,
                 $actor,
@@ -228,11 +234,12 @@ final class WordPressRestApi
                 $key,
                 new DateTimeImmutable('now')
             );
-            return (new DonationCheckoutService(
+            $result = (new DonationCheckoutService(
                 $runtime,
                 WordPressProviderRegistryFactory::donations(),
                 WordPressFinancialRepository::fromWordPress()
             ))->create($draft, $runtime->providerCode());
+            return self::publicDonationResult($result);
         } catch (Throwable $error) {
             return self::safePublicError($error);
         }
@@ -263,11 +270,7 @@ final class WordPressRestApi
 
             $action = (string)self::param($request, 'action');
             $consent = (string)self::param($request, 'consent_id');
-            $key = (string)(
-                self::header($request, 'Idempotency-Key')
-                ?? self::param($request, 'idempotency_key')
-                ?? ''
-            );
+            $key = self::idempotencyKey($request);
             $version = self::positiveInteger(self::param($request, 'expected_version'));
 
             if ($action === 'cancel') {
@@ -339,11 +342,7 @@ final class WordPressRestApi
     {
         try {
             self::incident()->assertAvailable('refunds');
-            $key = (string)(
-                self::header($request, 'Idempotency-Key')
-                ?? self::param($request, 'idempotency_key')
-                ?? ''
-            );
+            $key = self::idempotencyKey($request);
             return (new RefundWorkflowService(
                 WordPressFinancialRepository::fromWordPress(),
                 WordPressProviderRegistryFactory::payments(),
@@ -365,6 +364,10 @@ final class WordPressRestApi
         try {
             self::incident()->assertAvailable('webhooks');
             $provider = (string)self::param($request, 'provider');
+            $runtime = WordPressRuntimeConfiguration::load();
+            if (!hash_equals($runtime->providerCode(), $provider) || !self::providerReady($runtime)) {
+                throw new InvariantViolation('Webhook provider is not the approved ready provider.');
+            }
             $body = is_object($request) && method_exists($request, 'get_body')
                 ? (string)$request->get_body()
                 : '';
@@ -373,7 +376,7 @@ final class WordPressRestApi
             }
             $headers = self::boundedHeaders($request);
             return (new WebhookIngestionService(
-                WordPressRuntimeConfiguration::load(),
+                $runtime,
                 WordPressProviderRegistryFactory::payments(),
                 WordPressFinancialRepository::fromWordPress()
             ))->ingest($provider, $body, $headers, time());
@@ -393,6 +396,7 @@ final class WordPressRestApi
             'runtime_diagnostics' => $runtime->toArray(),
             'incident_diagnostics' => (new WordPressIncidentStateStore())->get(),
             'providers' => WordPressProviderRegistryFactory::payments()->health(),
+            'donation_provider_codes' => WordPressProviderRegistryFactory::donations()->registeredProviderCodes(),
             'transparency_snapshot' => self::transparency()['status'],
             'schema_version' => defined('SABRI_CF03_SCHEMA_VERSION')
                 ? SABRI_CF03_SCHEMA_VERSION
@@ -425,6 +429,49 @@ final class WordPressRestApi
         return new IncidentPathGuard(new WordPressIncidentStateStore());
     }
 
+    private static function providerReady(RuntimeConfiguration $runtime): bool
+    {
+        $provider = $runtime->providerCode();
+        if ($provider === 'provider.unconfigured'
+            || !in_array($provider, WordPressProviderRegistryFactory::donations()->registeredProviderCodes(), true)
+        ) {
+            return false;
+        }
+        return (WordPressProviderRegistryFactory::payments()->health()[$provider] ?? null) === 'healthy';
+    }
+
+    /** @param array<string,mixed> $result @return array<string,mixed> */
+    private static function publicDonationResult(array $result): array
+    {
+        $safe = [];
+        foreach ([
+            'status', 'intent_id', 'hosted_url', 'expires_at',
+            'monthly', 'amount_minor', 'currency', 'reused',
+        ] as $field) {
+            if (array_key_exists($field, $result)) {
+                $safe[$field] = $result[$field];
+            }
+        }
+        if (!isset($safe['hosted_url']) || !is_string($safe['hosted_url'])) {
+            throw new InvariantViolation('Hosted donation checkout did not return a safe public continuation URL.');
+        }
+        return $safe;
+    }
+
+    private static function idempotencyKey(mixed $request): string
+    {
+        $header = self::header($request, 'Idempotency-Key');
+        $body = self::param($request, 'idempotency_key');
+        if ($body !== null && !is_string($body)) {
+            throw new InvalidArgumentException('Idempotency key must be a string.');
+        }
+        $body = is_string($body) && $body !== '' ? $body : null;
+        if ($header !== null && $body !== null && !hash_equals($header, $body)) {
+            throw new InvalidArgumentException('Idempotency header and request body do not match.');
+        }
+        return $header ?? $body ?? '';
+    }
+
     private static function actorReference(): string
     {
         if (self::currentUserId() > 0) {
@@ -441,14 +488,18 @@ final class WordPressRestApi
         } catch (Throwable) {
             throw new InvariantViolation('Secure guest identity could not be generated.');
         }
-        if (!headers_sent()) {
-            setcookie('sabri_cf03_guest_ref', $actor, [
-                'expires' => time() + self::GUEST_REFERENCE_TTL_SECONDS,
-                'path' => '/',
-                'secure' => function_exists('is_ssl') && is_ssl(),
-                'httponly' => true,
-                'samesite' => 'Lax',
-            ]);
+        if (headers_sent() || !function_exists('setcookie')) {
+            throw new InvariantViolation('A durable guest financial identity could not be established safely.');
+        }
+        $stored = setcookie('sabri_cf03_guest_ref', $actor, [
+            'expires' => time() + self::GUEST_REFERENCE_TTL_SECONDS,
+            'path' => '/',
+            'secure' => function_exists('is_ssl') && is_ssl(),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+        if ($stored !== true) {
+            throw new InvariantViolation('A durable guest financial identity could not be established safely.');
         }
         return $actor;
     }
@@ -495,6 +546,9 @@ final class WordPressRestApi
             $normalizedName = strtolower(trim((string)$name));
             if (preg_match('/^[a-z0-9][a-z0-9_-]{0,63}$/', $normalizedName) !== 1) {
                 throw new InvalidArgumentException('Provider webhook contains an invalid header name.');
+            }
+            if (in_array($normalizedName, self::SENSITIVE_WEBHOOK_HEADERS, true)) {
+                continue;
             }
             $normalizedValue = is_array($value) ? implode(',', $value) : (string)$value;
             if (strlen($normalizedValue) > self::MAX_WEBHOOK_HEADER_BYTES

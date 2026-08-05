@@ -37,7 +37,14 @@ final class WordPressPublicUi
 
     public static function donate(): string
     {
-        self::assets();
+        $collectionEnabled = false;
+        try {
+            $collectionEnabled = WordPressRestApi::policy()['live_collection_enabled'] === true;
+        } catch (Throwable) {
+            $collectionEnabled = false;
+        }
+        self::assets($collectionEnabled);
+
         $copy = DonationAppealCopy::contract();
         $language = function_exists('get_locale') && str_starts_with((string)get_locale(), 'ur') ? 'ur' : 'en-US';
         $text = is_array($copy[$language] ?? null) ? $copy[$language] : $copy['en-US'];
@@ -49,7 +56,8 @@ final class WordPressPublicUi
             $value = (int)$amount['minor_units'];
             $label = (string)($amount['label'] ?? ('$'.number_format($value / 100, 2)));
             $options .= '<label class="sabri-cf03-choice">'
-                .'<input type="radio" name="amount_minor" value="'.esc_attr((string)$value).'"> '
+                .'<input type="radio" name="amount_minor" value="'.esc_attr((string)$value).'"'
+                .($collectionEnabled ? '' : ' disabled').'> '
                 .'<span>'.esc_html($label).'</span></label>';
         }
 
@@ -58,21 +66,31 @@ final class WordPressPublicUi
         $assurance = (string)($text['assurance'] ?? '');
         $monthlyLabel = (string)($copy['monthly_checkbox']['label'] ?? 'Make this a monthly donation');
         $transparencyPath = (string)($copy['transparency_path'] ?? '/transparency/');
+        $preparedMessage = $language === 'ur'
+            ? 'محفوظ عطیہ وصولی کا نظام ابھی تیاری اور منظوری کے مرحلے میں ہے؛ فی الحال کوئی رقم وصول نہیں کی جارہی۔'
+            : 'Secure donation collection is still being prepared and approved; no funds are being collected at this time.';
+        $disabled = $collectionEnabled ? '' : ' disabled aria-disabled="true"';
+        $availability = $collectionEnabled
+            ? ''
+            : '<p class="sabri-cf03-availability" role="status" aria-live="polite">'.esc_html($preparedMessage).'</p>';
 
         return '<section class="sabri-cf03-card" dir="auto" aria-labelledby="sabri-cf03-donate-title">'
             .'<h2 id="sabri-cf03-donate-title"><ion-icon name="heart-outline" aria-hidden="true"></ion-icon> '
             .esc_html($heading).'</h2>'
             .'<p>'.esc_html($message).'</p>'
             .'<p id="sabri-cf03-donation-assurance" class="sabri-cf03-assurance">'.esc_html($assurance).'</p>'
+            .$availability
             .'<form class="sabri-cf03-donation-form" aria-describedby="sabri-cf03-donation-assurance" novalidate>'
-            .'<fieldset class="sabri-cf03-amounts"><legend>'.esc_html__('Choose a suggested amount or enter a custom amount', 'sabri-cf03-finance').'</legend>'
+            .'<fieldset class="sabri-cf03-amounts"'.($collectionEnabled ? '' : ' disabled').'><legend>'
+            .esc_html__('Choose a suggested amount or enter a custom amount', 'sabri-cf03-finance').'</legend>'
             .$options.'</fieldset>'
             .'<label class="sabri-cf03-field"><span>'.esc_html__('Custom USD amount', 'sabri-cf03-finance').'</span>'
-            .'<input inputmode="decimal" type="number" min="0.01" step="0.01" name="custom_amount" autocomplete="off"></label>'
-            .'<label class="sabri-cf03-check"><input type="checkbox" name="monthly" value="1"> <span>'
+            .'<input inputmode="decimal" type="text" pattern="[0-9]+([.][0-9]{1,2})?" name="custom_amount" autocomplete="off"'
+            .$disabled.'></label>'
+            .'<label class="sabri-cf03-check"><input type="checkbox" name="monthly" value="1"'.$disabled.'> <span>'
             .esc_html($monthlyLabel).'</span></label>'
             .'<input type="hidden" name="idempotency_key" value="">'
-            .'<button type="submit"><ion-icon name="heart-outline" aria-hidden="true"></ion-icon> '
+            .'<button type="submit"'.$disabled.'><ion-icon name="heart-outline" aria-hidden="true"></ion-icon> '
             .esc_html__('Continue to secure provider', 'sabri-cf03-finance').'</button>'
             .'<p class="sabri-cf03-status" role="status" aria-live="polite" aria-atomic="true"></p>'
             .'</form>'
@@ -137,7 +155,7 @@ final class WordPressPublicUi
             .esc_html__('Financial Transparency', 'sabri-cf03-finance').'</h2>'.$body.'</section>';
     }
 
-    private static function assets(): void
+    private static function assets(?bool $collectionEnabled = null): void
     {
         if (function_exists('wp_enqueue_style')) {
             wp_enqueue_style('sabri-cf03-public');
@@ -145,16 +163,25 @@ final class WordPressPublicUi
         if (!function_exists('wp_enqueue_script')) {
             return;
         }
+        if ($collectionEnabled === null) {
+            try {
+                $collectionEnabled = WordPressRestApi::policy()['live_collection_enabled'] === true;
+            } catch (Throwable) {
+                $collectionEnabled = false;
+            }
+        }
         wp_enqueue_script('sabri-cf03-public');
         $data = [
             'root' => esc_url_raw(rest_url(WordPressRestApi::NAMESPACE.'/')),
             'nonce' => function_exists('wp_create_nonce') ? wp_create_nonce('wp_rest') : '',
+            'collectionEnabled' => $collectionEnabled,
             'messages' => [
                 'working' => __('Working…', 'sabri-cf03-finance'),
                 'failed' => __('The request could not be completed.', 'sabri-cf03-finance'),
-                'invalidAmount' => __('Choose or enter a valid positive amount.', 'sabri-cf03-finance'),
+                'invalidAmount' => __('Choose or enter a valid positive amount with no more than two decimal places.', 'sabri-cf03-finance'),
                 'secureContext' => __('A secure browser context is required.', 'sabri-cf03-finance'),
                 'recorded' => __('Request recorded.', 'sabri-cf03-finance'),
+                'unavailable' => __('Secure donation collection is not currently available.', 'sabri-cf03-finance'),
             ],
         ];
         if (function_exists('wp_add_inline_script')) {

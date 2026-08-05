@@ -9,30 +9,78 @@ use Sabri\CF03\Contracts\QueryableFinancialRepository;
 
 final class BillingQueryService
 {
+    /** @var array<string,array{collection:string,field:string}> */
+    private const GROUPS = [
+        'invoices' => ['collection' => 'invoices', 'field' => 'actor_ref'],
+        'donations' => ['collection' => 'donations', 'field' => 'donor_ref'],
+        'subscriptions' => ['collection' => 'subscriptions', 'field' => 'actor_ref'],
+        'refunds' => ['collection' => 'refunds', 'field' => 'requester_ref'],
+        'exports' => ['collection' => 'exports', 'field' => 'requester_ref'],
+    ];
+
     public function __construct(private readonly QueryableFinancialRepository $repository) {}
 
     /** @return array<string,mixed> */
     public function forActor(string $actorReference, int $limit = 50): array
     {
         self::assertReference($actorReference);
-        if ($limit < 1 || $limit > 100) { throw new InvalidArgumentException('Billing query limit must be between 1 and 100.'); }
-        $invoices = $this->safe('invoices', $this->repository->find('invoices', ['actor_ref' => $actorReference], $limit));
-        $donations = $this->safe('donations', $this->repository->find('donations', ['donor_ref' => $actorReference], $limit));
-        $subscriptions = $this->safe('subscriptions', $this->repository->find('subscriptions', ['actor_ref' => $actorReference], $limit));
-        $refunds = $this->safe('refunds', $this->repository->find('refunds', ['requester_ref' => $actorReference], $limit));
-        $exports = $this->safe('exports', $this->repository->find('exports', ['requester_ref' => $actorReference], $limit));
-        return [
-            'actor_scope' => 'self',
-            'invoices' => $invoices,
-            'donations' => $donations,
-            'subscriptions' => $subscriptions,
-            'refunds' => $refunds,
-            'exports' => $exports,
-            'counts' => [
-                'invoices' => count($invoices), 'donations' => count($donations),
-                'subscriptions' => count($subscriptions), 'refunds' => count($refunds), 'exports' => count($exports),
-            ],
-        ];
+        if ($limit < 1 || $limit > 100) {
+            throw new InvalidArgumentException('Billing query limit must be between 1 and 100.');
+        }
+        $groups = [];
+        foreach (self::GROUPS as $name => $definition) {
+            $groups[$name] = $this->safe(
+                $name,
+                $this->repository->find(
+                    $definition['collection'],
+                    [$definition['field'] => $actorReference],
+                    $limit
+                )
+            );
+        }
+        return $this->response($groups, null);
+    }
+
+    /** @return array<string,mixed> */
+    public function forActorPage(string $actorReference, int $page, int $perGroup = 20): array
+    {
+        self::assertReference($actorReference);
+        if ($page < 1 || $page > 100000) {
+            throw new InvalidArgumentException('Billing export page is invalid.');
+        }
+        if ($perGroup < 1 || $perGroup > 100) {
+            throw new InvalidArgumentException('Billing export page size must be between 1 and 100.');
+        }
+        $offset = ($page - 1) * $perGroup;
+        $groups = [];
+        $done = true;
+        foreach (self::GROUPS as $name => $definition) {
+            $records = $this->repository->page(
+                $definition['collection'],
+                [$definition['field'] => $actorReference],
+                $perGroup,
+                $offset
+            );
+            $groups[$name] = $this->safe($name, $records);
+            if (count($records) === $perGroup) {
+                $done = false;
+            }
+        }
+        return $this->response($groups, $done);
+    }
+
+    /** @param array<string,list<array<string,mixed>>> $groups @return array<string,mixed> */
+    private function response(array $groups, ?bool $done): array
+    {
+        $counts = [];
+        foreach ($groups as $name => $records) {
+            $counts[$name] = count($records);
+        }
+        $response = ['actor_scope' => 'self'] + $groups + ['counts' => $counts];
+        if ($done !== null) {
+            $response['done'] = $done;
+        }
+        return $response;
     }
 
     /** @param list<array<string,mixed>> $records @return list<array<string,mixed>> */
@@ -48,7 +96,11 @@ final class BillingQueryService
         $result = [];
         foreach ($records as $record) {
             $safe = [];
-            foreach ($allowed as $field) { if (array_key_exists($field, $record)) { $safe[$field] = $record[$field]; } }
+            foreach ($allowed as $field) {
+                if (array_key_exists($field, $record)) {
+                    $safe[$field] = $record[$field];
+                }
+            }
             $result[] = $safe;
         }
         return $result;
