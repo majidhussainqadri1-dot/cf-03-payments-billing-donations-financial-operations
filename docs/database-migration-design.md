@@ -2,7 +2,7 @@
 
 ## Current status
 
-CF-03 implements an additive 31-table WordPress schema. `WordPressSchemaInstaller` uses `dbDelta`, then verifies each canonical table and every required column before publishing the installed schema version. Runtime collection remains fail closed independently of schema presence.
+CF-03 now has the **implemented additive 31-table schema** for WordPress. `WordPressSchemaInstaller` uses `dbDelta`, then verifies each canonical table and every required column before publishing the installed schema version. Runtime collection remains fail closed independently of schema presence.
 
 ## Schema lineage
 
