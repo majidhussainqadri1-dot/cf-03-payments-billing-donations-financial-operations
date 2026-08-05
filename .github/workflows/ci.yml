@@ -32,6 +32,8 @@ jobs:
         run: php tests/run-free-donation-policy.php
       - name: Founder ownership and transparency tests
         run: php tests/run-founder-donation-transparency.php
+      - name: Three-plan harmonization tests
+        run: php tests/run-three-plan-harmonization.php
       - name: Dual-plan completion tests
         run: php tests/run-plan-completion.php
       - name: Second adversarial integrity tests
@@ -49,16 +51,26 @@ jobs:
       - name: Governing source assertions
         run: |
           grep -RInq 'SSH-FIN-DONATION-2026-08-04-01' src docs manifests README.md
-          grep -q 'Version: 1.1.0-rc.1' cf-03-payments-billing-donations-financial-operations.php
-          grep -q "SABRI_CF03_VERSION','1.1.0-rc.1'" cf-03-payments-billing-donations-financial-operations.php
+          grep -RInq 'SSH-PMP-2026-v3.0' docs manifests README.md
+          grep -RInq 'Consolidated Current-Chat Directive Register' docs manifests README.md
+          grep -RInq 'CHAT-DL-001' src docs manifests README.md
+          grep -RInq 'CHAT-QA-001' docs manifests README.md
+          grep -q 'Version: 1.1.0-rc.2' cf-03-payments-billing-donations-financial-operations.php
+          grep -q "SABRI_CF03_VERSION','1.1.0-rc.2'" cf-03-payments-billing-donations-financial-operations.php
           grep -RInq "public const VERSION='3.0.0'" src/Persistence/CompleteSchema.php
           grep -q 'sabri_cf03_expenses' src/Persistence/TransparencySchema.php
           grep -q 'sabri_cf03_transparency_snapshots' src/Persistence/TransparencySchema.php
           grep -q 'sabri_cf03_donor_acknowledgments' src/Persistence/TransparencySchema.php
           test -f src/Domain/FinancialTransparencySnapshot.php
           test -f src/Domain/FounderOwnershipPolicy.php
+          test -f src/Domain/FinancialDownloadGrant.php
+          test -f src/Application/FinancialDownloadContract.php
           test -f tests/run-founder-donation-transparency.php
+          test -f tests/run-three-plan-harmonization.php
           grep -q '/transparency/' src/Application/RouteCatalogue.php
+          grep -q '/billing/invoices/{id}/download' src/Application/RouteCatalogue.php
+          grep -q '/billing/receipts/{id}/download' src/Application/RouteCatalogue.php
+          grep -q '/admin/finance/exports/{id}/download' src/Application/RouteCatalogue.php
           grep -q 'sabri_manage_finance' src/Plugin.php
           grep -q 'SHOW TABLES LIKE' src/Infrastructure/WordPressSchemaInstaller.php
 
@@ -71,13 +83,14 @@ jobs:
       - name: Build twice
         run: |
           bash scripts/build-package.sh
-          first="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.1.zip | cut -d' ' -f1)"
+          first="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.2.zip | cut -d' ' -f1)"
           bash scripts/build-package.sh
-          second="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.1.zip | cut -d' ' -f1)"
+          second="$(sha256sum build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.2.zip | cut -d' ' -f1)"
           test "$first" = "$second"
       - name: Verify canonical package
         run: |
-          test -f build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.1.zip
-          unzip -Z1 build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.1.zip | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
-          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.1.zip cf-03-payments-billing-donations-financial-operations/cf-03-payments-billing-donations-financial-operations.php | grep -q 'Version: 1.1.0-rc.1'
-          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.1.zip cf-03-payments-billing-donations-financial-operations/src/Persistence/CompleteSchema.php | grep -q "VERSION='3.0.0'"
+          test -f build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.2.zip
+          unzip -Z1 build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.2.zip | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
+          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.2.zip cf-03-payments-billing-donations-financial-operations/cf-03-payments-billing-donations-financial-operations.php | grep -q 'Version: 1.1.0-rc.2'
+          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.2.zip cf-03-payments-billing-donations-financial-operations/src/Persistence/CompleteSchema.php | grep -q "VERSION='3.0.0'"
+          unzip -p build/cf-03-payments-billing-donations-financial-operations-1.1.0-rc.2.zip cf-03-payments-billing-donations-financial-operations/src/Application/FinancialDownloadContract.php | grep -q 'CHAT-DL-001'
