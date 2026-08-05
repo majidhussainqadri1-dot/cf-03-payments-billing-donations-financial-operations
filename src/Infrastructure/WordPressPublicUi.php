@@ -1,0 +1,44 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Sabri\CF03\Infrastructure;
+
+use Sabri\CF03\Application\DonationAppealCopy;
+use Sabri\CF03\Domain\DonationNeutralityPolicy;
+use Sabri\CF03\Domain\PlatformFinancialPolicy;
+use Throwable;
+
+final class WordPressPublicUi
+{
+    public static function register():void
+    {
+        if(function_exists('add_shortcode')){add_shortcode('sabri_cf03_donate',[self::class,'donate']);add_shortcode('sabri_cf03_billing',[self::class,'billing']);add_shortcode('sabri_cf03_transparency',[self::class,'transparency']);}
+        if(function_exists('wp_register_style')&&defined('SABRI_CF03_VERSION')){wp_register_style('sabri-cf03-public',plugins_url('assets/css/public.css',SABRI_CF03_FILE),[],SABRI_CF03_VERSION);wp_register_script('sabri-cf03-public',plugins_url('assets/js/public.js',SABRI_CF03_FILE),[],SABRI_CF03_VERSION,true);}
+    }
+
+    public static function donate():string
+    {
+        self::assets();$copy=DonationAppealCopy::contract();$amounts=$copy['amounts']??[1000,1400,5000];$options='';foreach($amounts as $minor){$value=(int)$minor;$options.='<label class="sabri-cf03-choice"><input type="radio" name="amount_minor" value="'.esc_attr((string)$value).'"> <span>$'.esc_html(number_format($value/100,2)).'</span></label>';}
+        return '<section class="sabri-cf03-card" dir="auto" aria-labelledby="sabri-cf03-donate-title"><h2 id="sabri-cf03-donate-title"><ion-icon name="heart-outline" aria-hidden="true"></ion-icon> '.esc_html__('Voluntary Donation','sabri-cf03-finance').'</h2><p>'.esc_html__('Your donation is optional. It never changes access, ranking, verification, visibility, publishing, moderation, support, clinic, marketplace, education, AI or clinical decisions.','sabri-cf03-finance').'</p><form class="sabri-cf03-donation-form" novalidate>'.$options.'<label class="sabri-cf03-field"><span>'.esc_html__('Custom USD amount','sabri-cf03-finance').'</span><input inputmode="decimal" type="number" min="0.01" step="0.01" name="custom_amount" autocomplete="off"></label><label class="sabri-cf03-check"><input type="checkbox" name="monthly" value="1"> <span>'.esc_html__('Make this a monthly donation','sabri-cf03-finance').'</span></label><input type="hidden" name="idempotency_key" value=""><button type="submit"><ion-icon name="heart-outline" aria-hidden="true"></ion-icon> '.esc_html__('Continue to secure provider','sabri-cf03-finance').'</button><p class="sabri-cf03-status" role="status" aria-live="polite"></p></form><p><a href="'.esc_url(home_url('/transparency/')).'"><ion-icon name="document-text-outline" aria-hidden="true"></ion-icon> '.esc_html__('Financial transparency','sabri-cf03-finance').'</a></p></section>';
+    }
+
+    public static function billing():string
+    {
+        self::assets();if(!function_exists('is_user_logged_in')||!is_user_logged_in()){return '<section class="sabri-cf03-card" dir="auto"><h2>'.esc_html__('Billing and Receipts','sabri-cf03-finance').'</h2><p>'.esc_html__('Please sign in to view your private receipts, donations and refund status.','sabri-cf03-finance').'</p></section>';}
+        return '<section class="sabri-cf03-card sabri-cf03-billing" dir="auto"><h2><ion-icon name="receipt-outline" aria-hidden="true"></ion-icon> '.esc_html__('Billing and Receipts','sabri-cf03-finance').'</h2><button type="button" data-sabri-cf03-load-billing><ion-icon name="refresh-outline" aria-hidden="true"></ion-icon> '.esc_html__('Load my records','sabri-cf03-finance').'</button><div class="sabri-cf03-billing-results" role="region" aria-live="polite"></div></section>';
+    }
+
+    public static function transparency():string
+    {
+        self::assets();try{$result=WordPressRestApi::transparency();}catch(Throwable){$result=['status'=>'unavailable','snapshot'=>null];}$snapshot=$result['snapshot']??null;$body='<p>'.esc_html((new PlatformFinancialPolicy())->publicDisclosure()['en-US']).'</p>';
+        if(is_array($snapshot)){$body.='<dl>';foreach($snapshot as $key=>$value){if(is_scalar($value)||$value===null){$body.='<dt>'.esc_html((string)$key).'</dt><dd>'.esc_html((string)$value).'</dd>';}}$body.='</dl>';}else{$body.='<p>'.esc_html__('No verified aggregate financial snapshot has been published. No figures are fabricated.','sabri-cf03-finance').'</p>';}
+        $neutrality=(new DonationNeutralityPolicy())->publicContract();$body.='<p>'.esc_html($neutrality['donor_and_non_donor_core_capabilities_equal']?__('Donors and non-donors receive the same core platform capabilities.','sabri-cf03-finance'):'').'</p>';
+        return '<section class="sabri-cf03-card" dir="auto"><h2><ion-icon name="analytics-outline" aria-hidden="true"></ion-icon> '.esc_html__('Financial Transparency','sabri-cf03-finance').'</h2>'.$body.'</section>';
+    }
+
+    private static function assets():void
+    {
+        if(function_exists('wp_enqueue_style')){wp_enqueue_style('sabri-cf03-public');}if(function_exists('wp_enqueue_script')){wp_enqueue_script('sabri-cf03-public');$data=['root'=>esc_url_raw(rest_url(WordPressRestApi::NAMESPACE.'/')),'nonce'=>function_exists('wp_create_nonce')?wp_create_nonce('wp_rest'):'','messages'=>['working'=>__('Working…','sabri-cf03-finance'),'failed'=>__('The request could not be completed.','sabri-cf03-finance')]];wp_add_inline_script('sabri-cf03-public','window.SabriCF03='.wp_json_encode($data).';','before');}
+    }
+}
