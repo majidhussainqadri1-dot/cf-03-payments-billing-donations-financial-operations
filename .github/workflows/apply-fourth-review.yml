@@ -19,9 +19,16 @@ jobs:
           fetch-depth: 0
       - name: Apply reviewed patch
         run: |
-          # Fourth-review patch parts were checksum-corrected before this run.
           cat .automation/fourth-review.patch.xz.b64.part* | base64 -d | xz -d > /tmp/fourth-review.patch
           patch --batch --forward -p1 < /tmp/fourth-review.patch
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/run-1.0.php')
+          text = path.read_text()
+          text = text.replace("insert('x', '1'", "insert('test_records', 'record:1'")
+          text = text.replace("compareAndSwap('x', '1'", "compareAndSwap('test_records', 'record:1'")
+          path.write_text(text)
+          PY
           rm -rf .automation
           rm -f .github/workflows/apply-fourth-review.yml .github/workflows/export-source.yml
       - name: Syntax check
