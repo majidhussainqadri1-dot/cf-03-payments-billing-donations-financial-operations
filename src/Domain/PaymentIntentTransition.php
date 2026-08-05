@@ -13,8 +13,8 @@ final class PaymentIntentTransition
         'created' => ['provider_pending', 'cancelled', 'expired'],
         'provider_pending' => ['authorized', 'captured', 'settled', 'failed', 'cancelled', 'expired', 'quarantined'],
         'authorized' => ['captured', 'settled', 'failed', 'cancelled', 'expired', 'quarantined'],
-        'captured' => ['settled', 'refunded', 'disputed', 'quarantined'],
-        'settled' => ['refunded', 'disputed'],
+        'captured' => ['settled', 'disputed', 'quarantined'],
+        'settled' => ['disputed'],
         'quarantined' => ['provider_pending', 'failed', 'cancelled'],
         'failed' => [],
         'cancelled' => [],
@@ -25,10 +25,17 @@ final class PaymentIntentTransition
 
     public function assertAllowed(PaymentIntentState $from, PaymentIntentState $to): void
     {
-        if ($from === $to) { return; }
+        if ($from === $to) {
+            return;
+        }
+
         $allowed = self::ALLOWED[$from->value] ?? [];
-        if (! in_array($to->value, $allowed, true)) {
-            throw new InvariantViolation(sprintf('Invalid payment-intent transition from %s to %s.', $from->value, $to->value));
+        if (!in_array($to->value, $allowed, true)) {
+            throw new InvariantViolation(sprintf(
+                'Invalid payment-intent transition from %s to %s.',
+                $from->value,
+                $to->value
+            ));
         }
     }
 }
