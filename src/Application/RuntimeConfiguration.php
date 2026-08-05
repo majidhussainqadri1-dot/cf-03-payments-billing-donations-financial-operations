@@ -37,7 +37,10 @@ final class RuntimeConfiguration
             throw new InvalidArgumentException('Runtime provider code is invalid.');
         }
         foreach ($gates as $name => $value) {
-            if (!is_string($name) || preg_match('/^[a-z][a-z0-9_]{2,63}$/', $name) !== 1 || !is_bool($value)) {
+            if (!is_string($name)
+                || preg_match('/^[a-z][a-z0-9_]{2,63}$/', $name) !== 1
+                || !is_bool($value)
+            ) {
                 throw new InvalidArgumentException('Runtime gates must use stable lowercase identifiers and boolean values.');
             }
         }
@@ -58,12 +61,31 @@ final class RuntimeConfiguration
     {
         $missing = [];
         foreach (self::FINANCIAL_GATES as $gate) {
-            if (($this->gates[$gate] ?? false) !== true) { $missing[] = $gate; }
+            if (($this->gates[$gate] ?? false) !== true) {
+                $missing[] = $gate;
+            }
         }
-        if ($this->state === DonationServiceState::LIVE && ($this->gates['founder_live_approval'] ?? false) !== true) {
+        if ($this->state === DonationServiceState::LIVE
+            && ($this->gates['founder_live_approval'] ?? false) !== true
+        ) {
             $missing[] = 'founder_live_approval';
         }
-        if ($this->providerCode === 'provider.unconfigured') { $missing[] = 'provider_selected'; }
+        if ($this->providerCode === 'provider.unconfigured') {
+            $missing[] = 'provider_selected';
+        }
+        return array_values(array_unique($missing));
+    }
+
+    /** @return list<string> */
+    public function missingDonationCollectionGates(): array
+    {
+        $missing = $this->missingFinancialGates();
+        if (!$this->webhookEnabled) {
+            $missing[] = 'webhook_enabled';
+        }
+        if (($this->gates['webhook_endpoint'] ?? false) !== true) {
+            $missing[] = 'webhook_endpoint';
+        }
         return array_values(array_unique($missing));
     }
 
@@ -80,15 +102,20 @@ final class RuntimeConfiguration
 
     public function assertDonationCheckoutReady(): void
     {
-        $this->assertFinancialMutationReady();
+        if ($this->state === DonationServiceState::PREPARING) {
+            throw new InvariantViolation('CF-03 donation collection remains disabled while the service is preparing.');
+        }
+        $missing = $this->missingDonationCollectionGates();
+        if ($missing !== []) {
+            throw new InvariantViolation(
+                'CF-03 donation collection requires complete financial and webhook readiness: '.implode(', ', $missing).'.'
+            );
+        }
     }
 
     public function assertWebhookReady(): void
     {
-        $this->assertFinancialMutationReady();
-        if (!$this->webhookEnabled || ($this->gates['webhook_endpoint'] ?? false) !== true) {
-            throw new InvariantViolation('CF-03 webhook ingestion is disabled or lacks endpoint acceptance evidence.');
-        }
+        $this->assertDonationCheckoutReady();
     }
 
     public function assertDownloadDeliveryReady(): void
@@ -109,6 +136,7 @@ final class RuntimeConfiguration
             'provider' => $this->providerCode,
             'gates' => $this->gates,
             'missing_financial_gates' => $this->missingFinancialGates(),
+            'missing_donation_collection_gates' => $this->missingDonationCollectionGates(),
             'webhook_enabled' => $this->webhookEnabled,
             'download_delivery_enabled' => $this->downloadDeliveryEnabled,
         ];
