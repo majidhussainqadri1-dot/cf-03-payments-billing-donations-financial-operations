@@ -1,82 +1,98 @@
-# CF-03 Architecture — 1.2.0-rc.1
+# CF-03 Architecture — 1.2.0-rc.2
 
 ## Status boundary
 
-This release is the repository-source implementation of the three governing plans and Founder decision `SSH-FIN-DONATION-2026-08-04-01`. It is not a Live payment processor. Runtime financial mutations default to fail closed until all external gates and an approved provider are configured.
+This release is the repository-source implementation candidate for the three governing plans and Founder decision `SSH-FIN-DONATION-2026-08-04-01`. It is not an activated payment processor. Live collection and financial delivery remain disabled and fail closed.
 
 ## Constitutional layer
 
-1. The platform is Founder-owned by Dr. Allamah Majid Hussain Sabri Muhaddith Murshid.
-2. It is not a Trust, charitable trust, welfare trust or trust fund.
-3. Fixed registration, membership, education, AI, listing, verification, publishing and core-platform fees are prohibited under the active decision.
-4. Clinic and Marketplace platform commission is 0%.
-5. Donations are voluntary and create no access, ranking, verification, publishing, governance, ownership or other privilege.
-6. Public aggregate transparency and separate Founder-payment disclosure are mandatory.
+1. Founder-owned; not a Trust, charitable trust, welfare trust or trust fund.
+2. Fixed registration, membership, education, AI, listing, verification, publishing and core-platform fees are prohibited under the active decision.
+3. Clinic and Marketplace platform commission is 0%.
+4. Donations are voluntary, one-time or monthly, default-off and non-privileged.
+5. File 00 owns entitlement; CF-03 owns financial truth and emits facts only.
+6. Public transparency is aggregate, verified and privacy-minimized.
 
 ## Canonical ownership
 
-CF-03 owns financial policy, donation intents, provider facts, recurring consent, receipts, refunds, donation and expense ledgers, reconciliation, transparency snapshots, exports and financial audit evidence.
+CF-03 owns financial policy, donation intents, provider facts, recurring consent, invoices/receipts, refunds, disputes, ledger, settlement, reconciliation, expenses, transparency snapshots, exports, retention and financial audit evidence.
 
-It does not own identity/entitlement (File 00), global-shell mounting (File 20), visual/RTL/accessibility presentation (File 25), assurance governance (File 24), notification delivery (File 19), ranking (File 26), case orchestration (CF-02), secure media/file delivery (CF-04), or Clinic/Marketplace direct-deal funds.
+It does not own identity/entitlement (File 00), global shell/download manager (File 20), visual/RTL/accessibility presentation (File 25), assurance governance (File 24), notification delivery (File 19), ranking/recommendations (File 26), support case orchestration (CF-02), secure media delivery (CF-04), or Clinic/Marketplace direct-deal funds.
 
 ## Runtime layers
 
-1. WordPress bootstrap, granular capabilities, additive schema installation and Site Health.
-2. Founder ownership, non-Trust and no-fixed-fee policy.
-3. Product/price historical governance and hard non-donation checkout rejection.
-4. Monthly Donation Appeal policy with calendar-month, 30-day, page and session limits.
-5. Donation intent, explicit recurring consent, hosted checkout, provider facts, receipts and refunds.
-6. Immutable double-entry ledger, settlement import and reconciliation.
-7. Finance-period review, close, reopen and controlled adjustments.
-8. Approved expense taxonomy, aggregate transparency and donor acknowledgment consent.
-9. Secure exports, audience-bound download grants and privacy export/erasure boundaries.
-10. Fraud review, chargebacks, retention/legal holds and incident containment.
-11. Outbox, audit hash chain, backup manifest, restore reconciliation and operational integrity.
-12. Versioned cross-file and REST contracts.
+1. WordPress bootstrap, capability registration, privacy callbacks, scheduler and Site Health.
+2. Fail-closed automatic source/schema upgrade with a bounded upgrade lock.
+3. Historical `Schema::VERSION = 2.0.0` base.
+4. Founder ownership, non-Trust, no-fixed-fee, voluntary-donation and 0% commission policy.
+5. Donation prompt policy, canonical user state and presentation-neutral contracts.
+6. Hosted donation checkout with provider-safe subject minimization and durable idempotency checkpoint.
+7. Signed provider webhooks, state mapping, ledger posting, receipts and outbox facts.
+8. Refund, recurring-donation, settlement, reconciliation, period-close, adjustment and incident operations.
+9. Expense taxonomy, canonical aggregate transparency and donor acknowledgment consent.
+10. Secure exports/download grants, retention, audit chain, backup and restore evidence.
 
 ## Persistence architecture
 
-`Schema::VERSION = 2.0.0` remains the historical 28-table base. `TransparencySchema` adds expenses, transparency snapshots and donor acknowledgments. `RuntimeSchemaExtension::VERSION = 3.2.0` applies the current integrity additions, including recurring-consent optimistic versioning, unique immutable ledger source references, reconciliation resolution evidence, export specifications, settlement actor evidence and serialized audit-chain constraints.
+`Schema::VERSION = 2.0.0` remains the historical 28-table base. `TransparencySchema` adds three tables:
 
-`CompleteSchema::VERSION = 3.2.0` composes all 31 canonical tables. Activation runs additive `dbDelta` migrations and verifies every required table and column before publishing the schema version.
+- `sabri_cf03_expenses`;
+- `sabri_cf03_transparency_snapshots`;
+- `sabri_cf03_donor_acknowledgments`.
 
-## Public and private diagnostics
+`RuntimeSchemaExtension::VERSION = 3.3.0` applies deterministic additive integrity changes, and `CompleteSchema::VERSION = 3.3.0` composes all 31 canonical tables.
 
-Public policy/transparency responses contain only policy facts and a redacted runtime state. They do not expose provider identity, activation-gate maps, missing-gate names, incident identifiers, reasons, operators or internal evidence.
+Activation/upgrade verifies:
 
-Authorized finance-health endpoints retain full runtime/provider/incident diagnostics. Public operational conflicts are generic and do not reveal internal activation or incident details.
+- safe WordPress table prefix;
+- all 31 table names;
+- all required columns;
+- primary and named secondary indexes;
+- index column order;
+- uniqueness requirements;
+- transparency legacy-index removal;
+- existing transparency source evidence;
+- transparency snapshot-hash backfill.
 
-## Donation and webhook request boundary
+## Transaction and idempotency model
 
-- Public donation JSON bodies are bounded before parsing/application processing.
-- Webhook bodies are limited to one megabyte and headers are count-, name- and value-bounded.
-- Provider adapters must verify signatures, replay windows and normalized payloads.
-- Browser return paths never establish settlement.
-- Public guest references are first-party, HttpOnly, SameSite and limited to 30 days.
+The durable WordPress repository enforces bounded canonical collections, rejects floats and unknown fields, detects duplicate canonical identifiers and marks nested failures rollback-only. Updates and deletes require non-empty schema-backed predicates.
 
-## Monthly Donation Appeal
+Donation checkout uses a local idempotency claim. After the hosted provider creates a session, the claim enters `provider_created` before local intent, consent and donation records are committed. A retry resumes the checkpointed provider session and verifies provider/session/request parity. Public responses do not expose provider internals.
 
-- Maximum one prompt per calendar month.
-- Remind Me Later, Not Now, Close and completed donation impose at least 30 days of suppression.
-- Active monthly donors receive no general appeal.
-- Sensitive authentication, clinical, emergency, support and payment-error contexts are excluded.
-- No more than one prompt per page view or session.
-- Suggested amounts are USD 10, USD 14, USD 50 and positive custom USD; amount and recurrence are unselected by default.
+## Collection activation model
 
-Logged-in fields: `last_donation_prompt_at`, `next_donation_prompt_at`, `donation_prompt_status`, `donation_prompt_snoozed_until`, `last_donation_completed_at`, `recurring_donation_status`.
+`RuntimeConfiguration::missingDonationCollectionGates()` extends ordinary financial gates with webhook enablement and endpoint acceptance. Live public readiness additionally requires:
 
-Guest keys: `sabri_donation_prompt_seen_at`, `sabri_donation_prompt_next_at`.
+- exact installed schema version;
+- registered donation adapter;
+- matching healthy payment adapter;
+- incident checkout path enabled;
+- incident webhook path enabled;
+- explicit Founder Live approval when runtime mode is Live.
 
-## Transparency and privacy
+Any malformed runtime option, stale schema, corrupt incident state, failed upgrade, unknown prompt context or unpersisted guest identity fails closed.
 
-`/transparency/` serves only a verified published aggregate snapshot. When none exists it returns `not_published` with `snapshot: null`; it never invents figures. Public data excludes donor identity, bank/card details, payment credentials, private invoices, provider secrets and security-sensitive vendor evidence.
+## Transparency integrity
 
-Public donor acknowledgment requires explicit, revocable consent and grants no privilege.
+A published transparency snapshot is keyed by period and currency and contains the canonical source hash inside the payload. The row also stores an independent `snapshot_hash` over canonical JSON. Publication reuse, public read and download generation verify both hashes. A mismatch is an integrity failure, not a display warning.
 
-## Activation governance
+## Privacy architecture
 
-Live donation collection requires matching module-version evidence, Founder approval, legal entity and receiving account, legal/tax/accounting and PCI review, an approved hosted/tokenized provider, independent security acceptance, Hostinger staging acceptance, backup/restore and rollback evidence, operations readiness and explicit Founder Live activation.
+- Provider-facing donation drafts use `donor:withheld`.
+- Public policy output redacts provider, gate and incident diagnostics.
+- Public checkout responses use a strict allowlist.
+- Webhook forwarding strips authorization, cookies, nonce and related sensitive headers.
+- Guest identity requires a persisted 30-day first-party HttpOnly SameSite cookie.
+- Logged-in prompt state uses six canonical server-side fields.
+- Unknown page contexts are suppressed.
+- Privacy export is paginated and reports safe failure instead of silently omitting records.
+- Mandatory financial/audit records are retained; optional prompt state and public acknowledgment are erased or revoked.
 
-## Packaging
+## Packaging and QA
 
-The build script creates deterministic `1.2.0-rc.1` WordPress packages with one canonical top-level folder and SHA-256 evidence. Repository tests, GitHub workflow files, build scripts and temporary probe artifacts are excluded from the installable package.
+The deterministic package contains one canonical plugin root, excludes tests, repository automation and temporary/editor artifacts, and is built twice for SHA-256 parity. Fourteen suites execute 404 tests per PHP version and 1,212 test executions across PHP 8.1–8.3.
+
+## External boundary
+
+No approved Live provider adapter, legal/tax/accounting acceptance, PCI acceptance, independent security acceptance, Hostinger staging acceptance, browser/RTL/accessibility/performance acceptance, backup/restore drill or Founder Live activation is represented by this source candidate.

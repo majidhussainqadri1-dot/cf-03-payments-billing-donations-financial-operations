@@ -1,0 +1,58 @@
+{
+  "module": "CF-03",
+  "release": "1.2.0-rc.2",
+  "schema": "3.3.0",
+  "base_schema": "2.0.0",
+  "table_count": 31,
+  "status": "source-candidate-third-forty-round-reviewed-runtime-fail-closed",
+  "governing_plans": [
+    "SSH-PMP-2026-v3.0",
+    "Sabri Platform All-Chats Recovered Directive Register 2026 v2.1",
+    "CF-03 Integrated Final Plan 2026 v2.0"
+  ],
+  "founder_decision": "SSH-FIN-DONATION-2026-08-04-01",
+  "review_evidence": "docs/review-evidence-40-rounds-third-1.2.0-rc.2.md",
+  "test_suite": "tests/run-review-40-third.php",
+  "automated_qa": {
+    "suites": 14,
+    "tests_per_php_version": 404,
+    "php_versions": ["8.1", "8.2", "8.3"],
+    "aggregate_test_executions": 1212,
+    "syntax_scan": true,
+    "manifest_validation": true,
+    "credential_material_scan": true,
+    "deterministic_package_parity": true
+  },
+  "hardening": {
+    "donation_collection_requires_webhook_readiness": true,
+    "provider_registry_health_parity": true,
+    "provider_subject_withheld": true,
+    "provider_created_checkpoint": true,
+    "public_provider_details_redacted": true,
+    "idempotency_header_body_parity": true,
+    "corrupt_incident_state_fails_closed": true,
+    "unknown_prompt_context_fails_closed": true,
+    "prompt_subject_binding": true,
+    "duplicate_identity_detection": true,
+    "nested_transaction_rollback_only": true,
+    "schema_index_verification": true,
+    "automatic_fail_closed_upgrade": true,
+    "transparency_snapshot_sha256": true,
+    "privacy_export_pagination": true,
+    "closed_collection_ui": true,
+    "strict_minor_unit_browser_parsing": true
+  },
+  "live_collection_enabled": false,
+  "live_delivery_enabled": false,
+  "external_gates_pending": [
+    "legal-tax-accounting",
+    "pci-responsibility",
+    "approved-provider",
+    "independent-security",
+    "hostinger-staging",
+    "cross-file-integration",
+    "browser-rtl-accessibility-performance",
+    "backup-restore-rollback",
+    "founder-live-approval"
+  ]
+}

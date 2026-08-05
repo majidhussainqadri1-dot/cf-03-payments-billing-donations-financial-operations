@@ -1,64 +1,82 @@
-# CF-03 Contracts and Events — 1.2.0-rc.1
+# CF-03 Contracts and Events — 1.2.0-rc.2
 
-## Contract maturity
+## Runtime maturity
 
-CF-03 now contains domain contracts, a durable WordPress repository, REST adapters, schedulers, outbox processing and provider-neutral ports. It does not contain an approved Live provider adapter or Live credentials. Real collection remains fail closed.
+These contracts are implemented over a durable WordPress repository, REST adapters, schedulers, outbox records and provider-neutral ports. The repository still contains no approved Live provider adapter or Live activation evidence.
 
-## Hosted and recurring provider ports
+## Donation provider contract
 
-`HostedPaymentProvider`, `DonationPaymentProvider`, `PaymentProvider` and `RecurringDonationProvider` expose only provider-scoped operations:
+`DonationPaymentProvider` exposes provider identity, supported currencies, health, hosted donation checkout creation/resume, webhook verification, donation-evidence query, refund and settlement retrieval. The runtime requires the configured provider to be present in the donation registry and healthy in the payment registry.
 
-- capability and currency discovery;
-- creation/resumption of hosted checkout;
-- trusted provider evidence retrieval;
-- signed webhook normalization;
-- refunds;
-- recurring amount changes and cancellation;
-- settlement retrieval.
+A provider receives a `DonationIntentDraft::providerSafeClone()` whose donor subject is withheld. The canonical user/guest reference remains local to CF-03. The provider-facing request retains only the intent, exact minor-unit amount, currency, recurrence consent, state, idempotency key and timestamp necessary for secure hosted checkout.
 
-Platform forms never collect PAN, CVV, PIN, OTP, bank passwords or raw payment credentials. Hosted checkout URLs require HTTPS and adapter-specific host allowlists.
+## Idempotency and hosted checkout
 
-## Idempotency
+- Header and body idempotency values must match.
+- The local claim binds actor, request hash and 24-hour expiry.
+- Provider session creation is followed by a durable `provider_created` checkpoint.
+- Canonical intent, donation and optional recurring-consent records are committed atomically.
+- A completed replay resumes the canonical provider session.
+- Changed input under the same key is rejected.
+- Public REST output excludes provider code and provider-session reference.
 
-Checkout and mutation requests bind an idempotency key to actor, scope and canonical request hash. Reuse with different input is rejected. Completed claims replay the canonical result; pending or failed claims do not create a second financial operation.
+## Webhook evidence
 
-## Provider evidence
+A provider event is trusted only after:
 
-A provider event is trusted only after signature verification, key-version evidence, replay-window validation, bounded normalized payload validation, provider-event uniqueness and provider/intent/amount/currency parity. Raw webhook bodies are represented by SHA-256 evidence, not persisted as ordinary financial records.
+- configured provider parity;
+- registered/healthy adapter parity;
+- incident webhook path availability;
+- webhook activation evidence;
+- bounded raw body and header collection;
+- sensitive-header stripping;
+- signature verification and key-version recording;
+- replay-window validation;
+- event-ID uniqueness;
+- provider/intent/amount/currency parity;
+- normalized state mapping.
 
-Unknown provider event types are quarantined. Browser return URLs never establish settlement.
+Unknown trusted states are quarantined. Raw webhook bodies are not persisted; only SHA-256 evidence is stored.
 
-## Canonical financial events
+## File 00 financial facts
 
-Events use past-tense names, stable event IDs, aggregate version, schema version, trace ID and privacy-minimized payload hashes. Implemented families include:
+Contract version: `1.0`.
 
-- `DonationSettled`, `DonationRefunded`;
-- `PaymentFailed`, `PaymentCancelled`, `PaymentDisputed`;
-- refund lifecycle facts;
-- recurring-donation cancellation facts;
-- settlement/reconciliation and adjustment evidence;
-- transparency publication evidence;
-- incident declaration/recovery evidence.
+Allowed past-tense facts include:
 
-## File 00 boundary
+- `PaymentSettled`;
+- `PaymentFailed`;
+- `PaymentCancelled`;
+- `RefundSettled`;
+- `SubscriptionCancelled`;
+- donation settlement and recurring-donation facts defined by the current CF-03 contract.
 
-File 00 receives financial facts only. CF-03 never sends commands such as `grant_access`, `revoke_access`, role changes or a precomputed entitlement decision. File 00 remains the sole entitlement authority.
+Forbidden semantics include access grants/revocations, role or capability mutation, ranking signals and precomputed entitlement state. File 00 consumes financial facts and independently applies entitlement policy.
 
-## Outbox delivery
+## Ledger and receipts
 
-Canonical events are inserted into the durable outbox within the same transaction as the financial state change. The scheduler leases bounded batches, retries with limits and records dead-letter state. Delivery through `WordPressOutboxTransport` uses the `sabri_cf03_financial_fact` integration hook; consumers must be idempotent.
+Trusted settlement posts balanced debit/credit entries in the same transaction as intent state and outbox facts. Source references are unique. Receipt/invoice snapshots are immutable and SHA-256 bound. Browser returns are informational only.
 
-## Audit contract
+## Refund and recurring contracts
 
-`FinancialAuditService` appends a serialized SHA-256 hash chain. `AuditEnvelope` rejects sensitive metadata key families such as PAN, CVV, PIN, OTP, passwords, secrets, API/webhook keys, raw bodies and bank credentials. Audit history is included in backup/restore integrity evidence and is not deleted by ordinary uninstall.
+Refunds preserve requester/reviewer/executor separation, cumulative refundable balance and trusted provider closure. Recurring donation management exposes view, supported amount change, next payment date, cancellation, receipts and support without dark patterns.
 
-## Cross-file ownership
+## Transparency contract
 
-- File 00: identity, membership and entitlement decisions;
-- File 19: notification delivery after consent;
-- File 20: global shell and download manager;
-- File 24: assurance and evidence consumption;
-- File 25: responsive/RTL/accessibility presentation;
-- File 26: search/classification without donation favoritism;
-- CF-02: case orchestration without ledger mutation;
-- CF-04: secure file delivery after activation.
+Each published aggregate transparency record binds:
+
+- period and currency;
+- source-evidence hash;
+- canonical snapshot-payload hash;
+- publication state/timestamp;
+- privacy-safe public projection.
+
+A mismatch blocks public read and secure download generation.
+
+## Download contract
+
+`CHAT-DL-001` allows eligible invoices, receipts, approved finance exports and verified transparency snapshots. Grants are audience-bound, expiring, checksum-bound and use opaque/vault references. CF-04 secure delivery and File 20 download-manager integration remain external activation dependencies.
+
+## Audit and incident events
+
+Financial audit envelopes reject toxic credential keys and form a serialized hash chain. Incident declaration, containment and recovery are audited; recovery requires an independent actor, evidence reference and valid chronology. Checkout cannot recover without trusted webhook recovery.
