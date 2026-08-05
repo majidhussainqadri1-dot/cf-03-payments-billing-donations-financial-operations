@@ -26,7 +26,17 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
         if (array_key_exists('record_version', $record)) {
             $record['record_version'] = $record['version'];
         }
-        $this->data[$collection][$id] = $this->normalize($record);
+        $record = $this->normalize($record);
+        if ($collection === 'audit') {
+            foreach ($this->data['audit'] ?? [] as $existing) {
+                if (($existing['entry_hash'] ?? null) === ($record['entry_hash'] ?? null)
+                    || ($existing['previous_hash'] ?? null) === ($record['previous_hash'] ?? null)
+                ) {
+                    throw new InvariantViolation('Financial audit chain fork or duplicate hash was rejected.');
+                }
+            }
+        }
+        $this->data[$collection][$id] = $record;
     }
 
     public function get(string $collection, string $id): ?array

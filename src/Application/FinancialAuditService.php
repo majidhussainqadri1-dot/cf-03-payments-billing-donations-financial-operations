@@ -27,43 +27,61 @@ final class FinancialAuditService
             return $existing;
         }
 
-        $records = $this->orderedRecords();
-        $previousHash = $records === []
-            ? self::GENESIS_HASH
-            : (string)$records[array_key_last($records)]['entry_hash'];
-        $metadata = [
-            'object_type' => $payload['object_type'],
-            'object_id' => $payload['object_id'],
-            'metadata' => $payload['metadata'],
-        ];
-        $metadataHash = hash('sha256', $this->canonicalJson($metadata));
-        $entryMaterial = [
-            'audit_id' => $auditId,
-            'actor_ref' => $payload['actor_reference'],
-            'purpose' => $payload['purpose'],
-            'action' => $payload['action'],
-            'outcome' => $payload['outcome'],
-            'trace_id' => $payload['correlation_id'],
-            'metadata_hash' => $metadataHash,
-            'previous_hash' => $previousHash,
-            'created_at' => $payload['occurred_at'],
-        ];
-        $entryHash = hash('sha256', $this->canonicalJson($entryMaterial));
-        $record = [
-            'audit_id' => $auditId,
-            'actor_ref' => $payload['actor_reference'],
-            'purpose' => $payload['purpose'],
-            'action' => $payload['action'],
-            'outcome' => $payload['outcome'],
-            'trace_id' => $payload['correlation_id'],
-            'metadata_json' => $metadata,
-            'metadata_hash' => $metadataHash,
-            'previous_hash' => $previousHash,
-            'entry_hash' => $entryHash,
-            'created_at' => new DateTimeImmutable((string)$payload['occurred_at']),
-        ];
-        $this->repository->insert('audit', $auditId, $record);
-        return $record;
+        $lastError = null;
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            try {
+                return $this->repository->transaction(function () use ($payload, $auditId): array {
+                    $existing = $this->repository->get('audit', $auditId);
+                    if ($existing !== null) {
+                        return $existing;
+                    }
+                    $records = $this->orderedRecords();
+                    $previousHash = $records === []
+                        ? self::GENESIS_HASH
+                        : (string)$records[array_key_last($records)]['entry_hash'];
+                    $metadata = [
+                        'object_type' => $payload['object_type'],
+                        'object_id' => $payload['object_id'],
+                        'metadata' => $payload['metadata'],
+                    ];
+                    $metadataHash = hash('sha256', $this->canonicalJson($metadata));
+                    $entryMaterial = [
+                        'audit_id' => $auditId,
+                        'actor_ref' => $payload['actor_reference'],
+                        'purpose' => $payload['purpose'],
+                        'action' => $payload['action'],
+                        'outcome' => $payload['outcome'],
+                        'trace_id' => $payload['correlation_id'],
+                        'metadata_hash' => $metadataHash,
+                        'previous_hash' => $previousHash,
+                        'created_at' => $payload['occurred_at'],
+                    ];
+                    $entryHash = hash('sha256', $this->canonicalJson($entryMaterial));
+                    $record = [
+                        'audit_id' => $auditId,
+                        'actor_ref' => $payload['actor_reference'],
+                        'purpose' => $payload['purpose'],
+                        'action' => $payload['action'],
+                        'outcome' => $payload['outcome'],
+                        'trace_id' => $payload['correlation_id'],
+                        'metadata_json' => $metadata,
+                        'metadata_hash' => $metadataHash,
+                        'previous_hash' => $previousHash,
+                        'entry_hash' => $entryHash,
+                        'created_at' => new DateTimeImmutable((string)$payload['occurred_at']),
+                    ];
+                    $this->repository->insert('audit', $auditId, $record);
+                    return $record;
+                });
+            } catch (InvariantViolation $error) {
+                $lastError = $error;
+                $existing = $this->repository->get('audit', $auditId);
+                if ($existing !== null) {
+                    return $existing;
+                }
+            }
+        }
+        throw new InvariantViolation('Financial audit append could not serialize after three attempts.', 0, $lastError);
     }
 
     public function verifyChain(): bool

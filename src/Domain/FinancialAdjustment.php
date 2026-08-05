@@ -31,7 +31,7 @@ final class FinancialAdjustment
         if ($amount->minorUnits() <= 0 || preg_match('/^[a-f0-9]{64}$/', $evidenceSha256) !== 1) {
             throw new InvalidArgumentException('Financial adjustment amount or evidence is invalid.');
         }
-        if (! in_array($state, ['requested', 'approved', 'executed', 'rejected'], true) || $recordVersion < 1) {
+        if (!in_array($state, ['requested', 'approved', 'executed', 'rejected'], true) || $recordVersion < 1) {
             throw new InvalidArgumentException('Financial adjustment state or version is invalid.');
         }
     }
@@ -73,10 +73,17 @@ final class FinancialAdjustment
         $this->recordVersion++;
     }
 
-    public function state(): string { return $this->state; }
-    public function recordVersion(): int { return $this->recordVersion; }
-    public function amount(): Money { return $this->amount; }
+    public function adjustmentId(): string { return $this->adjustmentId; }
     public function sourceTransactionId(): string { return $this->sourceTransactionId; }
+    public function amount(): Money { return $this->amount; }
+    public function reasonCode(): string { return $this->reasonCode; }
+    public function evidenceSha256(): string { return $this->evidenceSha256; }
+    public function requesterReference(): string { return $this->requesterReference; }
+    public function requestedAt(): DateTimeImmutable { return $this->requestedAt; }
+    public function state(): string { return $this->state; }
+    public function approverReference(): ?string { return $this->approverReference; }
+    public function executorReference(): ?string { return $this->executorReference; }
+    public function recordVersion(): int { return $this->recordVersion; }
 
     private function assertVersion(int $expectedVersion): void
     {
