@@ -1,16 +1,22 @@
 {
   "module": "CF-03",
-  "version": "1.1.0-rc.2",
+  "version": "1.1.0-rc.3",
   "base_schema_version": "2.0.0",
   "complete_schema_version": "3.0.0",
-  "status": "three-plan-harmonized-founder-donation-transparency-download-source-complete-runtime-fail-closed",
+  "status": "three-plan-harmonized-all-chats-v2-founder-donation-transparency-download-source-complete-runtime-fail-closed",
   "governing_plans": [
     "SSH-PMP-2026-v3.0",
-    "Consolidated Current-Chat Directive Register v1.0 — 2026-08-05",
+    "Sabri Platform All-Chats Recovered Directive Register 2026 v2.0 — 2026-08-05",
     "CF-03 Integrated Final Plan 2026 v2.0"
   ],
   "governing_decision": "SSH-FIN-DONATION-2026-08-04-01",
   "supersedes_decision": "SSH-FIN-2026-08-04-01",
+  "recovered_directive_resolution": {
+    "RCD-020": "active_consistent_free_platform",
+    "RCD-021": "active_consistent_amounts_and_no_preselection",
+    "RCD-022": "superseded_by_SSH-FIN-DONATION-2026-08-04-01_monthly_and_30_day_rule",
+    "RCD-023": "active_consistent_zero_commission_and_no_advantage"
+  },
   "constitutional_rules": {
     "founder_owned": true,
     "trust_or_charitable_trust": false,
@@ -35,21 +41,23 @@
     "browser_return_proves_payment": false
   },
   "source_scope": {
-    "functional_requirements": "CF03-FR-001-through-CF03-FR-043",
+    "functional_requirements": "CF03-FR-001-through-CF03-FR-044",
     "expense_ledger": true,
     "founder_disclosure_categories": true,
     "transparency_snapshots": true,
     "donor_acknowledgment_consent": true,
     "recurring_donation_management_contract": true,
     "financial_download_grant_contract": true,
+    "governing_plan_registry": true,
     "financial_download_routes": 4,
     "complete_table_count": 31
   },
   "qa": {
-    "tests_per_php_version": 248,
+    "tests_per_php_version": 253,
     "php_versions": ["8.1", "8.2", "8.3"],
-    "domain_test_executions": 744,
-    "current_chat_post_github_harmonization_directive": "CHAT-QA-001"
+    "domain_test_executions": 759,
+    "post_github_harmonization_directive": "CHAT-QA-001",
+    "explicit_recovered_conflict_test": "RCD-022"
   },
   "runtime": {
     "live_collection_enabled": false,
