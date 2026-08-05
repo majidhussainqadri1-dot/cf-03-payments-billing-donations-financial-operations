@@ -1,9 +1,9 @@
-# CF-03 Final Policy Requirements Traceability — 1.1.0-rc.2
+# CF-03 Final Policy Requirements Traceability — 1.1.0-rc.3
 
 ## Governing plans
 
 - `SSH-PMP-2026-v3.0` — Definitive Master Plan 2026 v3.0.
-- Consolidated Current-Chat Directive Register v1.0 — 5 August 2026.
+- Sabri Platform All-Chats Recovered Directive Register 2026 v2.0 — 5 August 2026.
 - CF-03 Integrated Final Plan 2026 v2.0 — `SSH-FIN-DONATION-2026-08-04-01`.
 
 | Requirement | Governing requirement | Source evidence | Verification evidence |
@@ -16,14 +16,19 @@
 | CF03-FR-040 | Verified aggregate public transparency without fabricated figures | `FinancialTransparencySnapshot`, `WordPressTransparencyRepository`, `/transparency/` | Arithmetic, currency, source-hash and no-fabrication tests |
 | CF03-FR-041 | Donor privacy, anonymous use and explicit revocable acknowledgment | `sabri_cf03_donor_acknowledgments`, public projections | Consent-field and non-privilege tests |
 | CF03-FR-042 | Recurring donation management and easy cancellation | `/billing/donations`, `donation-management` REST contract | Fail-closed management contract tests |
-| CF03-FR-043 | Rights-aware download of eligible invoices, receipts, finance exports and verified transparency snapshots | `FinancialDownloadContract`, `FinancialDownloadGrant`, four explicit routes, REST contract | Three-plan harmonization tests: asset type, owner/audience, filename, SHA-256, expiry, denial, delivery-reference and ownership boundaries |
+| CF03-FR-043 | Rights-aware download of eligible invoices, receipts, finance exports and verified transparency snapshots | `FinancialDownloadContract`, `FinancialDownloadGrant`, four explicit routes, REST contract | Asset type, owner/audience, filename, SHA-256, expiry, denial, delivery-reference and ownership-boundary tests |
+| CF03-FR-044 | Register all three governing plans and resolve recovered directive conflicts by dated Founder precedence | `GoverningPlanRegistry`, release manifest and harmonization amendment | `RCD-020`/`021`/`023` active-consistency tests and explicit `RCD-022` supersession tests |
 
-## Current-chat directive traceability
+## All-Chats recovered directive traceability
 
 | Directive | CF-03 applicability | Resolution |
 |---|---|---|
+| `RCD-020` | Complete free baseline | Active and consistent with `CF03-FR-036`; paid definitions remain dormant/non-collectible |
+| `RCD-021` | USD 10/USD 14/USD 50/custom, no amount or recurrence preselected | Active and consistent with donation policy/source tests |
+| `RCD-022` | Recovered seven-day appeal wording | Superseded for CF-03 by later Founder decision `SSH-FIN-DONATION-2026-08-04-01`; active rule is calendar-month maximum plus 30-day action/completion suppression |
+| `RCD-023` | 0% Clinic/Marketplace commission and no donor advantage | Active and consistent with `CF03-FR-036` and non-privilege tests |
 | `CHAT-DL-001` | Eligible financial documents and exports | Native eligibility/download grant; File 20 manager; File 25 green/Ionicons/RTL/accessibility; File 24 assurance; CF-04 delivery after activation |
-| `CHAT-QA-001` | Post-GitHub harmonization and iterative correction | Dedicated audit evidence, 20 regression tests, PHP 8.1–8.3 CI, deterministic package parity |
+| `CHAT-QA-001` | Post-GitHub harmonization and iterative correction | Dedicated audit evidence, 25 regression tests, PHP 8.1–8.3 CI, deterministic package parity |
 | `CHAT-PRIV-001` | Financial minimization and anti-surveillance | Donor identity private by default, aggregate transparency, no secret/raw financial telemetry |
 | `CHAT-UX-002`–`CHAT-UX-004` | Global navigation, Back/Home and right-priority layout | Not owned by CF-03; delegated to Files 20 and 25 through route/presentation contracts |
 
@@ -32,7 +37,7 @@
 - Historical base: `Schema::VERSION = 2.0.0`, 28 tables.
 - Final extension: `TransparencySchema`, 3 tables.
 - Canonical complete schema: `CompleteSchema::VERSION = 3.0.0`, 31 tables.
-- Download harmonization adds no table and does not rewrite financial history.
+- Download and governing-plan harmonization add no table and do not rewrite financial history.
 - Activation verifies every table after `dbDelta` before publishing the complete schema version.
 
 ## Cross-file traceability
