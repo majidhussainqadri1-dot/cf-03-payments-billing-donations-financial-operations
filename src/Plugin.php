@@ -36,9 +36,9 @@ final class Plugin
         'sabri_manage_finance','sabri_review_refunds','sabri_execute_refunds',
         'sabri_import_settlements','sabri_reconcile_finance','sabri_close_finance',
         'sabri_record_expenses','sabri_publish_financial_transparency',
-        'sabri_manage_finance_exports','sabri_manage_finance_risk',
-        'sabri_manage_finance_retention','sabri_manage_finance_incidents',
-        'sabri_view_finance_audit',
+        'sabri_manage_finance_exports','sabri_manage_finance_adjustments',
+        'sabri_manage_finance_risk','sabri_manage_finance_retention',
+        'sabri_manage_finance_incidents','sabri_view_finance_audit',
     ];
 
     public static function activate(): void
@@ -62,7 +62,6 @@ final class Plugin
             update_option(self::OPTION_RUNTIME_STATUS, 'schema_incomplete_fail_closed', false);
             throw new RuntimeException('CF-03 activation did not verify every canonical schema migration.');
         }
-
         if (function_exists('get_role')) {
             $administrator = get_role('administrator');
             if (is_object($administrator) && method_exists($administrator, 'add_cap')) {
@@ -71,7 +70,6 @@ final class Plugin
                 }
             }
         }
-
         update_option(self::OPTION_VERSION, defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.2.0-rc.1', false);
         update_option(self::OPTION_SCHEMA_VERSION, CompleteSchema::VERSION, false);
         update_option(self::OPTION_LAST_MIGRATION, [

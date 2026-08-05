@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 define('SABRI_CF03_VERSION', '1.2.0-rc.1');
-define('SABRI_CF03_SCHEMA_VERSION', '3.1.0');
+define('SABRI_CF03_SCHEMA_VERSION', '3.2.0');
 define('SABRI_CF03_FILE', __FILE__);
 define('SABRI_CF03_DIR', plugin_dir_path(__FILE__));
 

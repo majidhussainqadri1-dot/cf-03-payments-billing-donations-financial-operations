@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use InvalidArgumentException;
 use Sabri\CF03\Application\CatalogDisclosureService;
 use Sabri\CF03\Application\ExpenseTransparencyService;
+use Sabri\CF03\Application\FinancialAdjustmentService;
 use Sabri\CF03\Application\FinancialAuditService;
 use Sabri\CF03\Application\IncidentOperationsService;
 use Sabri\CF03\Application\RetentionOperationsService;
@@ -35,20 +36,24 @@ final class WordPressFinanceAdminApi
 
         $routes = [
             ['/catalog', 'GET', 'catalog', 'public'],
-            ['/exports', 'POST', 'requestExport', 'authenticated'],
-            ['/exports/(?P<id>[A-Za-z0-9._:-]+)/(?:grant|download)', 'POST', 'grantExport', 'authenticated'],
-            ['/exports/(?P<id>[A-Za-z0-9._:-]+)/revoke', 'POST', 'revokeExport', 'authenticated'],
+            ['/exports', 'POST', 'requestExport', 'exports'],
+            ['/exports/(?P<id>[A-Za-z0-9._:-]+)/(?:grant|download)', 'POST', 'grantExport', 'exports'],
+            ['/exports/(?P<id>[A-Za-z0-9._:-]+)/revoke', 'POST', 'revokeExport', 'exports'],
             ['/donor-acknowledgments', 'POST', 'acknowledgeDonor', 'authenticated'],
             ['/donor-acknowledgments/(?P<id>[A-Za-z0-9._:-]+)/revoke', 'POST', 'revokeAcknowledgment', 'authenticated'],
             ['/fraud-reviews/(?P<id>[A-Za-z0-9._:-]+)/appeal', 'POST', 'appealFraud', 'authenticated'],
             ['/admin/settlements', 'POST', 'importSettlement', 'settlements'],
             ['/admin/settlements/(?P<id>[A-Za-z0-9._:-]+)/post', 'POST', 'postSettlement', 'settlements'],
             ['/admin/reconciliation/(?P<id>[A-Za-z0-9._:-]+)', 'POST', 'resolveReconciliation', 'reconciliation'],
+            ['/admin/periods/(?P<id>[0-9]{4}-[0-9]{2})/review', 'POST', 'reviewPeriod', 'close'],
             ['/admin/periods/(?P<id>[0-9]{4}-[0-9]{2})/close', 'POST', 'closePeriod', 'close'],
             ['/admin/periods/(?P<id>[0-9]{4}-[0-9]{2})/reopen', 'POST', 'reopenPeriod', 'close'],
             ['/admin/expenses', 'POST', 'recordExpense', 'expenses'],
             ['/admin/transparency', 'POST', 'publishTransparency', 'transparency'],
             ['/admin/exports/(?P<id>[A-Za-z0-9._:-]+)/process', 'POST', 'processExport', 'exports'],
+            ['/admin/adjustments', 'POST', 'requestAdjustment', 'adjustments'],
+            ['/admin/adjustments/(?P<id>[A-Za-z0-9._:-]+)/decision', 'POST', 'decideAdjustment', 'adjustments'],
+            ['/admin/adjustments/(?P<id>[A-Za-z0-9._:-]+)/execute', 'POST', 'executeAdjustment', 'adjustments'],
             ['/admin/fraud-reviews', 'POST', 'openFraud', 'risk'],
             ['/admin/fraud-reviews/(?P<id>[A-Za-z0-9._:-]+)/decision', 'POST', 'decideFraud', 'risk'],
             ['/admin/fraud-reviews/(?P<id>[A-Za-z0-9._:-]+)/close', 'POST', 'closeFraud', 'risk'],
@@ -81,6 +86,7 @@ final class WordPressFinanceAdminApi
                     'expenses' => static fn (): bool => self::cap('sabri_record_expenses'),
                     'transparency' => static fn (): bool => self::cap('sabri_publish_financial_transparency'),
                     'exports' => static fn (): bool => self::cap('sabri_manage_finance_exports'),
+                    'adjustments' => static fn (): bool => self::cap('sabri_manage_finance_adjustments'),
                     'risk' => static fn (): bool => self::cap('sabri_manage_finance_risk'),
                     'retention' => static fn (): bool => self::cap('sabri_manage_finance_retention'),
                     'incidents' => static fn (): bool => self::cap('sabri_manage_finance_incidents'),
@@ -129,7 +135,7 @@ final class WordPressFinanceAdminApi
             $grant = self::exports()->grant(
                 (string)self::param($request, 'id'),
                 self::actor(),
-                self::cap('sabri_manage_finance_exports'),
+                true,
                 new DateTimeImmutable('now'),
                 self::date(self::param($request, 'expires_at'))
             );
@@ -142,7 +148,7 @@ final class WordPressFinanceAdminApi
         return self::handle(static fn (): array => self::exports()->revoke(
             (string)self::param($request, 'id'),
             self::actor(),
-            self::cap('sabri_manage_finance_exports'),
+            true,
             self::positive(self::param($request, 'expected_version')),
             new DateTimeImmutable('now')
         ));
@@ -214,14 +220,30 @@ final class WordPressFinanceAdminApi
         ));
     }
 
-    public static function closePeriod(mixed $request = null): mixed
+    public static function reviewPeriod(mixed $request = null): mixed
     {
-        return self::handle(static fn (): array => self::settlements()->closePeriod(
+        return self::handle(static fn (): array => self::settlements()->reviewPeriod(
             (string)self::param($request, 'id'),
-            (string)self::param($request, 'reviewer_reference'),
             self::actor(),
             new DateTimeImmutable('now')
         ));
+    }
+
+    public static function closePeriod(mixed $request = null): mixed
+    {
+        return self::handle(static function () use ($request): array {
+            $periodId = (string)self::param($request, 'id');
+            $period = self::repo()->get('finance_periods', $periodId);
+            if ($period === null || !is_string($period['reviewed_by'] ?? null)) {
+                throw new InvariantViolation('Finance period has no persisted independent review.');
+            }
+            return self::settlements()->closePeriod(
+                $periodId,
+                (string)$period['reviewed_by'],
+                self::actor(),
+                new DateTimeImmutable('now')
+            );
+        });
     }
 
     public static function reopenPeriod(mixed $request = null): mixed
@@ -269,18 +291,53 @@ final class WordPressFinanceAdminApi
         ));
     }
 
+    public static function requestAdjustment(mixed $request = null): mixed
+    {
+        return self::handle(static fn (): array => self::adjustments()->request(
+            (string)self::param($request, 'adjustment_id'),
+            (string)self::param($request, 'source_transaction_id'),
+            self::money($request),
+            (string)self::param($request, 'debit_account'),
+            (string)self::param($request, 'credit_account'),
+            (string)self::param($request, 'reason_code'),
+            (string)self::param($request, 'evidence_sha256'),
+            self::actor(),
+            new DateTimeImmutable('now')
+        ));
+    }
+
+    public static function decideAdjustment(mixed $request = null): mixed
+    {
+        return self::handle(static fn (): array => self::adjustments()->decide(
+            (string)self::param($request, 'id'),
+            self::boolean(self::param($request, 'approve')),
+            self::actor(),
+            self::positive(self::param($request, 'expected_version')),
+            new DateTimeImmutable('now')
+        ));
+    }
+
+    public static function executeAdjustment(mixed $request = null): mixed
+    {
+        return self::handle(static fn (): array => self::adjustments()->execute(
+            (string)self::param($request, 'id'),
+            self::actor(),
+            self::positive(self::param($request, 'expected_version')),
+            new DateTimeImmutable('now')
+        ));
+    }
+
     public static function openFraud(mixed $request = null): mixed
     {
         return self::handle(static function () use ($request): array {
             $now = new DateTimeImmutable('now');
-            $case = new FraudReviewCase(
+            return self::risk()->openFraudReview(new FraudReviewCase(
                 (string)self::param($request, 'review_id'),
                 (string)self::param($request, 'subject_reference'),
                 self::arrayValue(self::param($request, 'signals'), 'signals'),
                 $now,
                 self::date(self::param($request, 'hold_until'))
-            );
-            return self::risk()->openFraudReview($case, $now);
+            ), $now);
         });
     }
 
@@ -320,7 +377,7 @@ final class WordPressFinanceAdminApi
     {
         return self::handle(static function () use ($request): array {
             $now = new DateTimeImmutable('now');
-            $case = new ChargebackCase(
+            return self::risk()->openChargeback(new ChargebackCase(
                 (string)self::param($request, 'case_id'),
                 (string)self::param($request, 'provider'),
                 (string)self::param($request, 'provider_case_reference'),
@@ -329,8 +386,7 @@ final class WordPressFinanceAdminApi
                 (string)self::param($request, 'reason_code'),
                 $now,
                 self::date(self::param($request, 'response_deadline'))
-            );
-            return self::risk()->openChargeback($case, $now);
+            ), $now);
         });
     }
 
@@ -500,6 +556,12 @@ final class WordPressFinanceAdminApi
         );
     }
 
+    private static function adjustments(): FinancialAdjustmentService
+    {
+        $repo = self::repo();
+        return new FinancialAdjustmentService($repo, WordPressRuntimeConfiguration::load(), new FinancialAuditService($repo));
+    }
+
     private static function risk(): RiskOperationsService
     {
         return new RiskOperationsService(self::repo(), WordPressRuntimeConfiguration::load());
@@ -650,7 +712,11 @@ final class WordPressFinanceAdminApi
                 ? 'The financial administration operation failed safely.'
                 : $error->getMessage();
             if (class_exists('WP_Error')) {
-                return new \WP_Error('sabri_cf03_admin_'.($status === 422 ? 'invalid' : ($status === 409 ? 'conflict' : 'error')), $message, ['status' => $status]);
+                return new \WP_Error(
+                    'sabri_cf03_admin_'.($status === 422 ? 'invalid' : ($status === 409 ? 'conflict' : 'error')),
+                    $message,
+                    ['status' => $status]
+                );
             }
             return ['code' => 'sabri_cf03_admin_error', 'message' => $message, 'status' => $status];
         }
