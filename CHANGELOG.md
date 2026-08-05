@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0-rc.3 — Actual Three-Plan Audit and Recovered-Directive Conflict Lock
+
+- Re-audited CF-03 against the actual three requested governing plans: `SSH-PMP-2026-v3.0`, Sabri Platform All-Chats Recovered Directive Register 2026 v2.0, and CF-03 Integrated Final Plan 2026 v2.0.
+- Corrected rc.2 traceability, which named the narrower Current-Chat Directive Register v1.0 instead of the recovered all-chats v2.0 register.
+- Added `GoverningPlanRegistry` and `CF03-FR-044` to preserve all three plan identities and machine-lock recovered-directive resolution.
+- Classified `RCD-020`, `RCD-021` and `RCD-023` as active and consistent with the current free-platform, donation and 0% commission law.
+- Classified recovered `RCD-022` seven-day wording as superseded by the later Founder decision `SSH-FIN-DONATION-2026-08-04-01`; retained one appeal per calendar month and at least 30-day suppression.
+- Added five explicit all-chats/precedence regression tests; the harmonization suite now has 25 tests.
+- Preserved `CHAT-DL-001`, `CHAT-QA-001`, donor privacy, canonical ownership and all fail-closed collection/delivery boundaries.
+- Updated README, final-plan amendment v2.2, requirements traceability, release manifest, review evidence, plugin fallback, Composer test command and deterministic package identity.
+- The matrix now targets 253 tests per PHP version and 759 executions across PHP 8.1–8.3; schema remains `3.0.0` with 31 tables.
+
 ## 1.1.0-rc.2 — Three-Plan Harmonization and Universal Financial Download Contract
 
 - Audited the repository against `SSH-PMP-2026-v3.0`, the Consolidated Current-Chat Directive Register v1.0 dated 5 August 2026, and CF-03 Integrated Final Plan v2.0.
@@ -9,7 +21,7 @@
 - Added `FinancialDownloadContract` and audience-bound `FinancialDownloadGrant` with safe filenames, approved media types, SHA-256, expiry, denial reasons and opaque/vault delivery references.
 - Added owner-scoped invoice/receipt routes, finance-export route and public aggregate transparency-snapshot route; all Live delivery remains disabled.
 - Preserved File 20 Global Download Manager ownership, File 25 green/Ionicons/RTL/accessibility ownership, File 24 assurance and CF-04 secure-delivery ownership after activation.
-- Added 20 three-plan regression tests; the matrix now executes 248 tests per PHP version and 744 domain-test executions across PHP 8.1–8.3.
+- Added 20 three-plan regression tests; the matrix executes 248 tests per PHP version and 744 domain-test executions across PHP 8.1–8.3.
 - Bumped the deterministic source candidate and package to `1.1.0-rc.2`; schema remains `3.0.0` with 31 tables.
 
 ## 1.1.0-rc.1 — Final Founder Donation and Financial Transparency Policy
