@@ -50,6 +50,9 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         'donor_acknowledgments'=>['table'=>'sabri_cf03_donor_acknowledgments','id'=>'acknowledgment_id'],
     ];
 
+    /** @var list<string> */
+    private const IMMUTABLE_COLLECTIONS = ['ledger_transactions', 'ledger_entries', 'audit'];
+
     /** @var array<string,list<string>> */
     private array $columnCache = [];
     private int $transactionDepth = 0;
@@ -78,6 +81,7 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
 
     public function insert(string $collection, string $id, array $record): void
     {
+        self::assertIdentifier($id);
         [$table, $idField] = $this->spec($collection);
         if (isset($record[$idField]) && (string)$record[$idField] !== $id) {
             throw new InvariantViolation('Financial record identifier mismatch.');
@@ -93,10 +97,17 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
 
     public function get(string $collection, string $id): ?array
     {
+        self::assertIdentifier($id);
         [$table, $idField] = $this->spec($collection);
         $sql = $this->wpdb->prepare("SELECT * FROM {$table} WHERE {$idField} = %s LIMIT 2", $id);
+        if (!is_string($sql) || $sql === '') {
+            throw new RuntimeException('Canonical financial lookup could not be prepared.');
+        }
         $rows = $this->wpdb->get_results($sql, defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
-        if (!is_array($rows) || $rows === []) {
+        if (!is_array($rows)) {
+            throw new RuntimeException('Canonical financial lookup failed.');
+        }
+        if ($rows === []) {
             return null;
         }
         if (count($rows) !== 1 || !is_array($rows[0])) {
@@ -107,6 +118,8 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
 
     public function compareAndSwap(string $collection, string $id, int $expectedVersion, callable $mutator): array
     {
+        $this->assertMutable($collection);
+        self::assertIdentifier($id);
         if ($expectedVersion < 1) {
             throw new InvalidArgumentException('Expected financial record version must be positive.');
         }
@@ -216,11 +229,15 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         [$where, $values] = $this->where($table, $criteria);
         $sql = "SELECT * FROM {$table}{$where} ORDER BY id DESC LIMIT ".(int)$limit;
         if ($values !== []) {
-            $sql = $this->wpdb->prepare($sql, ...$values);
+            $prepared = $this->wpdb->prepare($sql, ...$values);
+            if (!is_string($prepared) || $prepared === '') {
+                throw new RuntimeException('Financial query could not be prepared.');
+            }
+            $sql = $prepared;
         }
         $rows = $this->wpdb->get_results($sql, defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
         if (!is_array($rows)) {
-            return [];
+            throw new RuntimeException('Financial query failed.');
         }
         return array_values(array_map(fn (array $row): array => $this->hydrate($row), $rows));
     }
@@ -237,17 +254,22 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         [$where, $values] = $this->where($table, $criteria);
         $sql = "SELECT * FROM {$table}{$where} ORDER BY id ASC LIMIT ".(int)$limit.' OFFSET '.(int)$offset;
         if ($values !== []) {
-            $sql = $this->wpdb->prepare($sql, ...$values);
+            $prepared = $this->wpdb->prepare($sql, ...$values);
+            if (!is_string($prepared) || $prepared === '') {
+                throw new RuntimeException('Financial page query could not be prepared.');
+            }
+            $sql = $prepared;
         }
         $rows = $this->wpdb->get_results($sql, defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
         if (!is_array($rows)) {
-            return [];
+            throw new RuntimeException('Financial page query failed.');
         }
         return array_values(array_map(fn (array $row): array => $this->hydrate($row), $rows));
     }
 
     public function updateWhere(string $collection, array $criteria, array $changes): int
     {
+        $this->assertMutable($collection);
         if ($criteria === [] || $changes === [] || array_key_exists('id', $criteria) || array_key_exists('id', $changes)) {
             throw new InvalidArgumentException('Financial update requires bounded canonical criteria and changes.');
         }
@@ -267,6 +289,7 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
 
     public function deleteWhere(string $collection, array $criteria): int
     {
+        $this->assertMutable($collection);
         if ($criteria === [] || array_key_exists('id', $criteria)) {
             throw new InvalidArgumentException('Financial deletion requires bounded canonical criteria.');
         }
@@ -281,6 +304,13 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
             throw new InvariantViolation('Financial bounded deletion failed.');
         }
         return (int)$affected;
+    }
+
+    private function assertMutable(string $collection): void
+    {
+        if (in_array($collection, self::IMMUTABLE_COLLECTIONS, true)) {
+            throw new InvariantViolation('Immutable financial evidence cannot be updated or deleted through the generic repository.');
+        }
     }
 
     /** @return array{0:string,1:string} */
@@ -396,5 +426,12 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
             $values[] = $this->normalizeValue($column, $value);
         }
         return [' WHERE '.implode(' AND ', $clauses), $values];
+    }
+
+    private static function assertIdentifier(string $id): void
+    {
+        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $id) !== 1) {
+            throw new InvalidArgumentException('Financial record identifier is invalid.');
+        }
     }
 }

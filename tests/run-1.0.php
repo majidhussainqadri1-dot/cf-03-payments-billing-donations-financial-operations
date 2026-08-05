@@ -99,19 +99,19 @@ $tests['export expiry works'] = static function (): void {
 };
 $tests['memory repository rejects duplicates'] = static function (): void {
     $repository = new MemoryFinancialRepository();
-    $repository->insert('x', '1', ['state' => 'a']);
-    assertThrows(static fn () => $repository->insert('x', '1', ['state' => 'b']), DomainException::class);
+    $repository->insert('test_records', 'record:1', ['state' => 'a']);
+    assertThrows(static fn () => $repository->insert('test_records', 'record:1', ['state' => 'b']), DomainException::class);
 };
 $tests['memory repository compare and swap'] = static function (): void {
     $repository = new MemoryFinancialRepository();
-    $repository->insert('x', '1', ['state' => 'a']);
-    $next = $repository->compareAndSwap('x', '1', 1, static fn (array $value): array => ['state' => 'b']);
+    $repository->insert('test_records', 'record:1', ['state' => 'a']);
+    $next = $repository->compareAndSwap('test_records', 'record:1', 1, static fn (array $value): array => ['state' => 'b']);
     assertSame(2, $next['version']);
 };
 $tests['memory repository stale update rejected'] = static function (): void {
     $repository = new MemoryFinancialRepository();
-    $repository->insert('x', '1', ['state' => 'a']);
-    assertThrows(static fn () => $repository->compareAndSwap('x', '1', 2, static fn (array $value): array => $value), DomainException::class);
+    $repository->insert('test_records', 'record:1', ['state' => 'a']);
+    assertThrows(static fn () => $repository->compareAndSwap('test_records', 'record:1', 2, static fn (array $value): array => $value), DomainException::class);
 };
 $tests['schema declares complete owner tables'] = static function (): void {
     $tables = Schema::tables('wp_');

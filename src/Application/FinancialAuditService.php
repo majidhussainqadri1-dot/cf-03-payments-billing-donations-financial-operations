@@ -24,6 +24,7 @@ final class FinancialAuditService
         $auditId = (string)$payload['event_id'];
         $existing = $this->repository->get('audit', $auditId);
         if ($existing !== null) {
+            $this->assertExistingMatches($existing, $payload);
             return $existing;
         }
 
@@ -33,18 +34,16 @@ final class FinancialAuditService
                 return $this->repository->transaction(function () use ($payload, $auditId): array {
                     $existing = $this->repository->get('audit', $auditId);
                     if ($existing !== null) {
+                        $this->assertExistingMatches($existing, $payload);
                         return $existing;
                     }
                     $records = $this->orderedRecords();
                     $previousHash = $records === []
                         ? self::GENESIS_HASH
                         : (string)$records[array_key_last($records)]['entry_hash'];
-                    $metadata = [
-                        'object_type' => $payload['object_type'],
-                        'object_id' => $payload['object_id'],
-                        'metadata' => $payload['metadata'],
-                    ];
+                    $metadata = $this->metadata($payload);
                     $metadataHash = hash('sha256', $this->canonicalJson($metadata));
+                    $createdAt = (new DateTimeImmutable((string)$payload['occurred_at']))->format(DATE_ATOM);
                     $entryMaterial = [
                         'audit_id' => $auditId,
                         'actor_ref' => $payload['actor_reference'],
@@ -54,7 +53,7 @@ final class FinancialAuditService
                         'trace_id' => $payload['correlation_id'],
                         'metadata_hash' => $metadataHash,
                         'previous_hash' => $previousHash,
-                        'created_at' => $payload['occurred_at'],
+                        'created_at' => $createdAt,
                     ];
                     $entryHash = hash('sha256', $this->canonicalJson($entryMaterial));
                     $record = [
@@ -68,7 +67,7 @@ final class FinancialAuditService
                         'metadata_hash' => $metadataHash,
                         'previous_hash' => $previousHash,
                         'entry_hash' => $entryHash,
-                        'created_at' => new DateTimeImmutable((string)$payload['occurred_at']),
+                        'created_at' => new DateTimeImmutable($createdAt),
                     ];
                     $this->repository->insert('audit', $auditId, $record);
                     return $record;
@@ -77,6 +76,7 @@ final class FinancialAuditService
                 $lastError = $error;
                 $existing = $this->repository->get('audit', $auditId);
                 if ($existing !== null) {
+                    $this->assertExistingMatches($existing, $payload);
                     return $existing;
                 }
             }
@@ -95,9 +95,7 @@ final class FinancialAuditService
             if (!hash_equals($metadataHash, (string)$record['metadata_hash'])) {
                 throw new InvariantViolation('Financial audit metadata hash mismatch.');
             }
-            $createdAt = $record['created_at'] instanceof DateTimeInterface
-                ? $record['created_at']->format(DATE_ATOM)
-                : (new DateTimeImmutable((string)$record['created_at']))->format(DATE_ATOM);
+            $createdAt = self::dateString($record['created_at'] ?? null);
             $entryMaterial = [
                 'audit_id' => $record['audit_id'],
                 'actor_ref' => $record['actor_ref'],
@@ -116,6 +114,34 @@ final class FinancialAuditService
             $previous = (string)$record['entry_hash'];
         }
         return true;
+    }
+
+    /** @param array<string,mixed> $existing @param array<string,mixed> $payload */
+    private function assertExistingMatches(array $existing, array $payload): void
+    {
+        $metadata = $this->metadata($payload);
+        $expectedMetadataHash = hash('sha256', $this->canonicalJson($metadata));
+        $expectedCreatedAt = (new DateTimeImmutable((string)$payload['occurred_at']))->format(DATE_ATOM);
+        if (($existing['actor_ref'] ?? null) !== $payload['actor_reference']
+            || ($existing['purpose'] ?? null) !== $payload['purpose']
+            || ($existing['action'] ?? null) !== $payload['action']
+            || ($existing['outcome'] ?? null) !== $payload['outcome']
+            || ($existing['trace_id'] ?? null) !== $payload['correlation_id']
+            || !hash_equals($expectedMetadataHash, (string)($existing['metadata_hash'] ?? ''))
+            || !hash_equals($expectedCreatedAt, self::dateString($existing['created_at'] ?? null))
+        ) {
+            throw new InvariantViolation('Audit event identifier was reused with different immutable evidence.');
+        }
+    }
+
+    /** @param array<string,mixed> $payload @return array<string,mixed> */
+    private function metadata(array $payload): array
+    {
+        return [
+            'object_type' => $payload['object_type'],
+            'object_id' => $payload['object_id'],
+            'metadata' => $payload['metadata'],
+        ];
     }
 
     /** @return list<array<string,mixed>> */
@@ -149,5 +175,16 @@ final class FinancialAuditService
             $value[$key] = $this->sortRecursively($child);
         }
         return $value;
+    }
+
+    private static function dateString(mixed $value): string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format(DATE_ATOM);
+        }
+        if (!is_string($value) || $value === '') {
+            throw new InvariantViolation('Financial audit timestamp is missing.');
+        }
+        return (new DateTimeImmutable($value))->format(DATE_ATOM);
     }
 }

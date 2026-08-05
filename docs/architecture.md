@@ -1,4 +1,4 @@
-# CF-03 Architecture — 1.2.0-rc.2
+# CF-03 Architecture — 1.2.0-rc.3
 
 ## Status boundary
 

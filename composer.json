@@ -20,7 +20,8 @@
       "php tests/run-source-completion.php",
       "php tests/run-adversarial-source.php",
       "php tests/run-review-40-second.php",
-      "php tests/run-review-40-third.php"
+      "php tests/run-review-40-third.php",
+      "php tests/run-review-40-fourth.php"
     ],
     "lint": "find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l"
   }

@@ -15,6 +15,7 @@ use Sabri\CF03\Infrastructure\WordPressIncidentStateStore;
 use Sabri\CF03\Infrastructure\WordPressPrivacy;
 use Sabri\CF03\Infrastructure\WordPressProviderRegistryFactory;
 use Sabri\CF03\Infrastructure\WordPressPublicUi;
+use Sabri\CF03\Infrastructure\WordPressRequestGuard;
 use Sabri\CF03\Infrastructure\WordPressRestApi;
 use Sabri\CF03\Infrastructure\WordPressRuntimeConfiguration;
 use Sabri\CF03\Infrastructure\WordPressScheduler;
@@ -96,6 +97,7 @@ final class Plugin
             add_filter('cron_schedules', [WordPressScheduler::class, 'schedules']);
             add_filter('wp_privacy_personal_data_exporters', [WordPressPrivacy::class, 'exporters']);
             add_filter('wp_privacy_personal_data_erasers', [WordPressPrivacy::class, 'erasers']);
+            add_filter('rest_pre_dispatch', [WordPressRequestGuard::class, 'guard'], 10, 3);
         }
         WordPressScheduler::schedule();
         WordPressDailyReconciliation::schedule();
@@ -110,7 +112,7 @@ final class Plugin
         }
         $currentVersion = (string)get_option(self::OPTION_VERSION, '');
         $currentSchema = (string)get_option(self::OPTION_SCHEMA_VERSION, '');
-        $targetVersion = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.2.0-rc.2';
+        $targetVersion = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.2.0-rc.3';
         if (hash_equals($targetVersion, $currentVersion)
             && hash_equals(CompleteSchema::VERSION, $currentSchema)
         ) {
@@ -235,7 +237,7 @@ final class Plugin
             update_option(self::OPTION_RUNTIME_STATUS, 'schema_incomplete_fail_closed', false);
             throw new RuntimeException('CF-03 schema installation did not verify every canonical schema migration.');
         }
-        $version = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.2.0-rc.2';
+        $version = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.2.0-rc.3';
         update_option(self::OPTION_VERSION, $version, false);
         update_option(self::OPTION_SCHEMA_VERSION, CompleteSchema::VERSION, false);
         update_option(self::OPTION_LAST_MIGRATION, [

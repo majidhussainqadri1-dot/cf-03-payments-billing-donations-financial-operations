@@ -387,7 +387,7 @@ function webhookRuntime(string $eventId, string $type, string $intentId, int $am
         'intent_id' => $intentId,
         'amount_minor' => $amount,
         'currency' => 'USD',
-        'signed_at' => $at->modify('-30 seconds')->getTimestamp(),
+        'signed_at' => $at->getTimestamp(),
     ], JSON_THROW_ON_ERROR);
 }
 

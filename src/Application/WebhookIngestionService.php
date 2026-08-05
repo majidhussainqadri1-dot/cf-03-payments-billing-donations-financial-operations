@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sabri\CF03\Application;
 
 use DateTimeImmutable;
+use JsonException;
 use Sabri\CF03\Contracts\QueryableFinancialRepository;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\PaymentIntentState;
@@ -39,8 +40,12 @@ final class WebhookIngestionService
         $duplicates = $this->repository->find('provider_events', [
             'provider' => $providerCode,
             'provider_event_id' => $evidence->providerEventId(),
-        ], 1);
+        ], 2);
+        if (count($duplicates) > 1) {
+            throw new InvariantViolation('Provider event identity is not unique.');
+        }
         if ($duplicates !== []) {
+            $this->assertDuplicateParity($duplicates[0], $evidence);
             return [
                 'status' => 'duplicate_acknowledged',
                 'provider_event_id' => $evidence->providerEventId(),
@@ -59,6 +64,7 @@ final class WebhookIngestionService
                 'provider_event_id' => $evidence->providerEventId(),
             ];
         }
+        $this->assertChronology($intent, $evidence);
 
         $version = (int)($intent['version'] ?? $intent['record_version'] ?? 0);
         if ($version < 1) {
@@ -135,6 +141,36 @@ final class WebhookIngestionService
         ];
     }
 
+    /** @param array<string,mixed> $existing */
+    private function assertDuplicateParity(array $existing, ProviderEvidence $evidence): void
+    {
+        if (($existing['provider'] ?? null) !== $evidence->providerCode()
+            || ($existing['provider_event_id'] ?? null) !== $evidence->providerEventId()
+            || ($existing['event_type'] ?? null) !== $evidence->eventType()
+            || ($existing['raw_body_hash'] ?? null) !== $evidence->rawBodySha256()
+            || (($existing['intent_id'] ?? null) !== null
+                && ($existing['intent_id'] ?? null) !== $evidence->paymentIntentId())
+        ) {
+            throw new InvariantViolation('Provider event ID was reused with different signed evidence.');
+        }
+    }
+
+    /** @param array<string,mixed> $intent */
+    private function assertChronology(array $intent, ProviderEvidence $evidence): void
+    {
+        $createdAt = self::date($intent['created_at'] ?? null, 'Payment intent creation time');
+        if ($evidence->occurredAt() < $createdAt) {
+            throw new InvariantViolation('Provider event predates the canonical payment intent.');
+        }
+        $expiresAt = self::date($intent['expires_at'] ?? null, 'Payment intent expiry');
+        if ($evidence->eventType() === 'payment.settled'
+            && $evidence->occurredAt() > $expiresAt->modify('+24 hours')
+        ) {
+            throw new InvariantViolation('Settlement evidence is implausibly later than the hosted intent expiry.');
+        }
+    }
+
+    /** @param array<string,mixed> $intent */
     private function assertRefundEvidence(array $intent, ProviderEvidence $evidence): void
     {
         if ($evidence->providerCode() !== (string)$intent['provider']
@@ -148,10 +184,11 @@ final class WebhookIngestionService
         }
 
         $original = new Money((int)$intent['amount_minor'], (string)$intent['currency']);
-        if ($evidence->amount()->currency() !== $original->currency()
+        if ($evidence->amount()->minorUnits() <= 0
+            || $evidence->amount()->currency() !== $original->currency()
             || $evidence->amount()->minorUnits() > $original->minorUnits()
         ) {
-            throw new InvariantViolation('Refund evidence exceeds the original payment or changes currency.');
+            throw new InvariantViolation('Refund evidence is zero, exceeds the original payment or changes currency.');
         }
     }
 
@@ -195,14 +232,42 @@ final class WebhookIngestionService
     /** @param array<string,mixed> $intent */
     private function postSettlement(array $intent, ProviderEvidence $evidence, string $traceId, int $aggregateVersion): void
     {
-        $transactionId = 'txn.'.substr(hash('sha256', 'settled|'.$evidence->providerCode().'|'.$evidence->providerEventId()), 0, 40);
-        if ($this->repository->get('ledger_transactions', $transactionId) !== null) {
-            return;
-        }
-
         $amount = $evidence->amount();
         $now = $evidence->receivedAt();
         $intentId = (string)$intent['intent_id'];
+        $donationId = DonationCheckoutService::donationIdForIntent($intentId);
+        $donation = $this->repository->get('donations', $donationId);
+        if ($donation === null
+            || ($donation['donor_ref'] ?? null) !== ($intent['actor_ref'] ?? null)
+            || (int)($donation['amount_minor'] ?? -1) !== $amount->minorUnits()
+            || ($donation['currency'] ?? null) !== $amount->currency()
+            || ($donation['provider_ref'] ?? null) !== ($intent['provider_ref'] ?? null)
+            || ($donation['state'] ?? null) !== 'provider_pending'
+        ) {
+            throw new InvariantViolation('Canonical donation aggregate is missing or inconsistent with settlement evidence.');
+        }
+
+        $consent = null;
+        $consentId = null;
+        if (($intent['product_id'] ?? null) === 'donation.monthly') {
+            $consentId = DonationCheckoutService::consentIdForIntent($intentId);
+            $consent = $this->repository->get('recurring_consents', $consentId);
+            if ($consent === null
+                || ($consent['actor_ref'] ?? null) !== ($intent['actor_ref'] ?? null)
+                || ($consent['product_id'] ?? null) !== 'donation.monthly'
+                || (int)($consent['amount_minor'] ?? -1) !== $amount->minorUnits()
+                || ($consent['currency'] ?? null) !== $amount->currency()
+                || ($consent['state'] ?? null) !== 'pending_provider'
+            ) {
+                throw new InvariantViolation('Canonical monthly consent is missing or inconsistent with settlement evidence.');
+            }
+        }
+
+        $transactionId = 'txn.'.substr(hash('sha256', 'settled|'.$evidence->providerCode().'|'.$evidence->providerEventId()), 0, 40);
+        if ($this->repository->get('ledger_transactions', $transactionId) !== null) {
+            throw new InvariantViolation('Settlement ledger transaction already exists without a processed provider event.');
+        }
+        $periodId = $evidence->occurredAt()->format('Y-m');
         $this->repository->insert('ledger_transactions', $transactionId, [
             'transaction_id' => $transactionId,
             'source_type' => 'provider_settlement',
@@ -211,7 +276,7 @@ final class WebhookIngestionService
             'recorded_at' => $now,
             'actor_ref' => 'system:provider',
             'reason' => 'trusted_provider_settlement',
-            'period_id' => $now->format('Y-m'),
+            'period_id' => $periodId,
             'reversal_of' => null,
             'trace_id' => $traceId,
         ]);
@@ -239,12 +304,13 @@ final class WebhookIngestionService
             'product_id' => $intent['product_id'],
             'amount_minor' => $amount->minorUnits(),
             'currency' => $amount->currency(),
-            'settled_at' => $now->format(DATE_ATOM),
+            'settled_at' => $evidence->occurredAt()->format(DATE_ATOM),
             'policy' => 'SSH-FIN-DONATION-2026-08-04-01',
         ];
-        $encoded = json_encode($snapshot, JSON_UNESCAPED_SLASHES);
-        if (!is_string($encoded)) {
-            throw new InvariantViolation('Receipt snapshot could not be encoded.');
+        try {
+            $encoded = json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        } catch (JsonException $error) {
+            throw new InvariantViolation('Receipt snapshot could not be encoded.', 0, $error);
         }
         $this->repository->insert('invoices', $invoiceId, [
             'invoice_id' => $invoiceId,
@@ -259,36 +325,28 @@ final class WebhookIngestionService
             'voided_at' => null,
         ]);
 
-        $donationId = DonationCheckoutService::donationIdForIntent($intentId);
-        $donation = $this->repository->get('donations', $donationId);
-        if ($donation !== null) {
+        $this->repository->compareAndSwap(
+            'donations',
+            $donationId,
+            (int)$donation['version'],
+            static function (array $current) use ($invoiceId, $now): array {
+                $current['state'] = 'settled';
+                $current['receipt_ref'] = $invoiceId;
+                $current['updated_at'] = $now;
+                return $current;
+            }
+        );
+
+        if ($consent !== null && $consentId !== null) {
             $this->repository->compareAndSwap(
-                'donations',
-                $donationId,
-                (int)$donation['version'],
-                static function (array $current) use ($invoiceId, $now): array {
-                    $current['state'] = 'settled';
-                    $current['receipt_ref'] = $invoiceId;
-                    $current['updated_at'] = $now;
+                'recurring_consents',
+                $consentId,
+                (int)$consent['version'],
+                static function (array $current): array {
+                    $current['state'] = 'active';
                     return $current;
                 }
             );
-        }
-
-        if (($intent['product_id'] ?? null) === 'donation.monthly') {
-            $consentId = DonationCheckoutService::consentIdForIntent($intentId);
-            $consent = $this->repository->get('recurring_consents', $consentId);
-            if ($consent !== null && ($consent['state'] ?? null) === 'pending_provider') {
-                $this->repository->compareAndSwap(
-                    'recurring_consents',
-                    $consentId,
-                    (int)$consent['version'],
-                    static function (array $current): array {
-                        $current['state'] = 'active';
-                        return $current;
-                    }
-                );
-            }
         }
 
         $this->outbox('DonationSettled', $intentId, $aggregateVersion, $traceId, [
@@ -320,7 +378,11 @@ final class WebhookIngestionService
             }
             $state = (string)($refund['state'] ?? '');
             if (in_array($state, ['succeeded', 'closed'], true)) {
-                $alreadyRefunded += (int)$refund['amount_minor'];
+                $value = (int)($refund['amount_minor'] ?? 0);
+                if ($value <= 0 || $value > PHP_INT_MAX - $alreadyRefunded) {
+                    throw new InvariantViolation('Historical refund balance evidence is invalid.');
+                }
+                $alreadyRefunded += $value;
             }
             if ((int)($refund['amount_minor'] ?? 0) === $amount->minorUnits()
                 && in_array($state, ['approved', 'provider_pending', 'uncertain'], true)
@@ -374,10 +436,13 @@ final class WebhookIngestionService
 
         $originalSettlementEntries = $this->repository->find('ledger_entries', [
             'source_ref' => $intentId.':asset',
-        ], 1);
-        $reversalOf = $originalSettlementEntries === []
-            ? null
-            : (string)$originalSettlementEntries[0]['transaction_id'];
+        ], 2);
+        if (count($originalSettlementEntries) !== 1
+            || !is_string($originalSettlementEntries[0]['transaction_id'] ?? null)
+        ) {
+            throw new InvariantViolation('Refund cannot be posted without exactly one canonical settlement transaction.');
+        }
+        $reversalOf = (string)$originalSettlementEntries[0]['transaction_id'];
         $transactionId = 'txn.'.substr(hash('sha256', 'refund|'.$evidence->providerCode().'|'.$evidence->providerEventId()), 0, 40);
         $this->repository->insert('ledger_transactions', $transactionId, [
             'transaction_id' => $transactionId,
@@ -387,7 +452,7 @@ final class WebhookIngestionService
             'recorded_at' => $now,
             'actor_ref' => 'system:provider',
             'reason' => 'trusted_provider_refund',
-            'period_id' => $now->format('Y-m'),
+            'period_id' => $evidence->occurredAt()->format('Y-m'),
             'reversal_of' => $reversalOf,
             'trace_id' => $traceId,
         ]);
@@ -413,18 +478,19 @@ final class WebhookIngestionService
         $fullRefund = $cumulativeRefunded === $originalAmount;
         $donationId = DonationCheckoutService::donationIdForIntent($intentId);
         $donation = $this->repository->get('donations', $donationId);
-        if ($donation !== null) {
-            $this->repository->compareAndSwap(
-                'donations',
-                $donationId,
-                (int)$donation['version'],
-                static function (array $current) use ($fullRefund, $now): array {
-                    $current['state'] = $fullRefund ? 'refunded' : 'partially_refunded';
-                    $current['updated_at'] = $now;
-                    return $current;
-                }
-            );
+        if ($donation === null || !in_array((string)($donation['state'] ?? ''), ['settled', 'partially_refunded'], true)) {
+            throw new InvariantViolation('Canonical donation aggregate is unavailable for refund posting.');
         }
+        $this->repository->compareAndSwap(
+            'donations',
+            $donationId,
+            (int)$donation['version'],
+            static function (array $current) use ($fullRefund, $now): array {
+                $current['state'] = $fullRefund ? 'refunded' : 'partially_refunded';
+                $current['updated_at'] = $now;
+                return $current;
+            }
+        );
 
         $this->outbox('DonationRefunded', $intentId, $aggregateVersion, $traceId, [
             'actor_ref' => $intent['actor_ref'],
@@ -467,9 +533,10 @@ final class WebhookIngestionService
         array $payload,
         DateTimeImmutable $now
     ): void {
-        $encoded = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        if (!is_string($encoded)) {
-            throw new InvariantViolation('Financial outbox payload could not be encoded.');
+        try {
+            $encoded = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        } catch (JsonException $error) {
+            throw new InvariantViolation('Financial outbox payload could not be encoded.', 0, $error);
         }
         $eventId = 'event.'.substr(hash('sha256', $type.'|'.$aggregateId.'|'.$version.'|'.$encoded), 0, 40);
         $this->repository->insert('outbox', $eventId, [
@@ -489,5 +556,16 @@ final class WebhookIngestionService
             'created_at' => $now,
             'delivered_at' => null,
         ]);
+    }
+
+    private static function date(mixed $value, string $label): DateTimeImmutable
+    {
+        if ($value instanceof DateTimeImmutable) {
+            return $value;
+        }
+        if (!is_string($value) || $value === '') {
+            throw new InvariantViolation($label.' is missing.');
+        }
+        return new DateTimeImmutable($value);
     }
 }

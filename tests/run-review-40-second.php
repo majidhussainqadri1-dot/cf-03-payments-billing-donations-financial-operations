@@ -34,13 +34,13 @@ final class SecondReviewRequest
 $root=dirname(__DIR__);
 $read=static function(string $path)use($root):string{$contents=file_get_contents($root.'/'.$path);if(!is_string($contents)){throw new RuntimeException('Could not read '.$path);}return$contents;};
 $tests=[];
-$tests['01 plugin source version is current']=static fn()=>containsR2($read('cf-03-payments-billing-donations-financial-operations.php'),'Version: 1.2.0-rc.2');
+$tests['01 plugin source version is current']=static fn()=>containsR2($read('cf-03-payments-billing-donations-financial-operations.php'),'Version: 1.2.0-rc.3');
 $tests['02 plugin schema version is current']=static fn()=>containsR2($read('cf-03-payments-billing-donations-financial-operations.php'),"SABRI_CF03_SCHEMA_VERSION', '3.3.0'");
 $tests['03 README names all three governing plans']=static function()use($read):void{$s=$read('README.md');foreach(['SSH-PMP-2026-v3.0','All-Chats Recovered Directive Register 2026 v2.1','CF-03 Integrated Final Plan 2026 v2.0']as$n){containsR2($s,$n);}};
-$tests['04 README current release identity has no stale source status']=static function()use($read):void{$s=$read('README.md');containsR2($s,'1.2.0-rc.2');containsR2($s,'3.3.0');sameR2(false,str_contains($s,'> **Source status:** `1.1.0-rc.3`'));};
-$tests['05 README records third-review QA target']=static function()use($read):void{$s=$read('README.md');containsR2($s,'404 tests per PHP version');containsR2($s,'1,212 test executions');};
+$tests['04 README current release identity has no stale source status']=static function()use($read):void{$s=$read('README.md');containsR2($s,'1.2.0-rc.3');containsR2($s,'3.3.0');sameR2(false,str_contains($s,'> **Source status:** `1.1.0-rc.3`'));};
+$tests['05 README records third-review QA target']=static function()use($read):void{$s=$read('README.md');containsR2($s,'444 tests per PHP version');containsR2($s,'1,332 test executions');};
 $tests['06 security document reflects routes but no approved live adapter']=static function()use($read):void{$s=$read('SECURITY.md');containsR2($s,'source routes and provider-neutral contracts');containsR2($s,'does **not** contain an approved Live payment-provider adapter');};
-$tests['07 architecture identity is current']=static fn()=>containsR2($read('docs/architecture.md'),'# CF-03 Architecture — 1.2.0-rc.2');
+$tests['07 architecture identity is current']=static fn()=>containsR2($read('docs/architecture.md'),'# CF-03 Architecture — 1.2.0-rc.3');
 $tests['08 architecture schema is 3.3.0']=static function()use($read):void{$s=$read('docs/architecture.md');containsR2($s,'RuntimeSchemaExtension::VERSION = 3.3.0');containsR2($s,'CompleteSchema::VERSION = 3.3.0');};
 $tests['09 temporary probe artifact is absent']=static fn()=>sameR2(false,file_exists($root.'/docs/push-files-probe.tmp'));
 $tests['10 package script excludes temporary artifacts']=static function()use($read):void{$s=$read('scripts/build-package.sh');foreach(["! -name '*.tmp'","! -name '*.log'","! -name '*.map'","! -name '.DS_Store'"]as$n){containsR2($s,$n);}};

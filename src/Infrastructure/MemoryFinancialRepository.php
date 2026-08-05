@@ -12,17 +12,29 @@ use Throwable;
 
 final class MemoryFinancialRepository implements QueryableFinancialRepository
 {
+    /** @var list<string> */
+    private const IMMUTABLE_COLLECTIONS = ['ledger_transactions', 'ledger_entries', 'audit'];
+
     /** @var array<string,array<string,array<string,mixed>>> */
     private array $data = [];
+    /** @var array<string,array<string,array<string,mixed>>> */
+    private array $transactionSnapshot = [];
+    private int $transactionDepth = 0;
+    private bool $rollbackOnly = false;
 
     public function __construct(private readonly bool $normalizeDates = false) {}
 
     public function insert(string $collection, string $id, array $record): void
     {
+        self::assertCollection($collection);
+        self::assertIdentifier($id);
         if (isset($this->data[$collection][$id])) {
             throw new InvariantViolation('Duplicate financial record.');
         }
         $record['version'] = (int)($record['version'] ?? $record['record_version'] ?? 1);
+        if ($record['version'] < 1) {
+            throw new InvalidArgumentException('Financial record version must be positive.');
+        }
         if (array_key_exists('record_version', $record)) {
             $record['record_version'] = $record['version'];
         }
@@ -41,16 +53,23 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
 
     public function get(string $collection, string $id): ?array
     {
+        self::assertCollection($collection);
+        self::assertIdentifier($id);
         return $this->data[$collection][$id] ?? null;
     }
 
     public function compareAndSwap(string $collection, string $id, int $expectedVersion, callable $mutator): array
     {
+        $this->assertMutable($collection);
+        self::assertIdentifier($id);
+        if ($expectedVersion < 1) {
+            throw new InvalidArgumentException('Expected financial record version must be positive.');
+        }
         $current = $this->get($collection, $id);
         if ($current === null) {
             throw new InvariantViolation('Financial record not found.');
         }
-        if (($current['version'] ?? null) !== $expectedVersion) {
+        if ((int)($current['version'] ?? 0) !== $expectedVersion) {
             throw new InvariantViolation('Stale financial record version.');
         }
         $next = $mutator($current);
@@ -68,18 +87,43 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
 
     public function all(string $collection): array
     {
+        self::assertCollection($collection);
         return array_values($this->data[$collection] ?? []);
     }
 
     public function transaction(callable $work): mixed
     {
-        $snapshot = $this->data;
+        $outermost = $this->transactionDepth === 0;
+        if ($outermost) {
+            $this->transactionSnapshot = $this->data;
+            $this->rollbackOnly = false;
+        }
+        $this->transactionDepth++;
         try {
-            return $work();
+            $result = $work();
         } catch (Throwable $error) {
-            $this->data = $snapshot;
+            $this->transactionDepth--;
+            $this->rollbackOnly = true;
+            if ($outermost) {
+                $this->data = $this->transactionSnapshot;
+                $this->transactionSnapshot = [];
+                $this->rollbackOnly = false;
+            }
             throw $error;
         }
+
+        $this->transactionDepth--;
+        if (!$outermost) {
+            return $result;
+        }
+        if ($this->rollbackOnly) {
+            $this->data = $this->transactionSnapshot;
+            $this->transactionSnapshot = [];
+            $this->rollbackOnly = false;
+            throw new InvariantViolation('Financial transaction was marked rollback-only by a nested failure.');
+        }
+        $this->transactionSnapshot = [];
+        return $result;
     }
 
     public function find(string $collection, array $criteria, int $limit = 100): array
@@ -89,11 +133,12 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
 
     public function page(string $collection, array $criteria, int $limit, int $offset): array
     {
+        self::assertCollection($collection);
         if ($limit < 1 || $limit > 500) {
             throw new InvalidArgumentException('Financial page limit must be between 1 and 500.');
         }
-        if ($offset < 0) {
-            throw new InvalidArgumentException('Financial page offset cannot be negative.');
+        if ($offset < 0 || $offset > 100000000) {
+            throw new InvalidArgumentException('Financial page offset is invalid.');
         }
         $criteria = $this->normalize($criteria);
         $matches = [];
@@ -110,8 +155,9 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
 
     public function updateWhere(string $collection, array $criteria, array $changes): int
     {
-        if ($criteria === [] || $changes === []) {
-            throw new InvalidArgumentException('Financial update requires criteria and changes.');
+        $this->assertMutable($collection);
+        if ($criteria === [] || $changes === [] || array_key_exists('id', $criteria) || array_key_exists('id', $changes)) {
+            throw new InvalidArgumentException('Financial update requires bounded canonical criteria and changes.');
         }
         $criteria = $this->normalize($criteria);
         $changes = $this->normalize($changes);
@@ -125,12 +171,6 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
             foreach ($changes as $field => $value) {
                 $record[$field] = $value;
             }
-            if (isset($record['version'])) {
-                $record['version'] = (int)$record['version'] + 1;
-                if (array_key_exists('record_version', $record)) {
-                    $record['record_version'] = $record['version'];
-                }
-            }
             $this->data[$collection][$id] = $record;
             $updated++;
         }
@@ -139,8 +179,9 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
 
     public function deleteWhere(string $collection, array $criteria): int
     {
-        if ($criteria === []) {
-            throw new InvalidArgumentException('Financial deletion requires bounded criteria.');
+        $this->assertMutable($collection);
+        if ($criteria === [] || array_key_exists('id', $criteria)) {
+            throw new InvalidArgumentException('Financial deletion requires bounded canonical criteria.');
         }
         $criteria = $this->normalize($criteria);
         $deleted = 0;
@@ -154,6 +195,28 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
             $deleted++;
         }
         return $deleted;
+    }
+
+    private function assertMutable(string $collection): void
+    {
+        self::assertCollection($collection);
+        if (in_array($collection, self::IMMUTABLE_COLLECTIONS, true)) {
+            throw new InvariantViolation('Immutable financial evidence cannot be updated or deleted through the generic repository.');
+        }
+    }
+
+    private static function assertCollection(string $collection): void
+    {
+        if (preg_match('/^[a-z][a-z0-9_]{2,63}$/', $collection) !== 1) {
+            throw new InvalidArgumentException('Financial collection identifier is invalid.');
+        }
+    }
+
+    private static function assertIdentifier(string $id): void
+    {
+        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $id) !== 1) {
+            throw new InvalidArgumentException('Financial record identifier is invalid.');
+        }
     }
 
     /** @param array<string,mixed> $record @return array<string,mixed> */

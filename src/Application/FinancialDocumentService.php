@@ -151,7 +151,7 @@ final class FinancialDocumentService
         return $this->storeAndGrant(
             $assetType,
             $invoiceId,
-            $financeOverride ? 'finance:authorized' : $actorReference,
+            $actorReference,
             $filename,
             'text/html',
             $contents,

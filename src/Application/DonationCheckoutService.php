@@ -54,9 +54,7 @@ final class DonationCheckoutService
         try {
             $provider = $this->providers->get($providerCode);
             $checkout = $provider->createHostedDonationCheckout($draft->providerSafeClone());
-            if ($checkout->providerCode() !== $providerCode) {
-                throw new InvariantViolation('Hosted checkout provider identity mismatch.');
-            }
+            $this->assertCheckoutUsable($checkout, $providerCode, $draft->createdAt());
             $updated = $this->repository->updateWhere('idempotency', [
                 'idempotency_key' => $claimId,
                 'state' => 'pending',
@@ -97,18 +95,22 @@ final class DonationCheckoutService
         if (($claim['request_hash'] ?? null) !== $requestHash) {
             throw new InvariantViolation('Donation idempotency key was reused with a different request.');
         }
+        if (($claim['actor_ref'] ?? null) !== $draft->donorReference()
+            || ($claim['scope'] ?? null) !== 'donation_checkout'
+        ) {
+            throw new InvariantViolation('Donation idempotency claim is outside the canonical actor or scope.');
+        }
         $state = (string)($claim['state'] ?? '');
         if ($state === 'completed') {
-            return $this->replayCompleted($claim, $requestHash);
+            return $this->replayCompleted($claim, $requestHash, $draft->createdAt());
         }
         if ($state === 'provider_created' && is_string($claim['result_ref'] ?? null)) {
             $checkout = $this->providers->get($providerCode)
                 ->resumeHostedDonationCheckout((string)$claim['result_ref']);
-            if ($checkout->providerCode() !== $providerCode
-                || !hash_equals((string)$claim['result_ref'], $checkout->providerSessionReference())
-            ) {
+            if (!hash_equals((string)$claim['result_ref'], $checkout->providerSessionReference())) {
                 throw new InvariantViolation('Resumed hosted checkout does not match the durable provider checkpoint.');
             }
+            $this->assertCheckoutUsable($checkout, $providerCode, $draft->createdAt());
             return $this->persistProviderCreated(
                 $draft,
                 $providerCode,
@@ -133,14 +135,14 @@ final class DonationCheckoutService
         $existingIntent = $this->repository->get('intents', $draft->intentId());
         if ($existingIntent !== null) {
             $this->assertExistingIntent($existingIntent, $draft, $providerCode, $requestHash, $checkout);
-            $this->assertDependentRecords($draft);
+            $this->assertDependentRecords($draft, $providerCode, $checkout);
             $updated = $this->repository->updateWhere('idempotency', [
                 'idempotency_key' => $claimId,
                 'state' => 'provider_created',
             ], [
                 'state' => 'completed',
                 'result_ref' => $draft->intentId(),
-                'completed_at' => new DateTimeImmutable('now'),
+                'completed_at' => $draft->createdAt(),
             ]);
             if ($updated !== 1) {
                 throw new InvariantViolation('Recovered donation checkout claim could not be completed.');
@@ -236,7 +238,7 @@ final class DonationCheckoutService
     }
 
     /** @return array<string,mixed> */
-    private function replayCompleted(array $claim, string $requestHash): array
+    private function replayCompleted(array $claim, string $requestHash, DateTimeImmutable $requestedAt): array
     {
         if (($claim['request_hash'] ?? null) !== $requestHash
             || !is_string($claim['result_ref'] ?? null)
@@ -247,8 +249,13 @@ final class DonationCheckoutService
         if ($intent === null) {
             throw new InvariantViolation('Completed donation idempotency record has no canonical intent.');
         }
-        $provider = $this->providers->get((string)$intent['provider']);
+        $providerCode = (string)($intent['provider'] ?? '');
+        if ($providerCode !== $this->configuration->providerCode()) {
+            throw new InvariantViolation('Completed donation checkout belongs to a different configured provider.');
+        }
+        $provider = $this->providers->get($providerCode);
         $checkout = $provider->resumeHostedDonationCheckout((string)$intent['provider_ref']);
+        $this->assertCheckoutUsable($checkout, $providerCode, $requestedAt);
         $monthly = ((string)($intent['product_id'] ?? '')) === 'donation.monthly';
         $draft = new DonationIntentDraft(
             (string)$intent['intent_id'],
@@ -258,10 +265,10 @@ final class DonationCheckoutService
             $monthly,
             $this->configuration->state(),
             self::externalIdempotencyKey((string)$claim['idempotency_key']),
-            self::date($intent['created_at'] ?? null)
+            $requestedAt
         );
-        $this->assertDependentRecords($draft);
-        return $this->result($draft, (string)$intent['provider'], $checkout, true);
+        $this->assertDependentRecords($draft, $providerCode, $checkout);
+        return $this->result($draft, $providerCode, $checkout, true);
     }
 
     private function assertExistingIntent(
@@ -279,20 +286,65 @@ final class DonationCheckoutService
             || ($intent['provider'] ?? null) !== $providerCode
             || ($intent['request_hash'] ?? null) !== $requestHash
             || ($intent['provider_ref'] ?? null) !== $checkout->providerSessionReference()
+            || self::date($intent['expires_at'] ?? null) != $checkout->expiresAt()
         ) {
             throw new InvariantViolation('Existing donation intent does not match the durable checkout checkpoint.');
         }
     }
 
-    private function assertDependentRecords(DonationIntentDraft $draft): void
-    {
-        if ($this->repository->get('donations', self::donationIdForIntent($draft->intentId())) === null) {
-            throw new InvariantViolation('Canonical donation record is missing for the checkout intent.');
-        }
-        if ($draft->monthly()
-            && $this->repository->get('recurring_consents', self::consentIdForIntent($draft->intentId())) === null
+    private function assertDependentRecords(
+        DonationIntentDraft $draft,
+        string $providerCode,
+        HostedCheckoutReference $checkout
+    ): void {
+        $donation = $this->repository->get('donations', self::donationIdForIntent($draft->intentId()));
+        if ($donation === null
+            || ($donation['donor_ref'] ?? null) !== $draft->donorReference()
+            || (int)($donation['amount_minor'] ?? -1) !== $draft->amount()->minorUnits()
+            || ($donation['currency'] ?? null) !== $draft->amount()->currency()
+            || (bool)($donation['recurring'] ?? false) !== $draft->monthly()
+            || ($donation['provider_ref'] ?? null) !== $checkout->providerSessionReference()
+            || !in_array((string)($donation['state'] ?? ''), [
+                'provider_pending', 'settled', 'partially_refunded', 'refunded', 'disputed',
+            ], true)
         ) {
-            throw new InvariantViolation('Canonical recurring consent is missing for the monthly donation intent.');
+            throw new InvariantViolation('Canonical donation record is missing or inconsistent with the checkout intent.');
+        }
+        if ($providerCode !== $this->configuration->providerCode()) {
+            throw new InvariantViolation('Donation aggregate provider does not match runtime configuration.');
+        }
+        if (!$draft->monthly()) {
+            return;
+        }
+        $consent = $this->repository->get('recurring_consents', self::consentIdForIntent($draft->intentId()));
+        if ($consent === null
+            || ($consent['actor_ref'] ?? null) !== $draft->donorReference()
+            || ($consent['product_id'] ?? null) !== 'donation.monthly'
+            || (int)($consent['amount_minor'] ?? -1) !== $draft->amount()->minorUnits()
+            || ($consent['currency'] ?? null) !== $draft->amount()->currency()
+            || ($consent['interval_code'] ?? null) !== 'month'
+            || !in_array((string)($consent['state'] ?? ''), [
+                'pending_provider', 'active', 'cancellation_pending', 'amount_change_pending',
+                'cancelled', 'uncertain',
+            ], true)
+        ) {
+            throw new InvariantViolation('Canonical recurring consent is missing or inconsistent with the checkout intent.');
+        }
+    }
+
+    private function assertCheckoutUsable(
+        HostedCheckoutReference $checkout,
+        string $providerCode,
+        DateTimeImmutable $requestedAt
+    ): void {
+        if ($checkout->providerCode() !== $providerCode) {
+            throw new InvariantViolation('Hosted checkout provider identity mismatch.');
+        }
+        if ($checkout->issuedAt() > $requestedAt->modify('+5 minutes')) {
+            throw new InvariantViolation('Hosted checkout issue time is implausibly in the future.');
+        }
+        if ($checkout->expiresAt() <= $requestedAt) {
+            throw new InvariantViolation('Hosted donation checkout has expired and cannot be replayed.');
         }
     }
 
@@ -323,7 +375,12 @@ final class DonationCheckoutService
             return hash('sha256', json_encode([
                 'actor' => $draft->donorReference(),
                 'provider' => $providerCode,
-                'payload' => $draft->toSafePayload(),
+                'intent_id' => $draft->intentId(),
+                'amount_minor_units' => $draft->amount()->minorUnits(),
+                'currency' => $draft->amount()->currency(),
+                'monthly' => $draft->monthly(),
+                'explicit_monthly_consent' => $draft->explicitMonthlyConsent(),
+                'idempotency_key' => $draft->idempotencyKey(),
             ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
         } catch (JsonException $error) {
             throw new InvariantViolation('Donation request could not be canonicalized.', 0, $error);
@@ -343,7 +400,7 @@ final class DonationCheckoutService
         if (is_string($value) && $value !== '') {
             return new DateTimeImmutable($value);
         }
-        throw new InvariantViolation('Donation checkout creation time is missing.');
+        throw new InvariantViolation('Donation checkout timestamp is missing.');
     }
 
     public static function donationIdForIntent(string $intentId): string
