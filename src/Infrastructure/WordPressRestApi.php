@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sabri\CF03\Infrastructure;
 
 use Sabri\CF03\Application\DonationAppealCopy;
+use Sabri\CF03\Application\FinancialDownloadContract;
 use Sabri\CF03\Application\RouteCatalogue;
 use Sabri\CF03\Domain\FounderOwnershipPolicy;
 use Sabri\CF03\Domain\PlatformFinancialPolicy;
@@ -19,6 +20,7 @@ final class WordPressRestApi
         register_rest_route(self::NAMESPACE,'/policy',['methods'=>'GET','callback'=>[self::class,'policy'],'permission_callback'=>'__return_true']);
         register_rest_route(self::NAMESPACE,'/public-disclosure',['methods'=>'GET','callback'=>[self::class,'publicDisclosure'],'permission_callback'=>'__return_true']);
         register_rest_route(self::NAMESPACE,'/donation-appeal',['methods'=>'GET','callback'=>[self::class,'donationAppeal'],'permission_callback'=>'__return_true']);
+        register_rest_route(self::NAMESPACE,'/download-contract',['methods'=>'GET','callback'=>[self::class,'downloadContract'],'permission_callback'=>'__return_true']);
         register_rest_route(self::NAMESPACE,'/transparency',['methods'=>'GET','callback'=>[self::class,'transparency'],'permission_callback'=>'__return_true']);
         register_rest_route(self::NAMESPACE,'/checkout/(?P<product>[A-Za-z0-9._:-]+)',['methods'=>'POST','callback'=>[self::class,'checkoutUnavailable'],'permission_callback'=>[self::class,'authenticated']]);
         register_rest_route(self::NAMESPACE,'/donation-intents',['methods'=>'POST','callback'=>[self::class,'donationPreparing'],'permission_callback'=>'__return_true']);
@@ -39,13 +41,14 @@ final class WordPressRestApi
         $ownership=(new FounderOwnershipPolicy())->toPublicDisclosure();$ownership['statement']=(new PlatformFinancialPolicy())->publicDisclosure();$ownership['transparency_path']='/transparency/';return $ownership;
     }
     /** @return array<string,mixed> */ public static function donationAppeal(): array{return DonationAppealCopy::contract();}
+    /** @return array<string,mixed> */ public static function downloadContract(): array{return FinancialDownloadContract::contract();}
 
     /** @return array<string,mixed> */
     public static function transparency(): array
     {
         $snapshot=(new WordPressTransparencyRepository())->latestPublished();
-        if($snapshot===null){return ['status'=>'not_published','message'=>'No verified public financial snapshot has been published yet; no financial values are fabricated.','policy'=>self::policy(),'disclosure'=>self::publicDisclosure(),'snapshot'=>null];}
-        return ['status'=>'published','policy'=>self::policy(),'disclosure'=>self::publicDisclosure(),'snapshot'=>$snapshot->toPublicProjection()];
+        if($snapshot===null){return ['status'=>'not_published','message'=>'No verified public financial snapshot has been published yet; no financial values are fabricated.','policy'=>self::policy(),'disclosure'=>self::publicDisclosure(),'download_contract'=>self::downloadContract(),'snapshot'=>null];}
+        return ['status'=>'published','policy'=>self::policy(),'disclosure'=>self::publicDisclosure(),'download_contract'=>self::downloadContract(),'snapshot'=>$snapshot->toPublicProjection()];
     }
 
     public static function checkoutUnavailable(mixed $request=null): mixed{return self::error('sabri_cf03_paid_checkout_suspended','Fixed membership, education, AI and platform-service checkout is prohibited under the current Founder policy.',409);}
@@ -62,13 +65,13 @@ final class WordPressRestApi
     /** @return array<string,mixed> */
     public static function donationManagement(mixed $request=null): array
     {
-        return ['status'=>'provider_not_configured_fail_closed','available_contract_actions'=>['view_recurring_donation','change_amount_provider_permitting','view_next_payment_date','cancel_recurring_donation','download_receipt','request_support'],'cancellation_must_be_easy'=>true,'automatic_renewal_without_explicit_consent'=>false,'live_mutations_enabled'=>false];
+        return ['status'=>'provider_not_configured_fail_closed','available_contract_actions'=>['view_recurring_donation','change_amount_provider_permitting','view_next_payment_date','cancel_recurring_donation','download_receipt','request_support'],'download_contract'=>self::downloadContract(),'cancellation_must_be_easy'=>true,'automatic_renewal_without_explicit_consent'=>false,'live_mutations_enabled'=>false];
     }
 
     /** @return array<string,mixed> */
     public static function adminHealth(): array
     {
-        return ['policy'=>self::policy(),'routes'=>RouteCatalogue::definitions(),'runtime'=>'fail_closed','provider'=>'not_selected','webhook'=>'not_registered','transparency_snapshot'=>self::transparency()['status'],'staging_acceptance'=>false,'live_collection'=>false];
+        return ['policy'=>self::policy(),'routes'=>RouteCatalogue::definitions(),'download_contract'=>self::downloadContract(),'runtime'=>'fail_closed','provider'=>'not_selected','webhook'=>'not_registered','transparency_snapshot'=>self::transparency()['status'],'staging_acceptance'=>false,'live_collection'=>false];
     }
 
     public static function authenticated(): bool{return function_exists('is_user_logged_in')&&is_user_logged_in();}
