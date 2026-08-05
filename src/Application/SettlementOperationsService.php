@@ -56,6 +56,9 @@ final class SettlementOperationsService
                 'source_hash' => $batch->sourceSha256(),
                 'settled_at' => $batch->settledAt(),
                 'imported_at' => $importedAt,
+                'imported_by' => $operatorReference,
+                'posted_by' => null,
+                'posted_at' => null,
                 'status' => $status,
             ]);
 
@@ -122,6 +125,7 @@ final class SettlementOperationsService
             'refund_minor' => $batch->refunds()->minorUnits(),
             'fee_minor' => $batch->fees()->minorUnits(),
             'net_minor' => $batch->net()->minorUnits(),
+            'imported_by' => $operatorReference,
         ];
     }
 
@@ -188,6 +192,9 @@ final class SettlementOperationsService
         if ($record === null || !in_array((string)$record['status'], ['reconciled', 'reconciled_pending_posting'], true)) {
             throw new InvariantViolation('Settlement batch is not ready for posting.');
         }
+        if (($record['imported_by'] ?? null) === $operatorReference) {
+            throw new InvariantViolation('Settlement importer cannot post the same settlement batch.');
+        }
         if ($this->repository->find('reconciliation_exceptions', [
             'batch_id' => $batchId,
             'state' => 'open',
@@ -196,28 +203,98 @@ final class SettlementOperationsService
         }
 
         $batch = $this->hydrateBatch($record);
-        $this->repository->transaction(function () use ($batch, $operatorReference, $postedAt): void {
+        $this->repository->transaction(function () use ($batch, $record, $operatorReference, $postedAt): void {
             $this->postProviderSettlement($batch, $operatorReference, $postedAt);
             $updated = $this->repository->updateWhere('settlements', [
                 'batch_id' => $batch->batchId(),
-                'status' => 'reconciled',
-            ], ['status' => 'posted']);
-            if ($updated === 0) {
-                $updated = $this->repository->updateWhere('settlements', [
-                    'batch_id' => $batch->batchId(),
-                    'status' => 'reconciled_pending_posting',
-                ], ['status' => 'posted']);
-            }
+                'status' => (string)$record['status'],
+                'posted_by' => null,
+            ], [
+                'status' => 'posted',
+                'posted_by' => $operatorReference,
+                'posted_at' => $postedAt,
+            ]);
             if ($updated !== 1) {
                 throw new InvariantViolation('Settlement posting status could not be committed exactly once.');
             }
+            $this->audit->append(new AuditEnvelope(
+                'audit:settlement-posted:'.substr(hash('sha256', $batch->batchId().'|'.$postedAt->format(DATE_ATOM)), 0, 32),
+                $operatorReference,
+                'settlement_posted',
+                'settlement_batch',
+                $batch->batchId(),
+                'provider_reconciliation',
+                AuditOutcome::SUCCEEDED,
+                $postedAt,
+                'trace:settlement:'.substr(hash('sha256', $batch->batchId()), 0, 24),
+                ['imported_by' => $record['imported_by'], 'posted_by' => $operatorReference]
+            ));
         });
 
         return [
             'batch_id' => $batchId,
             'status' => 'posted',
+            'posted_by' => $operatorReference,
             'posted_at' => $postedAt->format(DATE_ATOM),
         ];
+    }
+
+    /** @return array<string,mixed> */
+    public function reviewPeriod(
+        string $periodId,
+        string $reviewerReference,
+        DateTimeImmutable $reviewedAt
+    ): array {
+        self::assertPeriodId($periodId);
+        self::assertReference($reviewerReference, 'Finance reviewer');
+        $this->assertPeriodReady($periodId);
+
+        $existing = $this->repository->get('finance_periods', $periodId);
+        if ($existing !== null && ($existing['state'] ?? null) === 'locked') {
+            throw new InvariantViolation('Locked finance period cannot be reviewed again.');
+        }
+        if ($existing !== null && ($existing['state'] ?? null) === 'reviewed') {
+            if (($existing['reviewed_by'] ?? null) === $reviewerReference) {
+                return $existing + ['reused' => true];
+            }
+            throw new InvariantViolation('Finance period already has a different reviewer.');
+        }
+
+        $record = [
+            'period_id' => $periodId,
+            'state' => 'reviewed',
+            'reviewed_by' => $reviewerReference,
+            'reviewed_at' => $reviewedAt,
+            'approved_by' => null,
+            'accepted_risk_ref' => null,
+            'closed_at' => null,
+            'record_version' => 1,
+        ];
+        if ($existing === null) {
+            $this->repository->insert('finance_periods', $periodId, $record);
+            $updated = $record + ['version' => 1];
+        } else {
+            $updated = $this->repository->compareAndSwap(
+                'finance_periods',
+                $periodId,
+                (int)$existing['version'],
+                static fn (array $current): array => array_replace($current, $record)
+            );
+        }
+
+        $this->audit->append(new AuditEnvelope(
+            'audit:period-reviewed:'.substr(hash('sha256', $periodId.'|'.$reviewedAt->format(DATE_ATOM)), 0, 32),
+            $reviewerReference,
+            'finance_period_reviewed',
+            'finance_period',
+            $periodId,
+            'financial_close_control',
+            AuditOutcome::SUCCEEDED,
+            $reviewedAt,
+            'trace:period:'.substr(hash('sha256', $periodId), 0, 24),
+            ['period_id' => $periodId]
+        ));
+        return $updated + ['reused' => false];
     }
 
     /** @return array<string,mixed> */
@@ -227,55 +304,49 @@ final class SettlementOperationsService
         string $approverReference,
         DateTimeImmutable $closedAt
     ): array {
-        if (preg_match('/^[0-9]{4}-(0[1-9]|1[0-2])$/', $periodId) !== 1) {
-            throw new InvalidArgumentException('Finance period identifier is invalid.');
-        }
+        self::assertPeriodId($periodId);
         self::assertReference($reviewerReference, 'Finance reviewer');
         self::assertReference($approverReference, 'Finance approver');
         if ($reviewerReference === $approverReference) {
             throw new InvariantViolation('Finance close requires separate reviewer and approver identities.');
         }
-
-        $batches = $this->batchesForPeriod($periodId);
-        if ($batches === []) {
-            throw new InvariantViolation('Finance period cannot close without imported settlement evidence.');
-        }
-        foreach ($batches as $batch) {
-            if (($batch['status'] ?? null) !== 'posted') {
-                throw new InvariantViolation('Every settlement batch must be posted before finance period close.');
-            }
-            if ($this->repository->find('reconciliation_exceptions', [
-                'batch_id' => $batch['batch_id'],
-                'state' => 'open',
-            ], 1) !== []) {
-                throw new InvariantViolation('Open reconciliation exceptions block finance period close.');
-            }
-        }
+        $this->assertPeriodReady($periodId);
 
         $existing = $this->repository->get('finance_periods', $periodId);
         if ($existing !== null && ($existing['state'] ?? null) === 'locked') {
             return $existing + ['reused' => true];
         }
-        $record = [
-            'period_id' => $periodId,
-            'state' => 'locked',
-            'reviewed_by' => $reviewerReference,
-            'approved_by' => $approverReference,
-            'accepted_risk_ref' => null,
-            'closed_at' => $closedAt,
-            'record_version' => 1,
-        ];
-        if ($existing === null) {
-            $this->repository->insert('finance_periods', $periodId, $record);
-            return $record + ['version' => 1, 'reused' => false];
+        if ($existing === null
+            || ($existing['state'] ?? null) !== 'reviewed'
+            || ($existing['reviewed_by'] ?? null) !== $reviewerReference
+            || empty($existing['reviewed_at'])
+        ) {
+            throw new InvariantViolation('Finance period requires an independently persisted review before close approval.');
         }
 
         $updated = $this->repository->compareAndSwap(
             'finance_periods',
             $periodId,
             (int)$existing['version'],
-            static fn (array $current): array => array_replace($current, $record)
+            static function (array $current) use ($approverReference, $closedAt): array {
+                $current['state'] = 'locked';
+                $current['approved_by'] = $approverReference;
+                $current['closed_at'] = $closedAt;
+                return $current;
+            }
         );
+        $this->audit->append(new AuditEnvelope(
+            'audit:period-closed:'.substr(hash('sha256', $periodId.'|'.$closedAt->format(DATE_ATOM)), 0, 32),
+            $approverReference,
+            'finance_period_closed',
+            'finance_period',
+            $periodId,
+            'financial_close_control',
+            AuditOutcome::SUCCEEDED,
+            $closedAt,
+            'trace:period:'.substr(hash('sha256', $periodId), 0, 24),
+            ['reviewed_by' => $reviewerReference, 'approved_by' => $approverReference]
+        ));
         return $updated + ['reused' => false];
     }
 
@@ -286,6 +357,7 @@ final class SettlementOperationsService
         string $approverReference,
         string $reasonReference
     ): array {
+        self::assertPeriodId($periodId);
         self::assertReference($requesterReference, 'Finance reopen requester');
         self::assertReference($approverReference, 'Finance reopen approver');
         self::assertReference($reasonReference, 'Finance reopen reason reference');
@@ -303,6 +375,9 @@ final class SettlementOperationsService
             (int)$period['version'],
             static function (array $current) use ($reasonReference): array {
                 $current['state'] = 'exception_review';
+                $current['reviewed_by'] = null;
+                $current['reviewed_at'] = null;
+                $current['approved_by'] = null;
                 $current['accepted_risk_ref'] = $reasonReference;
                 $current['closed_at'] = null;
                 return $current;
@@ -313,6 +388,25 @@ final class SettlementOperationsService
             'state' => $updated['state'],
             'version' => $updated['version'],
         ];
+    }
+
+    private function assertPeriodReady(string $periodId): void
+    {
+        $batches = $this->batchesForPeriod($periodId);
+        if ($batches === []) {
+            throw new InvariantViolation('Finance period cannot proceed without imported settlement evidence.');
+        }
+        foreach ($batches as $batch) {
+            if (($batch['status'] ?? null) !== 'posted') {
+                throw new InvariantViolation('Every settlement batch must be posted before finance period review or close.');
+            }
+            if ($this->repository->find('reconciliation_exceptions', [
+                'batch_id' => $batch['batch_id'],
+                'state' => 'open',
+            ], 1) !== []) {
+                throw new InvariantViolation('Open reconciliation exceptions block finance period review or close.');
+            }
+        }
     }
 
     private function postProviderSettlement(
@@ -444,6 +538,13 @@ final class SettlementOperationsService
             throw new InvariantViolation('Settlement timestamp is missing.');
         }
         return new DateTimeImmutable($value);
+    }
+
+    private static function assertPeriodId(string $periodId): void
+    {
+        if (preg_match('/^[0-9]{4}-(0[1-9]|1[0-2])$/', $periodId) !== 1) {
+            throw new InvalidArgumentException('Finance period identifier is invalid.');
+        }
     }
 
     private static function assertReference(string $value, string $label): void
