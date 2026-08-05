@@ -26,7 +26,10 @@ final class CatalogDisclosureService
     {
         $policy = new PlatformFinancialPolicy();
         $donations = [];
-        foreach ($this->repository->find('products', ['kind' => ProductKind::DONATION->value, 'lifecycle_state' => 'active'], 50) as $record) {
+        foreach ($this->repository->find('products', [
+            'kind' => ProductKind::DONATION->value,
+            'lifecycle_state' => 'active',
+        ], 50) as $record) {
             $donations[] = [
                 'product_id' => $record['product_id'],
                 'billing_type' => $record['billing_type'],
@@ -38,9 +41,14 @@ final class CatalogDisclosureService
         return [
             'as_of' => $at->format(DATE_ATOM),
             'core_services' => [
-                'registration' => 'free', 'membership' => 'free', 'education' => 'free',
-                'ai' => 'free', 'profile' => 'free', 'verification' => 'free',
-                'listing' => 'free', 'publishing' => 'free',
+                'registration' => 'free',
+                'membership' => 'free',
+                'education' => 'free',
+                'ai' => 'free',
+                'profile' => 'free',
+                'verification' => 'free',
+                'listing' => 'free',
+                'publishing' => 'free',
             ],
             'fixed_fees_prohibited' => true,
             'clinic_marketplace_commission_basis_points' => 0,
@@ -50,7 +58,10 @@ final class CatalogDisclosureService
                 'default_amount_minor' => null,
                 'default_recurring' => false,
                 'suggested_amounts' => array_map(
-                    static fn ($money): array => ['minor_units' => $money->minorUnits(), 'currency' => $money->currency()],
+                    static fn ($money): array => [
+                        'minor_units' => $money->minorUnits(),
+                        'currency' => $money->currency(),
+                    ],
                     $policy->suggestedDonationAmounts()
                 ),
                 'positive_custom_usd' => true,
@@ -111,10 +122,13 @@ final class CatalogDisclosureService
                 'financial_product',
                 $product->productId(),
                 'approved_donation_catalog',
-                AuditOutcome::SUCCESS,
+                AuditOutcome::SUCCEEDED,
                 $at,
                 'trace:product:'.substr(hash('sha256', $product->productId()), 0, 24),
-                ['kind' => ProductKind::DONATION->value, 'policy_version' => PlatformFinancialPolicy::DECISION_ID]
+                [
+                    'kind' => ProductKind::DONATION->value,
+                    'policy_version' => PlatformFinancialPolicy::DECISION_ID,
+                ]
             ));
         });
         return $record + ['reused' => false];
