@@ -19,7 +19,7 @@ final class Plugin
     public const OPTION_ACTIVATION_RECORD='sabri_cf03_activation_record';
     public const OPTION_FINANCIAL_POLICY_DECISION='sabri_cf03_financial_policy_decision';
     public const OPTION_LAST_MIGRATION='sabri_cf03_last_migration';
-    private const RUNTIME_STATUS='source_complete_runtime_fail_closed_founder_donation_transparency_ready_paid_services_suspended';
+    private const RUNTIME_STATUS='source_complete_runtime_fail_closed_three_plan_harmonized_founder_donation_transparency_download_ready_paid_services_suspended';
     private const DONATION_PROMPT_META=['last_donation_prompt_at','next_donation_prompt_at','donation_prompt_status','donation_prompt_snoozed_until','last_donation_completed_at','recurring_donation_status','donation_frequency_preference'];
 
     public static function activate(): void
@@ -29,7 +29,7 @@ final class Plugin
         $migrations=WordPressSchemaInstaller::install();$expectedCount=count(CompleteSchema::tables(''));
         if(count($migrations)!==$expectedCount){update_option(self::OPTION_RUNTIME_STATUS,'schema_incomplete_fail_closed',false);throw new RuntimeException('CF-03 activation did not verify every canonical schema migration.');}
         if(function_exists('get_role')){$administrator=get_role('administrator');if(is_object($administrator)&&method_exists($administrator,'add_cap')){$administrator->add_cap('sabri_manage_finance');}}
-        update_option(self::OPTION_VERSION,defined('SABRI_CF03_VERSION')?SABRI_CF03_VERSION:'1.1.0-rc.1',false);
+        update_option(self::OPTION_VERSION,defined('SABRI_CF03_VERSION')?SABRI_CF03_VERSION:'1.1.0-rc.3',false);
         update_option(self::OPTION_SCHEMA_VERSION,CompleteSchema::VERSION,false);
         update_option(self::OPTION_LAST_MIGRATION,['schema_version'=>CompleteSchema::VERSION,'migration_ids'=>$migrations,'completed_at'=>gmdate(DATE_ATOM)],false);
         update_option(self::OPTION_RUNTIME_STATUS,self::RUNTIME_STATUS,false);
