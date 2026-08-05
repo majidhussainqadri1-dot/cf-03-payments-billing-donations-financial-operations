@@ -48,7 +48,9 @@ jobs:
           path.write_text(text)
 
           path = Path('tests/run-review-40-third.php')
-          text = path.read_text().replace("containsR3($m,'1.2.0-rc.2')", "containsR3($m,'1.2.0-rc.3')")
+          text = path.read_text()
+          text = text.replace("containsR3($ci,'review-evidence-40-rounds-third-1.2.0-rc.2.md')", "containsR3($ci,'run-review-40-fourth.php')")
+          text = text.replace("containsR3($m,'1.2.0-rc.2')", "containsR3($m,'1.2.0-rc.3')")
           path.write_text(text)
           PY
           rm -rf .automation
