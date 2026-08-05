@@ -23,13 +23,32 @@ jobs:
           patch --batch --forward -p1 < /tmp/fourth-review.patch
           python - <<'PY'
           from pathlib import Path
+
           path = Path('tests/run-1.0.php')
           text = path.read_text()
           text = text.replace("insert('x', '1'", "insert('test_records', 'record:1'")
           text = text.replace("compareAndSwap('x', '1'", "compareAndSwap('test_records', 'record:1'")
           path.write_text(text)
+
           path = Path('tests/run-runtime-completion.php')
           text = path.read_text().replace("$at->modify('-30 seconds')->getTimestamp()", "$at->getTimestamp()")
+          path.write_text(text)
+
+          path = Path('docs/architecture.md')
+          text = path.read_text().replace('# CF-03 Architecture — 1.2.0-rc.2', '# CF-03 Architecture — 1.2.0-rc.3')
+          path.write_text(text)
+
+          path = Path('tests/run-review-40-second.php')
+          text = path.read_text()
+          text = text.replace("'Version: 1.2.0-rc.2'", "'Version: 1.2.0-rc.3'")
+          text = text.replace("containsR2($s,'1.2.0-rc.2')", "containsR2($s,'1.2.0-rc.3')")
+          text = text.replace("'404 tests per PHP version'", "'444 tests per PHP version'")
+          text = text.replace("'1,212 test executions'", "'1,332 test executions'")
+          text = text.replace("'# CF-03 Architecture — 1.2.0-rc.2'", "'# CF-03 Architecture — 1.2.0-rc.3'")
+          path.write_text(text)
+
+          path = Path('tests/run-review-40-third.php')
+          text = path.read_text().replace("containsR3($m,'1.2.0-rc.2')", "containsR3($m,'1.2.0-rc.3')")
           path.write_text(text)
           PY
           rm -rf .automation
