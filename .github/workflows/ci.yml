@@ -42,13 +42,15 @@ jobs:
         run: php tests/run-review-40.php
       - name: Durable runtime completion tests
         run: php tests/run-runtime-completion.php
+      - name: Complete source implementation tests
+        run: php tests/run-source-completion.php
       - name: Validate manifests
         run: |
           for file in manifests/*.json; do php -r 'json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);' "$file"; done
       - name: Prohibited credential material scan
         run: |
           ! grep -RInE '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|sk_live_[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,})' --exclude-dir=.git --exclude=ci.yml .
-      - name: Governing source and runtime assertions
+      - name: Governing source and complete-runtime assertions
         run: |
           grep -RInq 'SSH-FIN-DONATION-2026-08-04-01' src docs manifests README.md
           grep -RInq 'SSH-PMP-2026-v3.0' src docs manifests README.md
@@ -60,21 +62,35 @@ jobs:
           grep -RInq 'CHAT-QA-001' docs manifests README.md
           grep -q 'Version: 1.2.0-rc.1' cf-03-payments-billing-donations-financial-operations.php
           grep -q "SABRI_CF03_VERSION','1.2.0-rc.1'" cf-03-payments-billing-donations-financial-operations.php
+          grep -q "SABRI_CF03_SCHEMA_VERSION','3.1.0'" cf-03-payments-billing-donations-financial-operations.php
           grep -q "'1.2.0-rc.1'" src/Plugin.php
-          grep -RInq "public const VERSION='3.0.0'" src/Persistence/CompleteSchema.php
+          grep -RInq "public const VERSION = RuntimeSchemaExtension::VERSION" src/Persistence/CompleteSchema.php
+          grep -RInq "public const VERSION = '3.1.0'" src/Persistence/RuntimeSchemaExtension.php
           test -f src/Infrastructure/WordPressFinancialRepository.php
           test -f src/Application/DonationCheckoutService.php
           test -f src/Application/WebhookIngestionService.php
           test -f src/Application/RefundWorkflowService.php
           test -f src/Application/DonationManagementService.php
+          test -f src/Application/SettlementOperationsService.php
+          test -f src/Application/ExpenseTransparencyService.php
+          test -f src/Application/SecureExportService.php
+          test -f src/Application/RiskOperationsService.php
+          test -f src/Application/RetentionOperationsService.php
+          test -f src/Application/IncidentOperationsService.php
+          test -f src/Application/SystemIntegrityService.php
+          test -f src/Application/FinancialAuditService.php
+          test -f src/Infrastructure/WordPressFinanceAdminApi.php
           test -f src/Infrastructure/WordPressPublicUi.php
           test -f src/Infrastructure/WordPressPrivacy.php
           test -f src/Domain/DonationNeutralityPolicy.php
           test -f src/Domain/FinancialDueProcessPolicy.php
           test -f src/Domain/FinancialOutcomeProjection.php
           test -f tests/run-runtime-completion.php
-          grep -q 'sabri_manage_finance' src/Plugin.php
-          grep -q 'SHOW TABLES LIKE' src/Infrastructure/WordPressSchemaInstaller.php
+          test -f tests/run-source-completion.php
+          grep -q 'sabri_import_settlements' src/Plugin.php
+          grep -q 'sabri_close_finance' src/Plugin.php
+          grep -q 'sabri_manage_finance_incidents' src/Plugin.php
+          grep -q 'SHOW COLUMNS FROM' src/Infrastructure/WordPressSchemaInstaller.php
 
   package:
     name: Deterministic package and parity
@@ -95,7 +111,10 @@ jobs:
           test -f "$ZIP"
           unzip -Z1 "$ZIP" | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
           unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/cf-03-payments-billing-donations-financial-operations.php | grep -q 'Version: 1.2.0-rc.1'
-          unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Persistence/CompleteSchema.php | grep -q "VERSION='3.0.0'"
+          unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/cf-03-payments-billing-donations-financial-operations.php | grep -q "SABRI_CF03_SCHEMA_VERSION','3.1.0'"
+          unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Persistence/RuntimeSchemaExtension.php | grep -q "VERSION = '3.1.0'"
           unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Application/GoverningPlanRegistry.php | grep -q 'v2.1'
           unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Infrastructure/WordPressFinancialRepository.php | grep -q 'START TRANSACTION'
+          unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Application/SettlementOperationsService.php | grep -q 'closePeriod'
+          unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Application/SecureExportService.php | grep -q 'FinancialDownloadGrant'
           unzip -p "$ZIP" cf-03-payments-billing-donations-financial-operations/src/Domain/DonationNeutralityPolicy.php | grep -q 'file26_ranking_must_ignore_donation'
