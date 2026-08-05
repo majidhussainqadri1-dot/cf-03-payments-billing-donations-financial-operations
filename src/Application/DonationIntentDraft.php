@@ -48,6 +48,15 @@ final class DonationIntentDraft
         }
     }
 
+    public function intentId(): string { return $this->intentId; }
+    public function donorReference(): string { return $this->donorReference; }
+    public function amount(): Money { return $this->amount; }
+    public function monthly(): bool { return $this->monthly; }
+    public function explicitMonthlyConsent(): bool { return $this->explicitMonthlyConsent; }
+    public function serviceState(): DonationServiceState { return $this->serviceState; }
+    public function idempotencyKey(): string { return $this->idempotencyKey; }
+    public function createdAt(): DateTimeImmutable { return $this->createdAt; }
+
     /** @return array<string,mixed> */
     public function toSafePayload(): array
     {
