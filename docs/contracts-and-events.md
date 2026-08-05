@@ -1,52 +1,64 @@
-# Contracts and Events — Foundation 0.2.0
+# CF-03 Contracts and Events — 1.2.0-rc.1
 
 ## Contract maturity
 
-These are compile-time/domain contracts. No transport endpoint, database adapter, provider implementation, or outbox worker is active in this release.
+CF-03 now contains domain contracts, a durable WordPress repository, REST adapters, schedulers, outbox processing and provider-neutral ports. It does not contain an approved Live provider adapter or Live credentials. Real collection remains fail closed.
 
-## Hosted payment provider port
+## Hosted and recurring provider ports
 
-`HostedPaymentProvider` exposes only:
+`HostedPaymentProvider`, `DonationPaymentProvider`, `PaymentProvider` and `RecurringDonationProvider` expose only provider-scoped operations:
 
-- provider code;
-- currency capability query;
-- creation of a provider-hosted checkout from a server-resolved `CheckoutCommand`;
-- retrieval of normalized `ProviderEvidence`.
+- capability and currency discovery;
+- creation/resumption of hosted checkout;
+- trusted provider evidence retrieval;
+- signed webhook normalization;
+- refunds;
+- recurring amount changes and cancellation;
+- settlement retrieval.
 
-The command contains the canonical product/price snapshot, integer amount, currency, idempotency key, expiry and same-origin return path. It omits the platform canonical user reference from the provider request. Returned checkout URLs must use HTTPS and an adapter-specific host allowlist.
+Platform forms never collect PAN, CVV, PIN, OTP, bank passwords or raw payment credentials. Hosted checkout URLs require HTTPS and adapter-specific host allowlists.
 
-## Idempotency store port
+## Idempotency
 
-`IdempotencyStore` supports find, atomic claim and save. The storage adapter must enforce a unique `(scope, key)` constraint. The request fingerprint binds scope, key, actor and canonical payload. Replays with changed input are conflicts; completed/failed records are immutable.
-
-## File 00 financial facts
-
-Contract version: `1.0`.
-
-Allowed past-tense facts:
-
-- `PaymentSettled`
-- `PaymentFailed`
-- `PaymentCancelled`
-- `RefundSettled`
-- `SubscriptionCancelled`
-
-Required fields include event ID, user reference, product ID, price-version ID, financial reference, exact amount/currency, aggregate sequence, occurrence time and correlation ID.
-
-Forbidden semantics include `grant_access`, `revoke_access`, role changes, capability changes or a precomputed entitlement state. File 00 consumes facts and applies product-specific access/grace policy.
-
-## Audit sink
-
-`AuditSink` appends immutable `AuditEnvelope` records. Metadata rejects card/security-secret key families such as PAN, CVV, PIN, OTP, password, secret, API/webhook keys, raw body and bank credentials. Hash fields such as `raw_body_sha256` are allowed. The future sink must be append-only, access-controlled and included in backup/restore evidence.
+Checkout and mutation requests bind an idempotency key to actor, scope and canonical request hash. Reuse with different input is rejected. Completed claims replay the canonical result; pending or failed claims do not create a second financial operation.
 
 ## Provider evidence
 
-A provider event is trusted only after:
+A provider event is trusted only after signature verification, key-version evidence, replay-window validation, bounded normalized payload validation, provider-event uniqueness and provider/intent/amount/currency parity. Raw webhook bodies are represented by SHA-256 evidence, not persisted as ordinary financial records.
 
-- signature verification with a recorded key version;
-- timestamp within a configured replay window;
-- atomic provider-event ID uniqueness claim;
-- raw-body SHA-256 capture;
-- provider, payment-intent and amount/currency parity.
+Unknown provider event types are quarantined. Browser return URLs never establish settlement.
 
-Only trusted evidence can enter event-state mapping. Unknown event types become `QUARANTINED` and cannot grant entitlement or post settled ledger effects.
+## Canonical financial events
+
+Events use past-tense names, stable event IDs, aggregate version, schema version, trace ID and privacy-minimized payload hashes. Implemented families include:
+
+- `DonationSettled`, `DonationRefunded`;
+- `PaymentFailed`, `PaymentCancelled`, `PaymentDisputed`;
+- refund lifecycle facts;
+- recurring-donation cancellation facts;
+- settlement/reconciliation and adjustment evidence;
+- transparency publication evidence;
+- incident declaration/recovery evidence.
+
+## File 00 boundary
+
+File 00 receives financial facts only. CF-03 never sends commands such as `grant_access`, `revoke_access`, role changes or a precomputed entitlement decision. File 00 remains the sole entitlement authority.
+
+## Outbox delivery
+
+Canonical events are inserted into the durable outbox within the same transaction as the financial state change. The scheduler leases bounded batches, retries with limits and records dead-letter state. Delivery through `WordPressOutboxTransport` uses the `sabri_cf03_financial_fact` integration hook; consumers must be idempotent.
+
+## Audit contract
+
+`FinancialAuditService` appends a serialized SHA-256 hash chain. `AuditEnvelope` rejects sensitive metadata key families such as PAN, CVV, PIN, OTP, passwords, secrets, API/webhook keys, raw bodies and bank credentials. Audit history is included in backup/restore integrity evidence and is not deleted by ordinary uninstall.
+
+## Cross-file ownership
+
+- File 00: identity, membership and entitlement decisions;
+- File 19: notification delivery after consent;
+- File 20: global shell and download manager;
+- File 24: assurance and evidence consumption;
+- File 25: responsive/RTL/accessibility presentation;
+- File 26: search/classification without donation favoritism;
+- CF-02: case orchestration without ledger mutation;
+- CF-04: secure file delivery after activation.
