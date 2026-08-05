@@ -58,7 +58,6 @@ jobs:
           path.write_text(text)
           PY
           rm -rf .automation
-          git checkout HEAD -- .github/workflows
       - name: Syntax check
         run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
       - name: Full regression matrix
@@ -87,6 +86,7 @@ jobs:
         run: bash scripts/build-package.sh
       - name: Commit corrected candidate
         run: |
+          git checkout HEAD -- .github/workflows
           git config user.name 'majidhussainqadri1-dot'
           git config user.email 'majidhussainqadri1@gmail.com'
           git add -A
