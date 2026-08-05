@@ -17,7 +17,7 @@ $tests=[];
 $created=new DateTimeImmutable('2026-08-05T13:01:00+05:00');
 $expires=$created->modify('+15 minutes');
 
-$tests['01 all chats recovered register v2 is the second governing plan']=static function():void{$plans=GoverningPlanRegistry::governingPlans();same3('SSH-PMP-2026-v3.0',$plans[0]);same3('Sabri Platform All-Chats Recovered Directive Register 2026 v2.0',$plans[1]);same3('CF-03 Integrated Final Plan 2026 v2.0',$plans[2]);};
+$tests['01 all chats recovered register v2.1 is the second governing plan']=static function():void{$plans=GoverningPlanRegistry::governingPlans();same3('SSH-PMP-2026-v3.0',$plans[0]);same3('Sabri Platform All-Chats Recovered Directive Register 2026 v2.1',$plans[1]);same3('CF-03 Integrated Final Plan 2026 v2.0',$plans[2]);};
 $tests['02 recovered seven day directive is explicitly superseded']=static function():void{$r=GoverningPlanRegistry::directiveResolutions()['RCD-022'];same3('superseded_conflict_resolved',$r['status']);same3('SSH-FIN-DONATION-2026-08-04-01',$r['superseded_by']);same3('CF03-FR-037',$r['implemented_by']);};
 $tests['03 latest founder decision remains the governing financial decision']=static function():void{$c=GoverningPlanRegistry::auditContract();same3(PlatformFinancialPolicy::DECISION_ID,$c['latest_financial_decision']);same3(PlatformFinancialPolicy::EFFECTIVE_AT,$c['latest_financial_decision_effective_at']);same3(false,$c['live_collection_enabled']);};
 $tests['04 recovered free amounts and zero commission directives remain active']=static function():void{$r=GoverningPlanRegistry::directiveResolutions();foreach(['RCD-020','RCD-021','RCD-023'] as $id){same3('active_consistent',$r[$id]['status']);}};
