@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLUGIN_DIR="cf-03-payments-billing-donations-financial-operations"
-VERSION="1.2.0-rc.3"
+VERSION="1.3.0-rc.1"
 BUILD_DIR="${ROOT_DIR}/build"
 STAGE_DIR="${BUILD_DIR}/${PLUGIN_DIR}"
 ZIP_PATH="${BUILD_DIR}/${PLUGIN_DIR}-${VERSION}.zip"
@@ -24,7 +24,8 @@ done < <(find "${ROOT_DIR}" -type f \
   ! -name '*.map' \
   ! -name '.DS_Store' \
   -print0 | sort -z)
-find "${STAGE_DIR}" -type f -exec touch -t 202608060008 {} +
+# Fixed timestamp keeps byte-for-byte deterministic packaging across repeated builds.
+find "${STAGE_DIR}" -type f -exec touch -t 202609080000 {} +
 (cd "${BUILD_DIR}" && find "${PLUGIN_DIR}" -type f -print | LC_ALL=C sort | zip -X -q "${ZIP_PATH}" -@)
 sha256sum "${ZIP_PATH}" > "${ZIP_PATH}.sha256"
 printf 'Built %s\n' "${ZIP_PATH}"
