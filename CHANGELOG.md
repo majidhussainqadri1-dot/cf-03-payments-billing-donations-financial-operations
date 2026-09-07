@@ -1,57 +1,40 @@
 # Changelog
 
-## 1.2.0-rc.3 — Fourth Forty-Round Transactional and Retry-Safety Review
+## 1.3.0-rc.1 — New Governing Plans: Free Core + One-Time Donation Reconciliation
 
-- Performed a fresh fourth sequence of forty review → correction → fresh-review rounds on `1.2.0-rc.2`.
-- Made donation retry fingerprints independent of volatile request timestamps while preserving actor, provider, intent, amount, currency, consent and idempotency binding.
-- Rejected expired hosted-checkout replay and revalidated idempotency actor/scope plus dependent donation/consent parity.
-- Made duplicate provider-event IDs require identical signed evidence and added event/intent chronology checks.
-- Required canonical donation and recurring-consent parity before settlement; accounting periods now follow provider occurrence time.
-- Rejected zero refunds, reserved cumulative requested/approved/pending/uncertain/succeeded/closed balances and made refund identifiers exact-term idempotent.
-- Added durable refund and recurring-management checkpoints before provider calls; uncertain provider outcomes remain explicitly reconcilable.
-- Removed provider confirmation references from public recurring/refund results.
-- Made WordPress database query failures fail closed instead of appearing as empty results.
-- Aligned memory-repository semantics with WordPress, including nested rollback-only behavior and no implicit version increment for bounded updates.
-- Protected ledger transactions, ledger entries and audit records from generic update/delete operations and validated canonical record identifiers.
-- Rejected audit event-ID reuse with changed immutable evidence.
-- Bound finance-override downloads to the actual authenticated finance actor.
-- Added a global bounded request guard for every CF-03 REST mutation while retaining the larger webhook-specific ceiling.
-- Added `tests/run-review-40-fourth.php` and `docs/review-evidence-40-rounds-fourth-1.2.0-rc.3.md`.
-- Updated the matrix to 444 tests per PHP version and 1,332 executions across PHP 8.1–8.3.
-- Live provider, legal, PCI, staging, independent-security and Founder activation gates remain unresolved and fail closed.
+- Rebased CF-03 source governance onto the newly supplied `SSH-PMP-2026-v3.0` central plan and **CF-03 Conditional Complete Master Plan 2026 v1.0**.
+- Replaced the superseded 30-day/calendar-month donation-appeal rule with a minimum **7-day** interval.
+- Made voluntary donations **one-time only**: no recurring checkbox, recurring mandate, automatic repeat charge, renewal, grace or dunning runtime.
+- Required explicit one-time consent before hosted checkout; no amount is preselected.
+- Retired paid AI metering/billing: approved Sabri Classical Homeopathy AI is a free core capability and cannot be finance- or donor-gated.
+- Retired paid subscription runtime and removed subscriptions from user finance-history projections.
+- Added compatibility tombstones so stale recurring/subscription/paid-AI callers fail closed instead of silently reviving superseded business rules.
+- Introduced active schema `4.0.0`; removed `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from the active canonical schema while preserving bounded historical evidence where an upgraded installation already contains legacy physical tables.
+- Updated donation checkout, webhook settlement/refund, receipts and outbox events to require `donation.one_time`, recurring=false and no-access-event semantics.
+- Quarantine signed provider events tied to retired financial products for manual/provider reconciliation rather than mutating current financial truth.
+- Limited the active product catalog to `donation.one_time`; legacy `donation.monthly` catalog records are retired during migration/seeding.
+- Preserved 0% Clinic/Marketplace platform commission and strengthened donor/non-donor equality across access, ranking, support, education, AI, quota and feature availability.
+- Rewrote public REST/UI/JavaScript contracts for explicit one-time donation only.
+- Added new release/contract manifests and marked `1.2.0-rc.3` as historical/superseded evidence.
+- Rebuilt deterministic packaging identity as `cf-03-payments-billing-donations-financial-operations-1.3.0-rc.1.zip`.
+- Staging, provider, PCI, legal/tax/accounting, independent-security, browser/accessibility/performance, restore/rollback and Founder Live activation remain separate external gates.
 
-## 1.2.0-rc.2 — Third Forty-Round Runtime, Privacy and Integrity Review
+## 1.2.0-rc.3 — Historical Fourth Forty-Round Transactional and Retry-Safety Review
+
+> Historical evidence only. The 30-day/monthly/paid-capability assumptions in this release were superseded by the newly supplied governing plans and are not current acceptance law.
+
+- Performed a fourth sequence of forty review/correction rounds on the then-current candidate.
+- Hardened retry fingerprints, signed provider evidence, refund reservation, repository immutability and deterministic packaging.
+- Reached 444 historical tests per PHP version and 1,332 historical executions across PHP 8.1–8.3.
+
+## 1.2.0-rc.2 — Historical Third Runtime, Privacy and Integrity Review
 
 - Required trusted webhook readiness, provider-registry parity, exact schema validation and fail-closed incident/runtime parsing.
-- Added provider-safe identity minimization, durable checkout recovery, public redaction, repository hardening, snapshot integrity and the third forty-round suite.
-- Reached 404 tests per PHP version and 1,212 executions across PHP 8.1–8.3.
 
-## 1.2.0-rc.1 — Complete Runtime Source and Second Forty-Round Review
+## 1.2.0-rc.1 — Historical Complete Runtime Source Candidate
 
-- Added durable WordPress repository and end-to-end financial runtime services.
-- Extended the schema to `3.2.0` while retaining 31 canonical tables.
-- Reached 364 tests per PHP version and 1,092 executions across PHP 8.1–8.3.
+- Added durable WordPress repository and end-to-end financial runtime services under the then-active model.
 
-## 1.1.0-rc.3 — Actual Three-Plan Audit and Recovered-Directive Conflict Lock
+## 1.1.0 and earlier — Historical foundation
 
-- Re-audited against the three governing plans and locked `RCD-022` as superseded.
-
-## 1.1.0-rc.2 — Three-Plan Harmonization and Universal Financial Download Contract
-
-- Added eligible financial-download contracts and preserved cross-file ownership boundaries.
-
-## 1.1.0-rc.1 — Final Founder Donation and Financial Transparency Policy
-
-- Codified Founder ownership, non-Trust status, no fixed core-service fee, voluntary donation and 0% commission.
-
-## 1.0.0-rc.3 — First Forty-Round Dual-Plan Source Candidate
-
-- Completed source traceability, forty regression tests and deterministic packaging.
-
-## 0.2.0 — Product, Price, Evidence and Contract Foundation
-
-- Added immutable product/price snapshots, idempotency and provider-evidence contracts.
-
-## 0.1.0 — Foundation
-
-- Added exact money, 0% commission, donation non-privilege, intent transitions and balanced-ledger value objects.
+- Product/price/evidence, idempotency, provider abstraction, money, immutable ledger, refund, transparency and governance foundations were established across earlier candidates.
