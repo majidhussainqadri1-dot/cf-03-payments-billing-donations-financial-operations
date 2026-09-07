@@ -8,13 +8,28 @@ use RuntimeException;
 
 final class RuntimeSchemaExtension
 {
-    public const VERSION = '3.3.0';
+    public const VERSION = '4.0.0';
+
+    /** @var list<string> */
+    public const RETIRED_TABLES = [
+        'recurring_consents',
+        'subscriptions',
+        'usage_authorizations',
+        'usage_facts',
+    ];
 
     /** @param array<string,string> $tables @return array<string,string> */
     public static function apply(array $tables): array
     {
+        // These tables are intentionally removed from the active canonical schema.
+        // Existing installations may retain physical legacy tables for bounded
+        // audit/reconciliation retention, but CF-03 v4 must not create or address
+        // them as active runtime truth.
+        foreach (self::RETIRED_TABLES as $retired) {
+            unset($tables[$retired]);
+        }
+
         foreach ([
-            'recurring_consents',
             'ledger_entries',
             'reconciliation_exceptions',
             'exports',
@@ -23,17 +38,17 @@ final class RuntimeSchemaExtension
             'audit',
             'adjustments',
             'transparency_snapshots',
+            'donations',
+            'intents',
+            'refunds',
+            'chargebacks',
+            'outbox',
         ] as $required) {
             if (!isset($tables[$required])) {
                 throw new RuntimeException('CF-03 runtime schema extension is missing '.$required.'.');
             }
         }
 
-        $tables['recurring_consents'] = self::replaceOnce(
-            $tables['recurring_consents'],
-            'revoked_at datetime(6) NULL, PRIMARY KEY',
-            'revoked_at datetime(6) NULL, record_version bigint unsigned NOT NULL DEFAULT 1, PRIMARY KEY'
-        );
         $tables['ledger_entries'] = self::replaceOnce(
             $tables['ledger_entries'],
             'KEY source_ref(source_ref)',
@@ -70,6 +85,8 @@ final class RuntimeSchemaExtension
             'currency char(3) NOT NULL, debit_account varchar(128) NOT NULL, credit_account varchar(128) NOT NULL, reason_code'
         );
 
+        // Legacy recurring columns remain nullable/false in the donation table for
+        // backward-readable historical rows only. New code always writes false/null.
         return $tables;
     }
 
