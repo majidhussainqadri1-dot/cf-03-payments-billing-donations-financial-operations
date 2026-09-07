@@ -10,14 +10,24 @@ use Sabri\CF03\Support\InvariantViolation;
 
 final class DonationPromptState
 {
+    private readonly DonationFrequencyPreference $frequencyPreference;
+
     public function __construct(
         private readonly ?DateTimeImmutable $lastDonationPromptAt = null,
         private readonly DonationPromptStatus $status = DonationPromptStatus::NEVER_SEEN,
         private readonly ?DateTimeImmutable $snoozedUntil = null,
         private readonly ?DateTimeImmutable $lastDonationCompletedAt = null,
-        private readonly DonationFrequencyPreference $frequencyPreference = DonationFrequencyPreference::NONE,
+        DonationFrequencyPreference $frequencyPreference = DonationFrequencyPreference::NONE,
         private readonly ?DateTimeImmutable $nextDonationPromptAt = null
-    ) {}
+    ) {
+        // Legacy monthly values are migration input only. They are normalized to the
+        // one-time/non-recurring model and never create an active recurring state.
+        $this->frequencyPreference = match ($frequencyPreference) {
+            DonationFrequencyPreference::MONTHLY_ACTIVE,
+            DonationFrequencyPreference::MONTHLY_CANCELLED => DonationFrequencyPreference::ONE_TIME,
+            default => $frequencyPreference,
+        };
+    }
 
     public function lastDonationPromptAt(): ?DateTimeImmutable { return $this->lastDonationPromptAt; }
     public function status(): DonationPromptStatus { return $this->status; }
@@ -33,7 +43,14 @@ final class DonationPromptState
             throw new InvariantViolation('Donation prompt action chronology is invalid.');
         }
 
-        $thirtyDays = $at->modify('+30 days');
+        if (in_array($action, [
+            DonationPromptAction::DONATION_COMPLETED_MONTHLY,
+            DonationPromptAction::MONTHLY_CANCELLED,
+        ], true)) {
+            throw new InvariantViolation('Recurring donation actions are retired under the current one-time-only financial constitution.');
+        }
+
+        $sevenDays = $at->modify('+7 days');
         return match ($action) {
             DonationPromptAction::SHOWN => new self(
                 $at,
@@ -41,55 +58,43 @@ final class DonationPromptState
                 $this->snoozedUntil,
                 $this->lastDonationCompletedAt,
                 $this->frequencyPreference,
-                self::firstDayOfNextMonth($at)
+                $sevenDays
             ),
             DonationPromptAction::REMIND_LATER => new self(
                 $this->lastDonationPromptAt ?? $at,
                 DonationPromptStatus::SNOOZED,
-                $thirtyDays,
+                $sevenDays,
                 $this->lastDonationCompletedAt,
                 $this->frequencyPreference,
-                $thirtyDays
+                $sevenDays
             ),
             DonationPromptAction::NOT_NOW => new self(
                 $this->lastDonationPromptAt ?? $at,
                 DonationPromptStatus::NOT_NOW,
-                $thirtyDays,
+                $sevenDays,
                 $this->lastDonationCompletedAt,
                 $this->frequencyPreference,
-                $thirtyDays
+                $sevenDays
             ),
             DonationPromptAction::CLOSE => new self(
                 $this->lastDonationPromptAt ?? $at,
                 DonationPromptStatus::CLOSED,
-                $thirtyDays,
+                $sevenDays,
                 $this->lastDonationCompletedAt,
                 $this->frequencyPreference,
-                $thirtyDays
+                $sevenDays
             ),
             DonationPromptAction::DONATION_COMPLETED_ONE_TIME => new self(
                 $this->lastDonationPromptAt,
                 DonationPromptStatus::DONATION_COMPLETED,
-                $thirtyDays,
+                $sevenDays,
                 $at,
                 DonationFrequencyPreference::ONE_TIME,
-                $thirtyDays
+                $sevenDays
             ),
-            DonationPromptAction::DONATION_COMPLETED_MONTHLY => new self(
-                $this->lastDonationPromptAt,
-                DonationPromptStatus::MONTHLY_ACTIVE,
-                null,
-                $at,
-                DonationFrequencyPreference::MONTHLY_ACTIVE,
-                null
-            ),
-            DonationPromptAction::MONTHLY_CANCELLED => new self(
-                $this->lastDonationPromptAt,
-                DonationPromptStatus::DONATION_COMPLETED,
-                $thirtyDays,
-                $this->lastDonationCompletedAt ?? $at,
-                DonationFrequencyPreference::MONTHLY_CANCELLED,
-                $thirtyDays
+            DonationPromptAction::DONATION_COMPLETED_MONTHLY,
+            DonationPromptAction::MONTHLY_CANCELLED => throw new InvariantViolation(
+                'Recurring donation actions are retired under the current one-time-only financial constitution.'
             ),
         };
     }
@@ -103,7 +108,7 @@ final class DonationPromptState
             'donation_prompt_status' => $this->status->value,
             'donation_prompt_snoozed_until' => $this->snoozedUntil?->format(DATE_ATOM),
             'last_donation_completed_at' => $this->lastDonationCompletedAt?->format(DATE_ATOM),
-            'recurring_donation_status' => $this->frequencyPreference->value,
+            'donation_frequency_preference' => $this->frequencyPreference->value,
         ];
     }
 
@@ -117,16 +122,19 @@ final class DonationPromptState
         if (!$status instanceof DonationPromptStatus) {
             throw new InvalidArgumentException('Stored donation prompt status is invalid.');
         }
+        if ($status === DonationPromptStatus::MONTHLY_ACTIVE) {
+            $status = DonationPromptStatus::DONATION_COMPLETED;
+        }
 
-        $preferenceValue = self::stringValue($data, 'recurring_donation_status');
+        $preferenceValue = self::stringValue($data, 'donation_frequency_preference');
         if ($preferenceValue === '') {
-            $preferenceValue = self::stringValue($data, 'donation_frequency_preference');
+            $preferenceValue = self::stringValue($data, 'recurring_donation_status');
         }
         $preference = $preferenceValue === ''
             ? DonationFrequencyPreference::NONE
             : DonationFrequencyPreference::tryFrom($preferenceValue);
         if (!$preference instanceof DonationFrequencyPreference) {
-            throw new InvalidArgumentException('Stored donation recurrence status is invalid.');
+            throw new InvalidArgumentException('Stored donation frequency status is invalid.');
         }
 
         return new self(
@@ -142,10 +150,7 @@ final class DonationPromptState
     private function latestKnownAt(): ?DateTimeImmutable
     {
         $latest = null;
-        foreach ([
-            $this->lastDonationPromptAt,
-            $this->lastDonationCompletedAt,
-        ] as $candidate) {
+        foreach ([$this->lastDonationPromptAt, $this->lastDonationCompletedAt] as $candidate) {
             if ($candidate !== null && ($latest === null || $candidate > $latest)) {
                 $latest = $candidate;
             }
@@ -153,17 +158,10 @@ final class DonationPromptState
         return $latest;
     }
 
-    private static function firstDayOfNextMonth(DateTimeImmutable $at): DateTimeImmutable
-    {
-        return $at->modify('first day of next month')->setTime(0, 0, 0);
-    }
-
     private static function stringValue(array $data, string $key): string
     {
         $value = $data[$key] ?? null;
-        if ($value === null || $value === '') {
-            return '';
-        }
+        if ($value === null || $value === '') { return ''; }
         if (!is_string($value)) {
             throw new InvalidArgumentException('Stored donation prompt scalar is invalid: '.$key.'.');
         }
@@ -172,9 +170,7 @@ final class DonationPromptState
 
     private static function date(mixed $value, string $field): ?DateTimeImmutable
     {
-        if ($value === null || $value === '') {
-            return null;
-        }
+        if ($value === null || $value === '') { return null; }
         if (!is_string($value)) {
             throw new InvalidArgumentException('Stored donation prompt date is invalid: '.$field.'.');
         }
