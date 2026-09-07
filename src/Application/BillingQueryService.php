@@ -11,9 +11,8 @@ final class BillingQueryService
 {
     /** @var array<string,array{collection:string,field:string}> */
     private const GROUPS = [
-        'invoices' => ['collection' => 'invoices', 'field' => 'actor_ref'],
+        'receipts' => ['collection' => 'invoices', 'field' => 'actor_ref'],
         'donations' => ['collection' => 'donations', 'field' => 'donor_ref'],
-        'subscriptions' => ['collection' => 'subscriptions', 'field' => 'actor_ref'],
         'refunds' => ['collection' => 'refunds', 'field' => 'requester_ref'],
         'exports' => ['collection' => 'exports', 'field' => 'requester_ref'],
     ];
@@ -25,17 +24,13 @@ final class BillingQueryService
     {
         self::assertReference($actorReference);
         if ($limit < 1 || $limit > 100) {
-            throw new InvalidArgumentException('Billing query limit must be between 1 and 100.');
+            throw new InvalidArgumentException('Finance-history query limit must be between 1 and 100.');
         }
         $groups = [];
         foreach (self::GROUPS as $name => $definition) {
             $groups[$name] = $this->safe(
                 $name,
-                $this->repository->find(
-                    $definition['collection'],
-                    [$definition['field'] => $actorReference],
-                    $limit
-                )
+                $this->repository->find($definition['collection'], [$definition['field'] => $actorReference], $limit)
             );
         }
         return $this->response($groups, null);
@@ -46,10 +41,10 @@ final class BillingQueryService
     {
         self::assertReference($actorReference);
         if ($page < 1 || $page > 100000) {
-            throw new InvalidArgumentException('Billing export page is invalid.');
+            throw new InvalidArgumentException('Finance export page is invalid.');
         }
         if ($perGroup < 1 || $perGroup > 100) {
-            throw new InvalidArgumentException('Billing export page size must be between 1 and 100.');
+            throw new InvalidArgumentException('Finance export page size must be between 1 and 100.');
         }
         $offset = ($page - 1) * $perGroup;
         $groups = [];
@@ -62,9 +57,7 @@ final class BillingQueryService
                 $offset
             );
             $groups[$name] = $this->safe($name, $records);
-            if (count($records) === $perGroup) {
-                $done = false;
-            }
+            if (count($records) === $perGroup) { $done = false; }
         }
         return $this->response($groups, $done);
     }
@@ -73,13 +66,14 @@ final class BillingQueryService
     private function response(array $groups, ?bool $done): array
     {
         $counts = [];
-        foreach ($groups as $name => $records) {
-            $counts[$name] = count($records);
-        }
-        $response = ['actor_scope' => 'self'] + $groups + ['counts' => $counts];
-        if ($done !== null) {
-            $response['done'] = $done;
-        }
+        foreach ($groups as $name => $records) { $counts[$name] = count($records); }
+        $response = [
+            'actor_scope' => 'self',
+            'finance_model' => 'voluntary_one_time_donation_only',
+            'subscriptions' => [],
+            'recurring_available' => false,
+        ] + $groups + ['counts' => $counts];
+        if ($done !== null) { $response['done'] = $done; }
         return $response;
     }
 
@@ -87,19 +81,19 @@ final class BillingQueryService
     private function safe(string $collection, array $records): array
     {
         $allowed = [
-            'invoices' => ['invoice_id','invoice_number','status','amount_minor','currency','snapshot_hash','issued_at','voided_at'],
-            'donations' => ['donation_id','amount_minor','currency','purpose_code','recurring','receipt_ref','state','created_at','updated_at'],
-            'subscriptions' => ['subscription_id','product_id','price_version_id','state','current_period_end','grace_until','paused_until','cancellation_effective_at','policy_version','created_at','updated_at'],
+            'receipts' => ['invoice_id','invoice_number','status','amount_minor','currency','snapshot_hash','issued_at','voided_at'],
+            'donations' => ['donation_id','amount_minor','currency','purpose_code','receipt_ref','state','created_at','updated_at'],
             'refunds' => ['refund_id','intent_id','amount_minor','currency','reason','decision_reason','state','requested_at','updated_at'],
             'exports' => ['job_id','specification_hash','maximum_rows','state','manifest_hash','expires_at','created_at','updated_at'],
         ][$collection] ?? [];
         $result = [];
         foreach ($records as $record) {
+            if ($collection === 'donations' && (bool)($record['recurring'] ?? false) === true) {
+                continue;
+            }
             $safe = [];
             foreach ($allowed as $field) {
-                if (array_key_exists($field, $record)) {
-                    $safe[$field] = $record[$field];
-                }
+                if (array_key_exists($field, $record)) { $safe[$field] = $record[$field]; }
             }
             $result[] = $safe;
         }
@@ -109,7 +103,7 @@ final class BillingQueryService
     private static function assertReference(string $value): void
     {
         if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,190}$/', $value) !== 1) {
-            throw new InvalidArgumentException('Billing actor reference is invalid.');
+            throw new InvalidArgumentException('Finance-history actor reference is invalid.');
         }
     }
 }
