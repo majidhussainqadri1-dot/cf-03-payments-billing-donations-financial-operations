@@ -1,89 +1,79 @@
 # CF-03 — Payments, Billing, Donations and Financial Operations
 
-Canonical financial owner for the **Sabri Social Homeopathy Platform**.
+Canonical conditional financial owner for the **Sabri Social Homeopathy Platform**.
 
-> **Source status:** `1.2.0-rc.3`; historical base schema `2.0.0`; complete additive runtime schema `3.3.0` with 31 canonical tables. Live collection and financial file delivery remain disabled and fail closed pending external acceptance.
+> **Current source candidate:** `1.3.0-rc.1`  
+> **Active canonical schema:** `4.0.0` — 27 active canonical tables  
+> **Historical base:** schema `2.0.0`  
+> **Runtime:** fail closed. Live collection and financial file delivery are not claimed.
 
-## Governing plans
+## Current governing plans
+
+Only the following two newly supplied plans govern this source candidate:
 
 1. **Sabri Social Homeopathy Platform Definitive Master Plan 2026 v3.0** — `SSH-PMP-2026-v3.0`;
-2. **Sabri Platform All-Chats Recovered Directive Register 2026 v2.1**;
-3. **CF-03 Integrated Final Plan 2026 v2.0**, governed by Founder decision `SSH-FIN-DONATION-2026-08-04-01`.
+2. **CF-03 — Payments, Billing, Donations and Financial Operations — Conditional Complete Master Plan 2026 v1.0**.
 
-`RCD-022` seven-day appeal wording remains historical and superseded. The active law permits at most one general Donation Appeal per calendar month and requires at least 30 days after Remind Me Later, Not Now, Close or a completed donation.
+Earlier CF-03 v2.0, recovered-directive, 30-day/monthly-donation, paid-AI and subscription rules are retained only as historical evidence where needed for migration/audit. They are not active product law.
 
 ## Constitutional financial law
 
-- The platform is Founder-owned by **Dr. Allamah Majid Hussain Sabri Muhaddith Murshid** and is not a Trust, charitable trust, welfare trust or trust fund.
-- Registration, membership, education, AI, profile, verification, listing, publishing and all core platform services have no fixed platform fee under the active decision.
+- One approved **free core tier**: registration, membership, approved structured education and **Sabri Classical Homeopathy AI** are not sold or donation-gated by CF-03.
 - Clinic and Marketplace platform commission is **0%**.
-- Donations are voluntary, one-time or monthly, default-off and never affect access, entitlement, ranking, verification, visibility, publishing, moderation, support, clinic, marketplace, education, AI priority or clinical decisions.
-- Suggested amounts are USD 10, USD 14, USD 50 and positive custom USD; no amount or recurrence is preselected.
-- File 00 remains the sole entitlement authority. CF-03 emits past-tense financial facts only.
-- Hosted/tokenized providers only. PAN, CVV, CVC, PIN, OTP, bank passwords, raw credentials and provider secrets are never accepted or stored.
-- Browser returns never establish settlement; only trusted provider evidence can change financial truth.
+- The active donation model is **voluntary one-time donation only**.
+- No donation amount is preselected. Suggested values may include USD 10, USD 14 and USD 50 plus positive custom USD.
+- A new appeal is blocked for at least **7 days** after display/dismissal and after a completed one-time donation, subject also to session/page/context safeguards.
+- No recurring donation checkbox, mandate, renewal, grace, dunning or automatic repeat charge is active.
+- Donation never changes access, entitlement, ranking, verification, visibility, publishing, moderation, support, clinic, marketplace, education, AI, clinical decisions, quota or feature availability.
+- File 00 remains the canonical access/entitlement authority. CF-03 emits past-tense financial facts only; donation events are explicitly non-access events.
+- Hosted/tokenized providers only. PAN, CVV/CVC, PIN, OTP, bank passwords, raw credentials and provider secrets are never accepted or persisted by CF-03.
+- Browser returns never establish settlement. Only trusted provider evidence may change financial truth.
+- Escrow, wallet, custody, marketplace payouts, lending, investment and similar regulated flows remain disabled without separate Founder-approved Change-Control.
 
 ## Implemented source scope
 
-- transactional WordPress and memory repositories with bounded queries, exact optimistic concurrency, nested rollback-only semantics, duplicate-identity detection and immutable ledger/audit protection;
-- additive schema installation and exact table/column/index/uniqueness verification;
-- fail-closed automatic plugin upgrade path;
-- voluntary one-time/monthly donation checkout with explicit consent and provider-safe identity minimization;
-- stable retry fingerprints, actor/scope-bound idempotency, durable provider-created recovery checkpoints and expired-session rejection;
-- signed webhook, replay, duplicate-evidence parity, chronology, provider, intent, amount and currency validation;
-- settlement preconditions requiring canonical donation and monthly-consent parity;
-- immutable balanced ledger, receipts, cumulative refund reservation, durable refund execution checkpoints and recurring-donation management checkpoints;
-- approved expense taxonomy and separately disclosed Founder-related categories;
-- canonical-hash-verified aggregate financial transparency snapshots;
-- revocable donor acknowledgment consent;
-- bounded privacy export, prompt-state erasure and retained-record disclosure;
-- incident containment, path kill switches and independently approved recovery;
-- secure download contracts, actual-actor audit scope, retention, backup/restore and outbox evidence;
-- platform-wide financial mutation request-size guard, public REST redaction, webhook header minimization and guest-identity fail-closed controls.
+The `1.3.0-rc.1` candidate implements:
+
+- strict one-time donation intent and checkout boundaries with explicit one-time consent;
+- stable actor/scope-bound idempotency and durable provider-created checkpoints;
+- expired hosted-session rejection and safe replay/resume rules;
+- signed webhook evidence, replay protection, duplicate-evidence parity and chronology checks;
+- quarantine of legacy recurring/subscription/paid-core financial intents rather than silently reviving them;
+- immutable balanced ledger, donation receipts, refunds, disputes/chargebacks, settlements and reconciliation;
+- refund cumulative-balance protection, provider uncertainty/reconciliation and separation of duties;
+- approved expense taxonomy and aggregate financial transparency snapshots;
+- revocable donor acknowledgment consent without donor privilege;
+- bounded privacy export, retention, backup/restore evidence and outbox delivery contracts;
+- request-size guards, public REST redaction, webhook-header minimization and fail-closed guest financial identity;
+- WordPress schema installation with exact table/column/index verification;
+- schema `4.0.0` removing `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from the **active canonical schema**. Existing historical physical tables may remain only for bounded audit/reconciliation retention; active code does not create or treat them as current truth;
+- compatibility tombstones for legacy recurring-consent, subscription and paid-AI-billing calls so stale integrations fail closed.
 
 ## Donation collection readiness
 
-Donation checkout cannot open unless all financial gates, trusted webhook readiness, the selected provider, independent security, staging, rollback, cross-file contracts, operations and applicable Founder approval are complete. Public Live status additionally requires runtime state `live`, no missing collection gate, enabled incident paths, a registered healthy provider and installed schema `3.3.0`.
+Source-code presence is not operational acceptance. Donation checkout remains unavailable unless all required runtime gates are complete: approved hosted/tokenized provider, trusted webhook readiness, legal/tax/accounting review, PCI responsibility validation, independent security acceptance, staging acceptance, rollback/restore evidence, cross-file contracts and explicit Founder activation.
 
-The donation shortcode is disabled and states that no funds are being collected while this readiness proof is absent.
+The public donation UI therefore remains disabled while readiness proof is absent. When enabled by future approved operational evidence, it exposes only one-time donation controls and requires explicit one-time consent.
 
 ## Transparency, privacy and downloads
 
-`/transparency/` publishes only a verified aggregate snapshot bound to source and payload SHA-256 values, period/currency uniqueness, publication state and timestamp. Donor identity, private invoices, provider references, bank/card information, credentials and incident evidence are excluded from public output.
+`/transparency/` publishes only a verified aggregate snapshot bound to source/payload hashes and publication state. Donor identity, private receipts, provider references, credentials, card/bank information and incident evidence are excluded from public output.
 
-Directive `CHAT-DL-001` covers invoices, receipts, approved finance exports and verified aggregate transparency snapshots. CF-03 owns eligibility and click-time authorization; File 20 owns the Global Download Manager; File 25 owns green-led Ionicons/RTL/accessibility presentation; File 24 owns assurance; CF-04 owns secure delivery after activation. No Live delivery route is enabled.
+CF-03 owns financial eligibility and click-time authorization; File 20 owns the global shell/download placement, File 25 owns visual/accessibility presentation, File 24 owns assurance, and secure delivery remains separately gated. No Live delivery route is claimed by this repository.
 
-## QA
+## Current QA commands
 
 ```bash
-php tests/run.php
-php tests/run-0.2.php
-php tests/run-1.0.php
-php tests/run-free-donation-policy.php
-php tests/run-founder-donation-transparency.php
-php tests/run-three-plan-harmonization.php
-php tests/run-plan-completion.php
-php tests/run-adversarial-2.php
-php tests/run-review-40.php
-php tests/run-runtime-completion.php
-php tests/run-source-completion.php
-php tests/run-adversarial-source.php
-php tests/run-review-40-second.php
-php tests/run-review-40-third.php
-php tests/run-review-40-fourth.php
+php tests/run-new-governing-plans.php
+php tests/run-new-governing-plans-adversarial.php
 find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
 bash scripts/build-package.sh
 ```
 
-The fifteen suites execute **444 tests per PHP version** and **1,332 test executions** across PHP 8.1, 8.2 and 8.3. CI also validates manifests, prohibited credential material, governing sources, schema/index assertions, public privacy, package hygiene and deterministic package parity.
+Historical suites and review evidence remain in the repository for provenance, but old suites that encode superseded 30-day/monthly/paid-AI/subscription behavior are not current acceptance gates.
 
-Review evidence:
-
-- `docs/review-evidence-40-rounds-1.0.0-rc.3.md`;
-- `docs/review-evidence-40-rounds-1.2.0-rc.1.md`;
-- `docs/review-evidence-40-rounds-third-1.2.0-rc.2.md`;
-- `docs/review-evidence-40-rounds-fourth-1.2.0-rc.3.md`.
+Current acceptance requires the two new-governing-plan suites, PHP syntax scan, JSON validation, credential-material scan and deterministic package parity to pass on the same exact candidate HEAD.
 
 ## External acceptance boundary
 
-This repository is a source candidate, not an operating payment service. No approved Live provider adapter, legal/tax/accounting acceptance, PCI acceptance, independent penetration-test acceptance, Hostinger staging acceptance, real-browser/mobile/RTL/accessibility/performance acceptance, backup/restore drill or Founder Live activation is claimed. The Draft PR, `main`, staging and Live remain separate until explicit acceptance.
+This repository can become **source-complete and automated-QA green** without being Staging-Accepted, Live-Deployed or Operational. No approved Live provider adapter, legal/tax/accounting acceptance, PCI acceptance, independent penetration-test acceptance, Hostinger-equivalent staging acceptance, real-browser/mobile/RTL/accessibility/performance acceptance, backup/restore drill or Founder Live activation is claimed until separately evidenced.
