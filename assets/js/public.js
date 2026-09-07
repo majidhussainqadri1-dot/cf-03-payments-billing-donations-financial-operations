@@ -19,35 +19,27 @@
   const parseCustomMinor=value=>{
     const text=String(value??'').trim();
     if(text==='')return null;
-    if(!/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(text)){
-      throw new Error(cfg.messages?.invalidAmount||'Choose or enter a valid positive amount.');
-    }
+    if(!/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(text))throw new Error(cfg.messages?.invalidAmount||'Choose or enter a valid positive amount.');
     const [wholeText,fractionText='']=text.split('.');
     const whole=Number(wholeText);
-    if(!Number.isSafeInteger(whole)||whole>Math.floor(Number.MAX_SAFE_INTEGER/100)){
-      throw new Error(cfg.messages?.invalidAmount||'Choose or enter a valid positive amount.');
-    }
+    if(!Number.isSafeInteger(whole)||whole>Math.floor(Number.MAX_SAFE_INTEGER/100))throw new Error(cfg.messages?.invalidAmount||'Choose or enter a valid positive amount.');
     const fraction=Number((fractionText+'00').slice(0,2));
     const minor=whole*100+fraction;
-    if(!Number.isSafeInteger(minor)||minor<=0){
-      throw new Error(cfg.messages?.invalidAmount||'Choose or enter a valid positive amount.');
-    }
+    if(!Number.isSafeInteger(minor)||minor<=0)throw new Error(cfg.messages?.invalidAmount||'Choose or enter a valid positive amount.');
     return minor;
   };
 
   document.addEventListener('change',event=>{
     const radio=event.target.closest('.sabri-cf03-donation-form input[name="amount_minor"]');
     if(!radio)return;
-    const form=radio.form;
-    const custom=form?.elements?.custom_amount;
+    const custom=radio.form?.elements?.custom_amount;
     if(custom)custom.value='';
   });
 
   document.addEventListener('input',event=>{
     const custom=event.target.closest('.sabri-cf03-donation-form input[name="custom_amount"]');
     if(!custom||String(custom.value).trim()==='')return;
-    const form=custom.form;
-    form?.querySelectorAll('input[name="amount_minor"]').forEach(input=>{input.checked=false;});
+    custom.form?.querySelectorAll('input[name="amount_minor"]').forEach(input=>{input.checked=false;});
   });
 
   document.addEventListener('submit',async event=>{
@@ -59,7 +51,7 @@
     const status=form.querySelector('.sabri-cf03-status');
     const submit=form.querySelector('button[type="submit"]');
     if(cfg.collectionEnabled!==true||submit?.disabled){
-      if(status)status.textContent=cfg.messages?.unavailable||'Secure donation collection is not currently available.';
+      if(status)status.textContent=cfg.messages?.unavailable||'Secure one-time donation collection is not currently available.';
       return;
     }
 
@@ -73,31 +65,26 @@
       const customMinor=parseCustomMinor(data.get('custom_amount'));
       const selectedMinor=selected===null?null:Number(selected);
       const minor=customMinor??selectedMinor;
-      if(!Number.isSafeInteger(minor)||minor<=0){
-        throw new Error(cfg.messages?.invalidAmount||'Choose or enter a valid positive amount.');
-      }
+      if(!Number.isSafeInteger(minor)||minor<=0)throw new Error(cfg.messages?.invalidAmount||'Choose or enter a valid positive amount.');
+      if(data.get('one_time_consent')!=='1')throw new Error(cfg.messages?.consentRequired||'Confirm the voluntary one-time donation statement before continuing.');
 
       let idempotency=String(form.elements.idempotency_key?.value||'');
       if(!idempotency){
         idempotency=key();
         form.elements.idempotency_key.value=idempotency;
       }
-      const monthly=data.get('monthly')==='1';
       const result=await request('donation-intents',{
         method:'POST',
         headers:{'Idempotency-Key':idempotency},
         body:JSON.stringify({
           amount_minor:minor,
           currency:'USD',
-          monthly,
-          monthly_consent:monthly,
+          one_time_consent:true,
           idempotency_key:idempotency
         })
       });
-      if(result.hosted_url){
-        window.location.assign(result.hosted_url);
-        return;
-      }
+      if(result.donation_type!=='one_time'||result.recurring!==false)throw new Error(cfg.messages?.failed||'Unexpected donation contract.');
+      if(result.hosted_url){window.location.assign(result.hosted_url);return;}
       if(status)status.textContent=result.message||result.status||cfg.messages?.recorded||'Request recorded.';
     }catch(error){
       if(status)status.textContent=error instanceof Error?error.message:(cfg.messages?.failed||'Request failed');
@@ -140,8 +127,6 @@
       }
     }catch(error){
       target.textContent=error instanceof Error?error.message:(cfg.messages?.failed||'Request failed');
-    }finally{
-      button.disabled=false;
-    }
+    }finally{button.disabled=false;}
   });
 })();
