@@ -27,11 +27,12 @@ final class TrustedDonationFact
         }
         $evidence->assertTrusted($replayWindowSeconds);
         $evidence->assertMatches($providerCode, $paymentIntentId, $amount);
-
         if ($evidence->eventType() !== $type->value) {
             throw new InvariantViolation('Trusted donation evidence type does not match the requested donation fact.');
         }
-
+        if (in_array($type, [DonationFinancialFactType::MONTHLY_STARTED, DonationFinancialFactType::MONTHLY_CANCELLED], true)) {
+            throw new InvariantViolation('Legacy recurring donation facts are not accepted as active CF-03 state under the one-time-only constitution.');
+        }
         $this->providerEventId = $evidence->providerEventId();
         $this->occurredAt = $evidence->occurredAt();
     }
@@ -58,10 +59,12 @@ final class TrustedDonationFact
     {
         return match ($this->type) {
             DonationFinancialFactType::ONE_TIME_COMPLETED => DonationPromptAction::DONATION_COMPLETED_ONE_TIME,
-            DonationFinancialFactType::MONTHLY_STARTED => DonationPromptAction::DONATION_COMPLETED_MONTHLY,
-            DonationFinancialFactType::MONTHLY_CANCELLED => DonationPromptAction::MONTHLY_CANCELLED,
             DonationFinancialFactType::REFUNDED,
             DonationFinancialFactType::CHARGEDBACK => null,
+            DonationFinancialFactType::MONTHLY_STARTED,
+            DonationFinancialFactType::MONTHLY_CANCELLED => throw new InvariantViolation(
+                'Recurring donation facts cannot mutate active donation-prompt state.'
+            ),
         };
     }
 
