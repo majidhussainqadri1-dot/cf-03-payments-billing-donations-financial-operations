@@ -8,7 +8,10 @@ use RuntimeException;
 
 final class CompleteSchema
 {
-    public const BASE_VERSION = '3.0.0';
+    /** Historical core schema before transparency/runtime reconciliation. */
+    public const BASE_VERSION = '2.0.0';
+    /** Historical composed schema generation retained only for migration provenance. */
+    public const LEGACY_COMPOSED_VERSION = '3.0.0';
     public const VERSION = RuntimeSchemaExtension::VERSION;
 
     /** @return array<string,string> */
