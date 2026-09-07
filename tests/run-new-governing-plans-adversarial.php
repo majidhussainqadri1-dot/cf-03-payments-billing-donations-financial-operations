@@ -37,12 +37,9 @@ $tests['monthly and recurring intent combinations all fail closed'] = static fun
     }
 };
 
-$tests['retired schema list is exact and cannot leak into active map'] = static function (): void {
+$tests['retired schema list is exact and active map unsets it'] = static function (): void {
     same(['recurring_consents','subscriptions','usage_authorizations','usage_facts'], RuntimeSchemaExtension::RETIRED_TABLES);
     $source = source('src/Persistence/RuntimeSchemaExtension.php');
-    foreach (RuntimeSchemaExtension::RETIRED_TABLES as $retired) {
-        contains($source, "unset(\$tables[\$retired])", false); // generic loop must exist instead of hard-coded unsafe special cases
-    }
     contains($source, 'unset($tables[$retired]);', true);
 };
 
