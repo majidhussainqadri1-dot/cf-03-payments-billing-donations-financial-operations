@@ -33,14 +33,14 @@ final class Plugin
     public const OPTION_LAST_MIGRATION = 'sabri_cf03_last_migration';
     public const OPTION_UPGRADE_LOCK = 'sabri_cf03_upgrade_lock';
 
-    private const RUNTIME_STATUS = 'source_candidate_runtime_fail_closed_founder_donation_transparency_ready_paid_services_suspended';
+    private const RUNTIME_STATUS = 'source_candidate_runtime_fail_closed_one_time_donation_free_core_ai_ready';
     private const DONATION_PROMPT_META = [
         'last_donation_prompt_at',
         'next_donation_prompt_at',
         'donation_prompt_status',
         'donation_prompt_snoozed_until',
         'last_donation_completed_at',
-        'recurring_donation_status',
+        'donation_frequency_preference',
     ];
     private const FINANCE_CAPABILITIES = [
         'sabri_manage_finance','sabri_review_refunds','sabri_execute_refunds',
@@ -106,30 +106,20 @@ final class Plugin
     public static function maybeUpgrade(): void
     {
         foreach (['get_option','add_option','update_option','delete_option'] as $function) {
-            if (!function_exists($function)) {
-                return;
-            }
+            if (!function_exists($function)) { return; }
         }
         $currentVersion = (string)get_option(self::OPTION_VERSION, '');
         $currentSchema = (string)get_option(self::OPTION_SCHEMA_VERSION, '');
-        $targetVersion = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.2.0-rc.3';
-        if (hash_equals($targetVersion, $currentVersion)
-            && hash_equals(CompleteSchema::VERSION, $currentSchema)
-        ) {
+        $targetVersion = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.3.0-rc.1';
+        if (hash_equals($targetVersion, $currentVersion) && hash_equals(CompleteSchema::VERSION, $currentSchema)) {
             return;
         }
 
         $now = time();
         $existingLock = get_option(self::OPTION_UPGRADE_LOCK, null);
-        if (is_numeric($existingLock) && $now - (int)$existingLock < 300) {
-            return;
-        }
-        if ($existingLock !== null && $existingLock !== false) {
-            delete_option(self::OPTION_UPGRADE_LOCK);
-        }
-        if (!add_option(self::OPTION_UPGRADE_LOCK, $now, '', false)) {
-            return;
-        }
+        if (is_numeric($existingLock) && $now - (int)$existingLock < 300) { return; }
+        if ($existingLock !== null && $existingLock !== false) { delete_option(self::OPTION_UPGRADE_LOCK); }
+        if (!add_option(self::OPTION_UPGRADE_LOCK, $now, '', false)) { return; }
 
         try {
             update_option(self::OPTION_RUNTIME_STATUS, 'schema_upgrade_in_progress_fail_closed', false);
@@ -150,9 +140,7 @@ final class Plugin
 
     public static function registerDonationPromptMeta(): void
     {
-        if (!function_exists('register_meta')) {
-            return;
-        }
+        if (!function_exists('register_meta')) { return; }
         foreach (self::DONATION_PROMPT_META as $key) {
             register_meta('user', $key, [
                 'type' => 'string',
@@ -160,9 +148,7 @@ final class Plugin
                 'show_in_rest' => false,
                 'default' => '',
                 'auth_callback' => static function (bool $allowed, string $metaKey, int $objectId): bool {
-                    if (!function_exists('get_current_user_id') || !function_exists('current_user_can')) {
-                        return false;
-                    }
+                    if (!function_exists('get_current_user_id') || !function_exists('current_user_can')) { return false; }
                     $currentUserId = get_current_user_id();
                     return ($currentUserId > 0 && $currentUserId === $objectId)
                         || current_user_can('sabri_manage_finance');
@@ -173,13 +159,11 @@ final class Plugin
 
     public static function renderConditionalNotice(): void
     {
-        if (!function_exists('current_user_can') || !current_user_can('manage_options')) {
-            return;
-        }
+        if (!function_exists('current_user_can') || !current_user_can('manage_options')) { return; }
         $status = EvidenceBoundActivationGate::forWordPress()->evaluate();
         $runtime = WordPressRuntimeConfiguration::load();
         $message = 'CF-03 policy '.PlatformFinancialPolicy::DECISION_ID.
-            ': founder-owned, not a Trust; fixed fees prohibited; commission 0%; donations voluntary; aggregate transparency required. Runtime state: '.
+            ': one free tier; one-time voluntary donations only; recurring/paid AI/subscriptions prohibited; commission 0%. Runtime state: '.
             $runtime->state()->value.'. Schema '.CompleteSchema::VERSION.'. '.
             ($status->approved()
                 ? 'Activation evidence exists; provider, webhook, staging and every runtime gate must still pass.'
@@ -206,20 +190,18 @@ final class Plugin
         $donations = WordPressProviderRegistryFactory::donations()->registeredProviderCodes();
         $paymentHealth = WordPressProviderRegistryFactory::payments()->health();
         $provider = $runtime->providerCode();
-        $providerReady = in_array($provider, $donations, true)
-            && ($paymentHealth[$provider] ?? null) === 'healthy';
-        $pathsReady = ($incident['checkout_enabled'] ?? false) === true
-            && ($incident['webhooks_enabled'] ?? false) === true;
+        $providerReady = in_array($provider, $donations, true) && ($paymentHealth[$provider] ?? null) === 'healthy';
+        $pathsReady = ($incident['checkout_enabled'] ?? false) === true && ($incident['webhooks_enabled'] ?? false) === true;
         $schemaReady = function_exists('get_option')
             && hash_equals(CompleteSchema::VERSION, (string)get_option(self::OPTION_SCHEMA_VERSION, ''));
         $ready = $missing === [] && $providerReady && $pathsReady && $schemaReady;
 
         return [
-            'label' => $ready ? 'CF-03 donation collection gates are complete' : 'CF-03 remains fail closed',
+            'label' => $ready ? 'CF-03 one-time donation collection gates are complete' : 'CF-03 remains fail closed',
             'status' => $ready ? 'good' : 'recommended',
             'badge' => ['label' => 'Sabri CF-03', 'color' => 'blue'],
             'description' => '<p>'.esc_html(
-                'Policy '.PlatformFinancialPolicy::DECISION_ID.'; schema '.CompleteSchema::VERSION.
+                'Policy '.PlatformFinancialPolicy::DECISION_ID.'; one-time only; schema '.CompleteSchema::VERSION.
                 '; runtime '.$runtime->state()->value.'; missing gates: '.($missing === [] ? 'none' : implode(', ', $missing)).
                 '; provider adapter: '.($providerReady ? 'ready' : 'not ready').
                 '; incident paths: '.($pathsReady ? 'ready' : 'blocked').'.'
@@ -237,13 +219,15 @@ final class Plugin
             update_option(self::OPTION_RUNTIME_STATUS, 'schema_incomplete_fail_closed', false);
             throw new RuntimeException('CF-03 schema installation did not verify every canonical schema migration.');
         }
-        $version = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.2.0-rc.3';
+        $version = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.3.0-rc.1';
         update_option(self::OPTION_VERSION, $version, false);
         update_option(self::OPTION_SCHEMA_VERSION, CompleteSchema::VERSION, false);
+        update_option(self::OPTION_FINANCIAL_POLICY_DECISION, PlatformFinancialPolicy::DECISION_ID, false);
         update_option(self::OPTION_LAST_MIGRATION, [
             'schema_version' => CompleteSchema::VERSION,
             'base_schema_version' => CompleteSchema::BASE_VERSION,
             'migration_ids' => $migrations,
+            'retired_active_tables' => \Sabri\CF03\Persistence\RuntimeSchemaExtension::RETIRED_TABLES,
             'completed_at' => gmdate(DATE_ATOM),
         ], false);
         update_option(self::OPTION_RUNTIME_STATUS, self::RUNTIME_STATUS, false);
@@ -251,13 +235,9 @@ final class Plugin
 
     private static function grantAdministratorCapabilities(): void
     {
-        if (!function_exists('get_role')) {
-            return;
-        }
+        if (!function_exists('get_role')) { return; }
         $administrator = get_role('administrator');
-        if (!is_object($administrator) || !method_exists($administrator, 'add_cap')) {
-            return;
-        }
+        if (!is_object($administrator) || !method_exists($administrator, 'add_cap')) { return; }
         foreach (self::FINANCE_CAPABILITIES as $capability) {
             $administrator->add_cap($capability);
         }
