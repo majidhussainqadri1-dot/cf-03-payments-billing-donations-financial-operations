@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Sabri\CF03\Contracts\QueryableFinancialRepository;
 use Sabri\CF03\Domain\AuditEnvelope;
 use Sabri\CF03\Domain\AuditOutcome;
+use Sabri\CF03\Domain\BillingType;
 use Sabri\CF03\Domain\FinancialProduct;
 use Sabri\CF03\Domain\PlatformFinancialPolicy;
 use Sabri\CF03\Domain\ProductKind;
@@ -16,6 +17,8 @@ use Sabri\CF03\Support\InvariantViolation;
 
 final class CatalogDisclosureService
 {
+    public const ONE_TIME_DONATION_PRODUCT = 'donation.one_time';
+
     public function __construct(
         private readonly QueryableFinancialRepository $repository,
         private readonly FinancialAuditService $audit
@@ -30,8 +33,11 @@ final class CatalogDisclosureService
             'kind' => ProductKind::DONATION->value,
             'lifecycle_state' => 'active',
         ], 50) as $record) {
+            if (($record['product_id'] ?? null) !== self::ONE_TIME_DONATION_PRODUCT) { continue; }
             $donations[] = [
-                'product_id' => $record['product_id'],
+                'product_id' => self::ONE_TIME_DONATION_PRODUCT,
+                'donation_type' => 'one_time',
+                'recurring' => false,
                 'billing_type' => $record['billing_type'],
                 'owner' => $record['owner'],
                 'policy_version' => $record['policy_version'],
@@ -50,22 +56,27 @@ final class CatalogDisclosureService
                 'listing' => 'free',
                 'publishing' => 'free',
             ],
+            'single_free_tier' => true,
             'fixed_fees_prohibited' => true,
             'clinic_marketplace_commission_basis_points' => 0,
             'collectible_products' => $donations,
             'donation' => [
                 'optional' => true,
+                'type' => 'one_time',
+                'recurring_available' => false,
+                'automatic_repeat_charge' => false,
                 'default_amount_minor' => null,
-                'default_recurring' => false,
                 'suggested_amounts' => array_map(
                     static fn ($money): array => [
                         'minor_units' => $money->minorUnits(),
                         'currency' => $money->currency(),
+                        'preselected' => false,
                     ],
                     $policy->suggestedDonationAmounts()
                 ),
                 'positive_custom_usd' => true,
                 'privilege' => false,
+                'appeal_minimum_days' => PlatformFinancialPolicy::APPEAL_MINIMUM_DAYS,
             ],
         ];
     }
@@ -79,8 +90,12 @@ final class CatalogDisclosureService
         DateTimeImmutable $at
     ): array {
         (new PlatformFinancialPolicy())->assertCollectibleProduct($product);
-        if ($product->kind() !== ProductKind::DONATION || !$product->isCheckoutEligible()) {
-            throw new InvariantViolation('Only an approved and available donation product may become active.');
+        if ($product->kind() !== ProductKind::DONATION
+            || $product->productId() !== self::ONE_TIME_DONATION_PRODUCT
+            || $product->billingType() !== BillingType::VOLUNTARY
+            || !$product->isCheckoutEligible()
+        ) {
+            throw new InvariantViolation('Only the approved voluntary one-time donation product may become active.');
         }
         $lifecycle = new ProductLifecycle($product);
         $lifecycle->stage($stagedBy, $at);
@@ -107,6 +122,7 @@ final class CatalogDisclosureService
         if ($existing !== null) {
             if (($existing['lifecycle_state'] ?? null) === 'active'
                 && ($existing['policy_version'] ?? null) === PlatformFinancialPolicy::DECISION_ID
+                && ($existing['billing_type'] ?? null) === BillingType::VOLUNTARY->value
             ) {
                 return $existing + ['reused' => true];
             }
@@ -121,14 +137,11 @@ final class CatalogDisclosureService
                 'product_activated',
                 'financial_product',
                 $product->productId(),
-                'approved_donation_catalog',
+                'approved_one_time_donation_catalog',
                 AuditOutcome::SUCCEEDED,
                 $at,
                 'trace:product:'.substr(hash('sha256', $product->productId()), 0, 24),
-                [
-                    'kind' => ProductKind::DONATION->value,
-                    'policy_version' => PlatformFinancialPolicy::DECISION_ID,
-                ]
+                ['kind' => ProductKind::DONATION->value, 'policy_version' => PlatformFinancialPolicy::DECISION_ID]
             ));
         });
         return $record + ['reused' => false];
@@ -136,9 +149,7 @@ final class CatalogDisclosureService
 
     private static function dateString(mixed $value): ?string
     {
-        if ($value instanceof DateTimeImmutable) {
-            return $value->format(DATE_ATOM);
-        }
+        if ($value instanceof DateTimeImmutable) { return $value->format(DATE_ATOM); }
         return is_string($value) && $value !== '' ? $value : null;
     }
 }
