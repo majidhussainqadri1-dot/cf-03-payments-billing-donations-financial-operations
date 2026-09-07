@@ -4,57 +4,23 @@
   "schema": "3.3.0",
   "base_schema": "2.0.0",
   "table_count": 31,
-  "status": "source-candidate-fourth-forty-round-reviewed-runtime-fail-closed",
-  "governing_plans": [
+  "status": "historical-superseded-source-candidate",
+  "superseded_by": "1.3.0-rc.1",
+  "supersession_reason": "The newly supplied central and CF-03 governing plans require a single free tier, free core AI/education, voluntary one-time donation only, a seven-day appeal interval, no recurring mandate and no paid subscription/renewal/grace runtime.",
+  "historical_governing_plans": [
     "SSH-PMP-2026-v3.0",
     "Sabri Platform All-Chats Recovered Directive Register 2026 v2.1",
     "CF-03 Integrated Final Plan 2026 v2.0"
   ],
-  "founder_decision": "SSH-FIN-DONATION-2026-08-04-01",
-  "review_evidence": "docs/review-evidence-40-rounds-fourth-1.2.0-rc.3.md",
-  "test_suite": "tests/run-review-40-fourth.php",
-  "automated_qa": {
+  "historical_founder_decision": "SSH-FIN-DONATION-2026-08-04-01",
+  "historical_automated_qa": {
     "suites": 15,
     "tests_per_php_version": 444,
     "php_versions": ["8.1", "8.2", "8.3"],
     "aggregate_test_executions": 1332,
-    "syntax_scan": true,
-    "manifest_validation": true,
-    "credential_material_scan": true,
     "deterministic_package_parity": true
   },
-  "hardening": {
-    "stable_checkout_retry_fingerprint": true,
-    "expired_checkout_replay_rejected": true,
-    "idempotency_actor_scope_binding": true,
-    "dependent_aggregate_parity": true,
-    "duplicate_provider_evidence_parity": true,
-    "provider_event_chronology": true,
-    "settlement_aggregate_preconditions": true,
-    "occurrence_time_accounting_period": true,
-    "cumulative_refund_reservation": true,
-    "refund_provider_checkpoint": true,
-    "recurring_provider_checkpoint": true,
-    "uncertain_provider_outcomes": true,
-    "provider_confirmation_redaction": true,
-    "database_query_failure_closed": true,
-    "immutable_ledger_audit_repository": true,
-    "memory_wordpress_semantic_parity": true,
-    "audit_id_payload_parity": true,
-    "actual_actor_download_scope": true,
-    "global_mutation_body_guard": true
-  },
+  "active_runtime": false,
   "live_collection_enabled": false,
-  "live_delivery_enabled": false,
-  "external_gates_pending": [
-    "legal-tax-accounting",
-    "pci-responsibility",
-    "approved-provider",
-    "independent-security",
-    "hostinger-staging",
-    "cross-file-integration",
-    "browser-rtl-accessibility-performance",
-    "backup-restore-rollback",
-    "founder-live-approval"
-  ]
+  "note": "Historical evidence only. This manifest must never be used as the current governing release identity."
 }
