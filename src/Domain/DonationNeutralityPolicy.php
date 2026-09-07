@@ -13,6 +13,7 @@ final class DonationNeutralityPolicy
         'entitlement','grant_access','access_level','rank','ranking_boost','recommendation_boost','visibility_boost',
         'verification','badge','publishing_priority','moderation_priority','support_priority','clinic_priority',
         'marketplace_priority','education_priority','ai_priority','clinical_priority','storage_bonus','speed_bonus',
+        'quota_bonus','feature_unlock','priority_queue',
     ];
 
     /** @param array<string,mixed> $projection */
@@ -25,29 +26,35 @@ final class DonationNeutralityPolicy
     public function publicContract(): array
     {
         return [
-            'decision_id'=>PlatformFinancialPolicy::DECISION_ID,
-            'donor_and_non_donor_core_capabilities_equal'=>true,
-            'commission_basis_points'=>0,
-            'prohibited_advantages'=>self::PROHIBITED_SIGNAL_KEYS,
-            'allowed_differences'=>['private_receipt','private_donation_history','revocable_public_acknowledgment'],
-            'file00_entitlement_owner'=>true,
-            'file26_ranking_must_ignore_donation'=>true,
+            'decision_id' => PlatformFinancialPolicy::DECISION_ID,
+            'donation_type' => 'one_time',
+            'recurring_available' => false,
+            'automatic_repeat_charge' => false,
+            'donor_and_non_donor_core_capabilities_equal' => true,
+            'donor_and_non_donor_ai_equal' => true,
+            'donor_and_non_donor_education_equal' => true,
+            'single_free_tier' => true,
+            'commission_basis_points' => 0,
+            'prohibited_advantages' => self::PROHIBITED_SIGNAL_KEYS,
+            'allowed_differences' => ['private_receipt','private_donation_history','revocable_public_acknowledgment'],
+            'file00_entitlement_owner' => true,
+            'file26_ranking_must_ignore_donation' => true,
         ];
     }
 
     /** @param array<string,mixed> $data */
     private function walk(array $data, string $path): void
     {
-        foreach ($data as $key=>$value) {
-            $normalized=strtolower((string)$key);
+        foreach ($data as $key => $value) {
+            $normalized = strtolower((string)$key);
             foreach (self::PROHIBITED_SIGNAL_KEYS as $prohibited) {
-                if ($normalized===$prohibited || str_contains($normalized,$prohibited)) {
-                    if ($value!==null && $value!==false && $value!==0 && $value!=='' && $value!==[]) {
+                if ($normalized === $prohibited || str_contains($normalized, $prohibited)) {
+                    if ($value !== null && $value !== false && $value !== 0 && $value !== '' && $value !== []) {
                         throw new InvariantViolation('Donation projection contains prohibited privilege signal at '.$path.'.'.$normalized.'.');
                     }
                 }
             }
-            if (is_array($value)) { $this->walk($value,$path.'.'.$normalized); }
+            if (is_array($value)) { $this->walk($value, $path.'.'.$normalized); }
         }
     }
 }
