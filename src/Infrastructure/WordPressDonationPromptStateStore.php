@@ -17,10 +17,11 @@ final class WordPressDonationPromptStateStore implements DonationPromptStateStor
         'donation_prompt_status',
         'donation_prompt_snoozed_until',
         'last_donation_completed_at',
-        'recurring_donation_status',
+        'donation_frequency_preference',
     ];
 
-    private const LEGACY_KEYS = ['donation_frequency_preference'];
+    /** @var list<string> */
+    private const LEGACY_KEYS = ['recurring_donation_status'];
 
     public function __construct(private readonly int $userId)
     {
@@ -53,7 +54,7 @@ final class WordPressDonationPromptStateStore implements DonationPromptStateStor
     public function save(string $subjectReference, DonationPromptState $state): void
     {
         $this->assertSubject($subjectReference);
-        if (!function_exists('update_user_meta') || !function_exists('delete_user_meta')) {
+        if (!function_exists('update_user_meta') || !function_exists('delete_user_meta') || !function_exists('get_user_meta')) {
             throw new RuntimeException('WordPress donation prompt state storage is unavailable.');
         }
 
@@ -72,9 +73,9 @@ final class WordPressDonationPromptStateStore implements DonationPromptStateStor
                 }
             }
         }
-        foreach (self::LEGACY_KEYS as $legacy) {
-            delete_user_meta($this->userId, $legacy);
-        }
+        // Old recurring preference keys are deliberately deleted after successful
+        // normalization so they cannot be revived as an active mandate.
+        foreach (self::LEGACY_KEYS as $legacy) { delete_user_meta($this->userId, $legacy); }
     }
 
     private function assertSubject(string $subjectReference): void
