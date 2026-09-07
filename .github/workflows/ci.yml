@@ -22,36 +22,12 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Syntax check
         run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
-      - name: Foundation tests
+      - name: Core financial invariants
         run: php tests/run.php
-      - name: Product evidence tests
-        run: php tests/run-0.2.php
-      - name: Complete source-candidate tests
-        run: php tests/run-1.0.php
-      - name: Final donation policy tests
-        run: php tests/run-free-donation-policy.php
-      - name: Founder ownership and transparency tests
-        run: php tests/run-founder-donation-transparency.php
-      - name: Three-plan harmonization tests
-        run: php tests/run-three-plan-harmonization.php
-      - name: Dual-plan completion tests
-        run: php tests/run-plan-completion.php
-      - name: Second adversarial integrity tests
-        run: php tests/run-adversarial-2.php
-      - name: First forty-round regression tests
-        run: php tests/run-review-40.php
-      - name: Durable runtime completion tests
-        run: php tests/run-runtime-completion.php
-      - name: Complete source implementation tests
-        run: php tests/run-source-completion.php
-      - name: Fresh adversarial source tests
-        run: php tests/run-adversarial-source.php
-      - name: Second forty-round review tests
-        run: php tests/run-review-40-second.php
-      - name: Third forty-round review tests
-        run: php tests/run-review-40-third.php
-      - name: Fourth forty-round review tests
-        run: php tests/run-review-40-fourth.php
+      - name: New governing plans functional acceptance
+        run: php tests/run-new-governing-plans.php
+      - name: New governing plans adversarial acceptance
+        run: php tests/run-new-governing-plans-adversarial.php
       - name: Validate manifests
         run: |
           for file in manifests/*.json; do
@@ -60,44 +36,36 @@ jobs:
       - name: Prohibited credential material scan
         run: |
           ! grep -RInE '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|sk_live_[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,})' --exclude-dir=.git --exclude=ci.yml .
-      - name: Governing source and complete-runtime assertions
+      - name: Current governing source assertions
         run: |
-          grep -RInq 'SSH-FIN-DONATION-2026-08-04-01' src docs manifests README.md
-          grep -RInq 'SSH-PMP-2026-v3.0' src docs manifests README.md
-          grep -RInq 'Sabri Platform All-Chats Recovered Directive Register 2026 v2.1' src docs manifests README.md
-          grep -RInq 'CF-03 Integrated Final Plan 2026 v2.0' src docs manifests README.md
-          grep -RInq 'RCD-022' src docs manifests README.md
-          grep -RInq 'CHAT-DL-001' src docs manifests README.md
-          grep -RInq 'CHAT-QA-001' docs manifests README.md
-          grep -q 'Version: 1.2.0-rc.3' cf-03-payments-billing-donations-financial-operations.php
-          grep -Eq "define\('SABRI_CF03_VERSION',[[:space:]]*'1.2.0-rc.3'\)" cf-03-payments-billing-donations-financial-operations.php
-          grep -Eq "define\('SABRI_CF03_SCHEMA_VERSION',[[:space:]]*'3.3.0'\)" cf-03-payments-billing-donations-financial-operations.php
-          grep -q "'1.2.0-rc.3'" src/Plugin.php
-          grep -RInq "public const VERSION = RuntimeSchemaExtension::VERSION" src/Persistence/CompleteSchema.php
-          grep -RInq "public const VERSION = '3.3.0'" src/Persistence/RuntimeSchemaExtension.php
-          grep -q 'snapshot_hash char(64) NOT NULL' src/Persistence/TransparencySchema.php
-          grep -q 'UNIQUE KEY period_currency(period_key,currency)' src/Persistence/TransparencySchema.php
-          grep -q 'missingDonationCollectionGates' src/Application/RuntimeConfiguration.php
-          grep -q 'providerSafeClone' src/Application/DonationIntentDraft.php
-          grep -q "'state' => 'provider_created'" src/Application/DonationCheckoutService.php
-          grep -q 'rollbackOnly' src/Infrastructure/WordPressFinancialRepository.php
-          grep -q 'IMMUTABLE_COLLECTIONS' src/Infrastructure/WordPressFinancialRepository.php
+          grep -RInq 'SSH-PMP-2026-v3.0' src manifests README.md docs/requirements-traceability.md docs/final-plan/CF-03-New-Governing-Plans-Implementation-Baseline-2026-09-08.md
+          grep -RInq 'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0' src manifests README.md docs/requirements-traceability.md
+          grep -q 'Version: 1.3.0-rc.1' cf-03-payments-billing-donations-financial-operations.php
+          grep -Eq "define\('SABRI_CF03_VERSION',[[:space:]]*'1.3.0-rc.1'\)" cf-03-payments-billing-donations-financial-operations.php
+          grep -Eq "define\('SABRI_CF03_SCHEMA_VERSION',[[:space:]]*'4.0.0'\)" cf-03-payments-billing-donations-financial-operations.php
+          grep -q "public const VERSION = '4.0.0'" src/Persistence/RuntimeSchemaExtension.php
+          php -r 'require "tests/bootstrap.php"; $t=Sabri\CF03\Persistence\CompleteSchema::tables(""); if(count($t)!==27){fwrite(STDERR,"expected 27 active canonical tables\n"); exit(1);} foreach(Sabri\CF03\Persistence\RuntimeSchemaExtension::RETIRED_TABLES as $r){if(isset($t[$r])){fwrite(STDERR,"retired table active: $r\n"); exit(1);}}'
+          grep -q "APPEAL_MINIMUM_DAYS = 7" src/Domain/PlatformFinancialPolicy.php
+          grep -q "MINIMUM_INTERVAL = 'P7D'" src/Domain/DonationPromptPolicy.php
+          grep -q "'donation.one_time'" src/Application/DonationCheckoutService.php
+          ! grep -q "'donation.monthly'" src/Application/DonationCheckoutService.php
+          grep -q 'quarantined_retired_financial_product' src/Application/WebhookIngestionService.php
+          grep -q 'AI usage billing is retired' src/Application/AiUsageBillingService.php
+          grep -q 'Paid subscription, renewal, grace and dunning operations are retired' src/Application/SubscriptionOperationsService.php
+          grep -q 'name="one_time_consent"' src/Infrastructure/WordPressPublicUi.php
+          ! grep -q 'name="monthly"' src/Infrastructure/WordPressPublicUi.php
+          grep -q 'one_time_consent' assets/js/public.js
+          ! grep -q 'monthly_consent' assets/js/public.js
           grep -q 'MAX_MUTATION_BYTES = 65536' src/Infrastructure/WordPressRequestGuard.php
-          grep -q 'rest_pre_dispatch' src/Plugin.php
+          grep -q 'IMMUTABLE_COLLECTIONS' src/Infrastructure/WordPressFinancialRepository.php
           grep -q 'SHOW INDEX FROM' src/Infrastructure/WordPressSchemaInstaller.php
-          grep -q 'maybeUpgrade' src/Plugin.php
-          grep -q 'SENSITIVE_WEBHOOK_HEADERS' src/Infrastructure/WordPressRestApi.php
-          grep -q 'publicDonationResult' src/Infrastructure/WordPressRestApi.php
-          grep -q 'collectionEnabled' src/Infrastructure/WordPressPublicUi.php
-          grep -q 'parseCustomMinor' assets/js/public.js
-          test -f tests/run-review-40-fourth.php
-          test -f docs/review-evidence-40-rounds-fourth-1.2.0-rc.3.md
-          test -f manifests/cf03-release-1.2.0.json
-          grep -q '444 tests per PHP version' README.md
-          grep -q '1,332 test executions' README.md
+          grep -q 'snapshot_hash char(64) NOT NULL' src/Persistence/TransparencySchema.php
+          test -f manifests/cf03-release-1.3.0.json
+          test -f docs/migration-1.3.0-one-time-donation-free-core.md
+          test -f docs/requirements-traceability.md
 
   package:
-    name: Deterministic package and parity
+    name: Deterministic package and source parity
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -105,26 +73,39 @@ jobs:
       - name: Build twice
         run: |
           bash scripts/build-package.sh
-          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.2.0-rc.3.zip
+          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.3.0-rc.1.zip
           first="$(sha256sum "$ZIP" | cut -d' ' -f1)"
           bash scripts/build-package.sh
           second="$(sha256sum "$ZIP" | cut -d' ' -f1)"
           test "$first" = "$second"
+          echo "PACKAGE_SHA256=$second" >> "$GITHUB_ENV"
       - name: Verify canonical package
         run: |
-          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.2.0-rc.3.zip
+          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.3.0-rc.1.zip
           ROOT=cf-03-payments-billing-donations-financial-operations
           test -f "$ZIP"
           unzip -Z1 "$ZIP" | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
-          unzip -p "$ZIP" "$ROOT/cf-03-payments-billing-donations-financial-operations.php" | grep -q 'Version: 1.2.0-rc.3'
-          unzip -p "$ZIP" "$ROOT/cf-03-payments-billing-donations-financial-operations.php" | grep -Eq "define\('SABRI_CF03_SCHEMA_VERSION',[[:space:]]*'3.3.0'\)"
-          unzip -p "$ZIP" "$ROOT/src/Persistence/RuntimeSchemaExtension.php" | grep -q "VERSION = '3.3.0'"
-          unzip -p "$ZIP" "$ROOT/src/Persistence/TransparencySchema.php" | grep -q 'snapshot_hash char(64) NOT NULL'
-          unzip -p "$ZIP" "$ROOT/src/Application/RuntimeConfiguration.php" | grep -q 'missingDonationCollectionGates'
-          unzip -p "$ZIP" "$ROOT/src/Application/DonationCheckoutService.php" | grep -q "'state' => 'provider_created'"
-          unzip -p "$ZIP" "$ROOT/src/Infrastructure/WordPressFinancialRepository.php" | grep -q 'IMMUTABLE_COLLECTIONS'
-          unzip -p "$ZIP" "$ROOT/src/Infrastructure/WordPressRequestGuard.php" | grep -q 'MAX_MUTATION_BYTES = 65536'
-          unzip -p "$ZIP" "$ROOT/src/Infrastructure/WordPressSchemaInstaller.php" | grep -q 'SHOW INDEX FROM'
-          unzip -p "$ZIP" "$ROOT/src/Infrastructure/WordPressRestApi.php" | grep -q 'SENSITIVE_WEBHOOK_HEADERS'
-          unzip -p "$ZIP" "$ROOT/src/Domain/DonationNeutralityPolicy.php" | grep -q 'file26_ranking_must_ignore_donation'
-          ! unzip -Z1 "$ZIP" | grep -Eq '(\.tmp$|\.log$|\.map$|\.DS_Store$|^tests/|^\.github/)'
+          unzip -p "$ZIP" "$ROOT/cf-03-payments-billing-donations-financial-operations.php" | grep -q 'Version: 1.3.0-rc.1'
+          unzip -p "$ZIP" "$ROOT/cf-03-payments-billing-donations-financial-operations.php" | grep -Eq "define\('SABRI_CF03_SCHEMA_VERSION',[[:space:]]*'4.0.0'\)"
+          unzip -p "$ZIP" "$ROOT/src/Persistence/RuntimeSchemaExtension.php" | grep -q "VERSION = '4.0.0'"
+          unzip -p "$ZIP" "$ROOT/src/Domain/DonationPromptPolicy.php" | grep -q "MINIMUM_INTERVAL = 'P7D'"
+          unzip -p "$ZIP" "$ROOT/src/Application/DonationCheckoutService.php" | grep -q "'donation.one_time'"
+          unzip -p "$ZIP" "$ROOT/src/Application/WebhookIngestionService.php" | grep -q 'quarantined_retired_financial_product'
+          unzip -p "$ZIP" "$ROOT/src/Domain/DonationNeutralityPolicy.php" | grep -q 'donor_and_non_donor_ai_equal'
+          unzip -p "$ZIP" "$ROOT/src/Infrastructure/WordPressPublicUi.php" | grep -q 'name="one_time_consent"'
+          ! unzip -Z1 "$ZIP" | grep -Eq '(^|/)(tests|\.github|scripts)/|\.tmp$|\.log$|\.map$|\.DS_Store$'
+      - name: Verify packaged source parity
+        run: |
+          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.3.0-rc.1.zip
+          ROOT=cf-03-payments-billing-donations-financial-operations
+          TMP="$(mktemp -d)"
+          unzip -q "$ZIP" -d "$TMP"
+          diff -qr src "$TMP/$ROOT/src"
+          diff -qr assets "$TMP/$ROOT/assets"
+          diff -qr manifests "$TMP/$ROOT/manifests"
+          diff -q README.md "$TMP/$ROOT/README.md"
+          diff -q CHANGELOG.md "$TMP/$ROOT/CHANGELOG.md"
+          diff -q SECURITY.md "$TMP/$ROOT/SECURITY.md"
+          diff -q composer.json "$TMP/$ROOT/composer.json"
+          diff -q cf-03-payments-billing-donations-financial-operations.php "$TMP/$ROOT/cf-03-payments-billing-donations-financial-operations.php"
+          echo "$PACKAGE_SHA256  $ZIP"
