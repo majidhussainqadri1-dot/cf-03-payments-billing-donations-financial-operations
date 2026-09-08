@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.4.0-rc.1 — Future Expansion Pack 40
+
+- Added governing amendment `CF03-FUTURE40-2026-09-08` with exactly **40** coded future financial-governance capabilities.
+- Added executable feature registry, constitutional lock and four domain services covering Donation Experience, Provider/Operations Intelligence, Governance/Privacy, Integration/Compliance/Sustainability.
+- Added Donation Purpose Funds, reminder preferences including Never Remind Me, donation privacy controls, receipt vault/authenticity, aggregate transparency/use-of-funds and multi-currency readiness contracts.
+- Added provider selection/health/failover, webhook forensics, uncertain-transaction handling, reconciliation queue/confidence, period-close gates, dual approval, refund preview/SLA and chargeback evidence builder.
+- Added financial privacy center, user/accountant exports, immutable audit packages, configuration history, policy simulation, sandbox, deployment-readiness, kill-switch and restore-verification contracts.
+- Added privacy-preserving analytics, accessibility-first UX, CF-02 support bridge, notification preferences, internal event explorer, jurisdiction registry, tax/legal disclosure registry, conditional Sharia classification, conditional waqf/grant sustainability and Founder Financial Command Center.
+- `FX-38` and `FX-39` are **coded but conditional/fail-closed**; they do not activate Zakat/Waqf/Grant financial flows without their specific Founder, Sharia/legal/accounting change-control evidence.
+- Code presence does not activate any Future Expansion capability, does not change the current one-time donation route and does not infer Staging/Live state.
+- Active schema remains `4.0.0` / 27 canonical tables because this release adds future contracts and deterministic services without activating new persistent financial truth.
+- Added `manifests/cf03-future-expansion-40.json`, `manifests/cf03-release-1.4.0.json`, the written plan appendix and `tests/run-future-expansion-40.php`.
+- Deterministic package target changed to `cf-03-payments-billing-donations-financial-operations-1.4.0-rc.1.zip`.
+
 ## 1.3.0-rc.1 — New Governing Plans: Free Core + One-Time Donation Reconciliation
 
 - Rebased CF-03 source governance onto the newly supplied `SSH-PMP-2026-v3.0` central plan and **CF-03 Conditional Complete Master Plan 2026 v1.0**.

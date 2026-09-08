@@ -86,7 +86,7 @@ $tests['paid AI billing and subscription services are tombstones not charging pa
 };
 
 $tests['active manifests contain no current monthly donation contract'] = static function (): void {
-    foreach (['manifests/cf03-contracts.json','manifests/cf03-release-1.3.0.json','manifests/donation-appeal-contract.json'] as $path) {
+    foreach (['manifests/cf03-contracts.json','manifests/cf03-release-1.4.0.json','manifests/cf03-future-expansion-40.json','manifests/donation-appeal-contract.json'] as $path) {
         $text = source($path);
         contains($text, '"recurring_donation_available": true', false);
         contains($text, '"automatic_repeat_charge": true', false);
@@ -109,9 +109,12 @@ $tests['active source does not contain fixed PKR400 or paid AI pricing claim'] =
         'src/Application/GoverningPlanRegistry.php',
         'src/Infrastructure/WordPressRestApi.php',
         'src/Infrastructure/WordPressPublicUi.php',
+        'src/Application/FutureExpansionRegistry.php',
+        'src/Domain/FutureFinancePolicy.php',
         'README.md',
         'manifests/cf03-contracts.json',
-        'manifests/cf03-release-1.3.0.json',
+        'manifests/cf03-release-1.4.0.json',
+        'manifests/cf03-future-expansion-40.json',
     ];
     foreach ($paths as $path) {
         $text = (string)file_get_contents($root.'/'.$path);
@@ -120,12 +123,23 @@ $tests['active source does not contain fixed PKR400 or paid AI pricing claim'] =
     }
 };
 
+$tests['future pack cannot activate itself or revive donor privilege'] = static function (): void {
+    $registry = source('src/Application/FutureExpansionRegistry.php');
+    $policy = source('src/Domain/FutureFinancePolicy.php');
+    contains($registry, "'activated' => false", true);
+    contains($registry, "'donor_privilege_allowed' => false", true);
+    contains($registry, "'recurring_donation_allowed' => false", true);
+    contains($registry, "'paid_core_allowed' => false", true);
+    contains($policy, "'future_pack_activated_by_code_presence' => false", true);
+};
+
 $tests['release identity and package builder stay aligned'] = static function (): void {
     $bootstrap = source('cf-03-payments-billing-donations-financial-operations.php');
     $builder = source('scripts/build-package.sh');
-    contains($bootstrap, 'Version: 1.3.0-rc.1', true);
+    contains($bootstrap, 'Version: 1.4.0-rc.1', true);
     contains($bootstrap, "SABRI_CF03_SCHEMA_VERSION', '4.0.0'", true);
-    contains($builder, 'VERSION="1.3.0-rc.1"', true);
+    contains($bootstrap, 'CF03-FUTURE40-2026-09-08', true);
+    contains($builder, 'VERSION="1.4.0-rc.1"', true);
 };
 
 $failures = 0;

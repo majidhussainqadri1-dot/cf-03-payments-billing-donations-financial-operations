@@ -1,0 +1,17 @@
+{
+  "module": "CF-03",
+  "software_version": "1.4.0-rc.1",
+  "schema_version": "4.0.0",
+  "canonical_tables": 27,
+  "amendment_id": "CF03-FUTURE40-2026-09-08",
+  "future_features_coded": 40,
+  "future_features_activated": 0,
+  "conditional_change_control_features": ["FX-38", "FX-39"],
+  "current_donation_model": "voluntary_one_time_only",
+  "recurring_donation_available": false,
+  "paid_core_allowed": false,
+  "platform_commission_basis_points": 0,
+  "status": "repository-source-candidate-future40-fail-closed",
+  "live_deployed": false,
+  "live_verified": false
+}
