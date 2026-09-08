@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sabrihomeopathy.com/schemas/cf03-activation-evidence-1.0.json",
+  "title": "CF-03 Activation Evidence Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "module_version",
+    "record_id",
+    "configuration_hash",
+    "approvals",
+    "provider"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "module_version": { "type": "string", "const": "1.0.0-rc.3" },
+    "record_id": { "$ref": "#/$defs/identifier" },
+    "configuration_hash": { "$ref": "#/$defs/sha256" },
+    "approvals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "founder_change_control",
+        "legal_tax_accounting_review",
+        "pci_scope_validation",
+        "independent_security_acceptance",
+        "staging_acceptance",
+        "rollback_rehearsal"
+      ],
+      "properties": {
+        "founder_change_control": { "$ref": "#/$defs/approval" },
+        "legal_tax_accounting_review": { "$ref": "#/$defs/approval" },
+        "pci_scope_validation": { "$ref": "#/$defs/approval" },
+        "independent_security_acceptance": { "$ref": "#/$defs/approval" },
+        "staging_acceptance": { "$ref": "#/$defs/approval" },
+        "rollback_rehearsal": { "$ref": "#/$defs/approval" }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "provider_ref", "evidence_id", "validated_at"],
+      "properties": {
+        "mode": { "enum": ["hosted", "tokenized"] },
+        "provider_ref": { "$ref": "#/$defs/identifier" },
+        "evidence_id": { "$ref": "#/$defs/identifier" },
+        "validated_at": { "type": "string", "format": "date-time" },
+        "expires_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approved", "evidence_id", "approver_ref", "approved_at"],
+      "properties": {
+        "approved": { "const": true },
+        "evidence_id": { "$ref": "#/$defs/identifier" },
+        "approver_ref": { "$ref": "#/$defs/identifier" },
+        "approved_at": { "type": "string", "format": "date-time" },
+        "expires_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    }
+  }
+}

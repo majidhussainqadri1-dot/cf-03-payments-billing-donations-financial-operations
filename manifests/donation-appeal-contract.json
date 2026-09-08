@@ -1,0 +1,102 @@
+{
+  "contract": "sabri.cf03.donation-appeal",
+  "version": "4.0",
+  "governing_plans": [
+    "SSH-PMP-2026-v3.0",
+    "CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0"
+  ],
+  "governing_decision": "CF03-2026-v1.0",
+  "financial_owner": "CF-03",
+  "mount_owner": "File 20",
+  "visual_owner": "File 25",
+  "assurance_owner": "File 24",
+  "notification_owner": "File 19",
+  "service_state": "preparing",
+  "donation_type": "one_time",
+  "recurring_available": false,
+  "automatic_repeat_charge": false,
+  "explicit_one_time_consent_required": true,
+  "purpose_code": "institutional_sustainability_and_homeopathy_advancement",
+  "suggested_amounts": [
+    {"label": "$10", "currency": "USD", "minor_units": 1000, "preselected": false},
+    {"label": "$14", "currency": "USD", "minor_units": 1400, "preselected": false},
+    {"label": "$50", "currency": "USD", "minor_units": 5000, "preselected": false}
+  ],
+  "custom_amount": {
+    "allowed": true,
+    "currency": "USD",
+    "minimum_minor_units_exclusive": 0,
+    "maximum_decimal_places": 2,
+    "floating_point_transport": false
+  },
+  "defaults": {"amount": null, "recurring": false},
+  "actions": ["donate_once", "remind_later", "not_now", "close"],
+  "frequency": {
+    "minimum_days_between_appeals": 7,
+    "remind_later_days": 7,
+    "not_now_days": 7,
+    "close_days": 7,
+    "completed_one_time_days": 7,
+    "per_page_view": 1,
+    "per_session": 1,
+    "same_session_after_checkout_failure": false
+  },
+  "engagement": {"minimum_seconds": 30, "meaningful_interaction_alternative": true},
+  "prohibited_contexts": [
+    "login",
+    "registration",
+    "password_recovery",
+    "guardian_consent",
+    "clinical_consultation",
+    "emergency_warning",
+    "support_appeal",
+    "payment_error"
+  ],
+  "context_policy": {
+    "safe_context_allowlist": true,
+    "unknown_context_fails_closed": true
+  },
+  "logged_in_server_fields": [
+    "last_donation_prompt_at",
+    "next_donation_prompt_at",
+    "donation_prompt_status",
+    "donation_prompt_snoozed_until",
+    "last_donation_completed_at",
+    "donation_frequency_preference"
+  ],
+  "legacy_fields": {
+    "read_for_migration_only": ["recurring_donation_status"],
+    "written": false,
+    "active_recurring_state": false
+  },
+  "guest_first_party_keys": ["sabri_donation_prompt_seen_at", "sabri_donation_prompt_next_at"],
+  "transparency_path": "/transparency/",
+  "founder_owned": true,
+  "is_trust": false,
+  "single_free_tier": true,
+  "core_ai_free": true,
+  "structured_education_free": true,
+  "clinic_marketplace_commission_basis_points": 0,
+  "privileges": {
+    "access": false,
+    "visibility": false,
+    "verification": false,
+    "ranking": false,
+    "moderation": false,
+    "support_priority": false,
+    "clinic_priority": false,
+    "marketplace_priority": false,
+    "education_advantage": false,
+    "clinical_advantage": false,
+    "ai_priority": false,
+    "publishing_authority": false
+  },
+  "live_collection": {
+    "enabled": false,
+    "ui_controls_disabled_when_closed": true,
+    "webhook_readiness_required": true,
+    "provider_registry_health_required": true,
+    "hosted_or_tokenized_only": true,
+    "platform_secret_intake": false
+  }
+}

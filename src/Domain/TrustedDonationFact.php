@@ -1,0 +1,76 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Sabri\CF03\Domain;
+
+use DateTimeImmutable;
+use InvalidArgumentException;
+use Sabri\CF03\Support\InvariantViolation;
+
+final class TrustedDonationFact
+{
+    private readonly string $providerEventId;
+    private readonly DateTimeImmutable $occurredAt;
+
+    public function __construct(
+        private readonly DonationFinancialFactType $type,
+        ProviderEvidence $evidence,
+        private readonly string $providerCode,
+        private readonly string $paymentIntentId,
+        private readonly Money $amount,
+        int $replayWindowSeconds = 300,
+        private readonly string $subjectReference = 'subject:unbound'
+    ) {
+        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $subjectReference) !== 1) {
+            throw new InvalidArgumentException('Trusted donation subject reference is invalid.');
+        }
+        $evidence->assertTrusted($replayWindowSeconds);
+        $evidence->assertMatches($providerCode, $paymentIntentId, $amount);
+        if ($evidence->eventType() !== $type->value) {
+            throw new InvariantViolation('Trusted donation evidence type does not match the requested donation fact.');
+        }
+        if (in_array($type, [DonationFinancialFactType::MONTHLY_STARTED, DonationFinancialFactType::MONTHLY_CANCELLED], true)) {
+            throw new InvariantViolation('Legacy recurring donation facts are not accepted as active CF-03 state under the one-time-only constitution.');
+        }
+        $this->providerEventId = $evidence->providerEventId();
+        $this->occurredAt = $evidence->occurredAt();
+    }
+
+    public function assertMatches(string $providerCode, string $paymentIntentId, Money $amount): void
+    {
+        if ($this->providerCode !== $providerCode
+            || $this->paymentIntentId !== $paymentIntentId
+            || !$this->amount->equals($amount)
+        ) {
+            throw new InvariantViolation('Trusted donation fact is bound to a different provider, intent or amount.');
+        }
+    }
+
+    public function type(): DonationFinancialFactType { return $this->type; }
+    public function providerCode(): string { return $this->providerCode; }
+    public function paymentIntentId(): string { return $this->paymentIntentId; }
+    public function amount(): Money { return $this->amount; }
+    public function providerEventId(): string { return $this->providerEventId; }
+    public function occurredAt(): DateTimeImmutable { return $this->occurredAt; }
+    public function subjectReference(): string { return $this->subjectReference; }
+
+    public function promptActionOrNull(): ?DonationPromptAction
+    {
+        return match ($this->type) {
+            DonationFinancialFactType::ONE_TIME_COMPLETED => DonationPromptAction::DONATION_COMPLETED_ONE_TIME,
+            DonationFinancialFactType::REFUNDED,
+            DonationFinancialFactType::CHARGEDBACK => null,
+            DonationFinancialFactType::MONTHLY_STARTED,
+            DonationFinancialFactType::MONTHLY_CANCELLED => throw new InvariantViolation(
+                'Recurring donation facts cannot mutate active donation-prompt state.'
+            ),
+        };
+    }
+
+    public function toPromptAction(): DonationPromptAction
+    {
+        return $this->promptActionOrNull()
+            ?? throw new InvariantViolation('This trusted donation fact does not mutate donation-prompt frequency state.');
+    }
+}

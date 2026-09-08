@@ -1,0 +1,44 @@
+{
+  "module": "CF-03",
+  "software_version": "1.3.0-rc.1",
+  "historical_base_schema_version": "2.0.0",
+  "active_schema_version": "4.0.0",
+  "status": "new-governing-plans-source-candidate-runtime-fail-closed",
+  "governing_sources": [
+    "SSH-PMP-2026-v3.0",
+    "CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0"
+  ],
+  "governing_decision": "CF03-2026-v1.0",
+  "runtime_collection_enabled": false,
+  "contracts": {
+    "founder_ownership": {"version": "1.1", "founder_owned": true, "trust": false, "donor_rights": false},
+    "free_core": {"version": "1.0", "single_free_tier": true, "structured_education_free": true, "sabri_ai_core_free": true, "paid_core_checkout": false},
+    "donation_prompt": {"version": "4.0", "minimum_days_between_appeals": 7, "action_suppression_days": 7, "completed_donation_suppression_days": 7, "per_session": 1, "per_page_view": 1, "unknown_context_fails_closed": true},
+    "donation_checkout": {"version": "5.0", "one_time_only": true, "explicit_one_time_consent": true, "recurring_available": false, "automatic_repeat_charge": false, "stable_retry_fingerprint": true, "actor_scope_bound_idempotency": true, "provider_created_checkpoint": true, "expired_replay_rejected": true, "dependent_aggregate_parity": true, "public_provider_details": false, "live_enabled": false},
+    "provider_webhook": {"version": "3.0", "duplicate_evidence_parity": true, "event_chronology": true, "one_time_product_only": true, "legacy_product_quarantine": true, "settlement_aggregate_preconditions": true, "occurrence_time_accounting_period": true},
+    "refunds": {"version": "2.1", "positive_amount": true, "cumulative_reservation": true, "durable_provider_checkpoint": true, "uncertain_outcome": true, "provider_reference_public": false, "donor_access_unchanged": true},
+    "recurring_donation_management": {"version": "retired", "active": false, "historical_evidence_only": true},
+    "paid_ai_billing": {"version": "retired", "active": false, "finance_metering_allowed": false},
+    "subscriptions": {"version": "retired", "active": false, "renewal": false, "grace": false, "dunning": false},
+    "financial_repository": {"version": "4.0", "durable_wordpress": true, "database_failure_closed": true, "duplicate_identity_detection": true, "nested_rollback_only": true, "immutable_ledger_audit": true, "bounded_mutations": true, "floating_point_money": false},
+    "active_schema": {"version": "4.0.0", "canonical_tables": 27, "retired_active_tables": ["recurring_consents", "subscriptions", "usage_authorizations", "usage_facts"], "columns_verified": true, "indexes_verified": true, "uniqueness_verified": true},
+    "public_transparency": {"version": "2.1", "route": "/transparency/", "aggregate_only": true, "fabricated_values": false, "source_sha256": true, "snapshot_sha256": true, "period_currency_unique": true, "donor_identity_public": false},
+    "financial_download": {"version": "1.1", "eligible_assets": ["invoice", "receipt", "finance_export", "transparency_snapshot"], "actual_actor_scope": true, "click_time_revalidation": true, "sha256": true, "visual_owner": "File 25", "global_download_manager_owner": "File 20", "assurance_owner": "File 24", "secure_delivery_owner_after_activation": "CF-04", "live_delivery_enabled": false},
+    "request_guard": {"version": "1.1", "mutation_max_bytes": 65536, "webhook_max_bytes": 1048576, "fail_closed": true},
+    "privacy": {"provider_subject_withheld": true, "public_runtime_details_redacted": true, "webhook_sensitive_headers_stripped": true, "guest_identity_must_persist": true, "export_paginated": true, "mandatory_financial_retention": true}
+  },
+  "constitutional_invariants": {
+    "all_core_services_free": true,
+    "structured_education_free": true,
+    "sabri_ai_core_free": true,
+    "fixed_fee_allowed": false,
+    "clinic_commission_basis_points": 0,
+    "marketplace_commission_basis_points": 0,
+    "donation_grants_privilege": false,
+    "donation_type": "one_time",
+    "donation_default_amount": null,
+    "donation_recurring_available": false,
+    "automatic_repeat_charge": false,
+    "file00_is_entitlement_authority": true
+  }
+}

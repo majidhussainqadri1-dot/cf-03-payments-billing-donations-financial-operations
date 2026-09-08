@@ -1,0 +1,66 @@
+{
+  "module": "CF-03",
+  "release": "1.3.0-rc.1",
+  "schema": "4.0.0",
+  "historical_base_schema": "2.0.0",
+  "active_canonical_table_count": 27,
+  "status": "new-governing-plans-source-candidate-runtime-fail-closed",
+  "governing_plans": [
+    "SSH-PMP-2026-v3.0",
+    "CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0"
+  ],
+  "financial_policy": "CF03-2026-v1.0",
+  "constitutional_baseline": {
+    "single_free_tier": true,
+    "structured_education_free": true,
+    "sabri_ai_core_free": true,
+    "paid_core_checkout": false,
+    "clinic_marketplace_commission_basis_points": 0,
+    "donation_type": "one_time",
+    "recurring_donation_available": false,
+    "automatic_repeat_charge": false,
+    "appeal_minimum_days": 7,
+    "preselected_amount": null,
+    "donor_privilege": false
+  },
+  "retired_active_runtime": [
+    "recurring_consents",
+    "subscriptions",
+    "usage_authorizations",
+    "usage_facts",
+    "paid_ai_billing",
+    "subscription_renewal_grace_dunning"
+  ],
+  "hardening": {
+    "hosted_or_tokenized_checkout": true,
+    "explicit_one_time_consent": true,
+    "stable_checkout_retry_fingerprint": true,
+    "expired_checkout_replay_rejected": true,
+    "idempotency_actor_scope_binding": true,
+    "signed_webhook_evidence": true,
+    "duplicate_provider_evidence_parity": true,
+    "provider_event_chronology": true,
+    "legacy_financial_product_quarantine": true,
+    "immutable_balanced_ledger": true,
+    "cumulative_refund_reservation": true,
+    "refund_provider_checkpoint": true,
+    "uncertain_provider_outcomes": true,
+    "database_query_failure_closed": true,
+    "immutable_ledger_audit_repository": true,
+    "global_mutation_body_guard": true,
+    "donation_no_access_event": true
+  },
+  "live_collection_enabled": false,
+  "live_delivery_enabled": false,
+  "external_gates_pending": [
+    "legal-tax-accounting",
+    "pci-responsibility",
+    "approved-provider",
+    "independent-security",
+    "hostinger-staging",
+    "cross-file-integration",
+    "browser-mobile-rtl-accessibility-performance",
+    "backup-restore-rollback-drill",
+    "founder-live-approval"
+  ]
+}

@@ -1,0 +1,111 @@
+name: CF-03 CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.2', '8.3']
+    container:
+      image: php:${{ matrix.php }}-cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Syntax check
+        run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
+      - name: Core financial invariants
+        run: php tests/run.php
+      - name: New governing plans functional acceptance
+        run: php tests/run-new-governing-plans.php
+      - name: New governing plans adversarial acceptance
+        run: php tests/run-new-governing-plans-adversarial.php
+      - name: Validate manifests
+        run: |
+          for file in manifests/*.json; do
+            php -r 'json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);' "$file"
+          done
+      - name: Prohibited credential material scan
+        run: |
+          ! grep -RInE '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|sk_live_[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,})' --exclude-dir=.git --exclude=ci.yml .
+      - name: Current governing source assertions
+        run: |
+          grep -RInq 'SSH-PMP-2026-v3.0' src manifests README.md docs/requirements-traceability.md docs/final-plan/CF-03-New-Governing-Plans-Implementation-Baseline-2026-09-08.md
+          grep -RInq 'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0' src manifests README.md docs/requirements-traceability.md
+          grep -q 'Version: 1.3.0-rc.1' cf-03-payments-billing-donations-financial-operations.php
+          grep -Eq "define\('SABRI_CF03_VERSION',[[:space:]]*'1.3.0-rc.1'\)" cf-03-payments-billing-donations-financial-operations.php
+          grep -Eq "define\('SABRI_CF03_SCHEMA_VERSION',[[:space:]]*'4.0.0'\)" cf-03-payments-billing-donations-financial-operations.php
+          grep -q "public const VERSION = '4.0.0'" src/Persistence/RuntimeSchemaExtension.php
+          php -r 'require "tests/bootstrap.php"; $t=Sabri\CF03\Persistence\CompleteSchema::tables(""); if(count($t)!==27){fwrite(STDERR,"expected 27 active canonical tables\n"); exit(1);} foreach(Sabri\CF03\Persistence\RuntimeSchemaExtension::RETIRED_TABLES as $r){if(isset($t[$r])){fwrite(STDERR,"retired table active: $r\n"); exit(1);}}'
+          grep -q "APPEAL_MINIMUM_DAYS = 7" src/Domain/PlatformFinancialPolicy.php
+          grep -q "MINIMUM_INTERVAL = 'P7D'" src/Domain/DonationPromptPolicy.php
+          grep -q "'donation.one_time'" src/Application/DonationCheckoutService.php
+          ! grep -q "'donation.monthly'" src/Application/DonationCheckoutService.php
+          grep -q 'quarantined_retired_financial_product' src/Application/WebhookIngestionService.php
+          grep -q 'AI usage billing is retired' src/Application/AiUsageBillingService.php
+          grep -q 'Paid subscription, renewal, grace and dunning operations are retired' src/Application/SubscriptionOperationsService.php
+          grep -q 'name="one_time_consent"' src/Infrastructure/WordPressPublicUi.php
+          ! grep -q 'name="monthly"' src/Infrastructure/WordPressPublicUi.php
+          grep -q 'one_time_consent' assets/js/public.js
+          ! grep -q 'monthly_consent' assets/js/public.js
+          grep -q 'MAX_MUTATION_BYTES = 65536' src/Infrastructure/WordPressRequestGuard.php
+          grep -q 'IMMUTABLE_COLLECTIONS' src/Infrastructure/WordPressFinancialRepository.php
+          grep -q 'SHOW INDEX FROM' src/Infrastructure/WordPressSchemaInstaller.php
+          grep -q 'snapshot_hash char(64) NOT NULL' src/Persistence/TransparencySchema.php
+          test -f manifests/cf03-release-1.3.0.json
+          test -f docs/migration-1.3.0-one-time-donation-free-core.md
+          test -f docs/requirements-traceability.md
+
+  package:
+    name: Deterministic package and source parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Build twice
+        run: |
+          bash scripts/build-package.sh
+          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.3.0-rc.1.zip
+          first="$(sha256sum "$ZIP" | cut -d' ' -f1)"
+          bash scripts/build-package.sh
+          second="$(sha256sum "$ZIP" | cut -d' ' -f1)"
+          test "$first" = "$second"
+          echo "PACKAGE_SHA256=$second" >> "$GITHUB_ENV"
+      - name: Verify canonical package
+        run: |
+          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.3.0-rc.1.zip
+          ROOT=cf-03-payments-billing-donations-financial-operations
+          test -f "$ZIP"
+          unzip -Z1 "$ZIP" | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
+          unzip -p "$ZIP" "$ROOT/cf-03-payments-billing-donations-financial-operations.php" | grep -q 'Version: 1.3.0-rc.1'
+          unzip -p "$ZIP" "$ROOT/cf-03-payments-billing-donations-financial-operations.php" | grep -Eq "define\('SABRI_CF03_SCHEMA_VERSION',[[:space:]]*'4.0.0'\)"
+          unzip -p "$ZIP" "$ROOT/src/Persistence/RuntimeSchemaExtension.php" | grep -q "VERSION = '4.0.0'"
+          unzip -p "$ZIP" "$ROOT/src/Domain/DonationPromptPolicy.php" | grep -q "MINIMUM_INTERVAL = 'P7D'"
+          unzip -p "$ZIP" "$ROOT/src/Application/DonationCheckoutService.php" | grep -q "'donation.one_time'"
+          unzip -p "$ZIP" "$ROOT/src/Application/WebhookIngestionService.php" | grep -q 'quarantined_retired_financial_product'
+          unzip -p "$ZIP" "$ROOT/src/Domain/DonationNeutralityPolicy.php" | grep -q 'donor_and_non_donor_ai_equal'
+          unzip -p "$ZIP" "$ROOT/src/Infrastructure/WordPressPublicUi.php" | grep -q 'name="one_time_consent"'
+          ! unzip -Z1 "$ZIP" | grep -Eq '(^|/)(tests|\.github|scripts)/|\.tmp$|\.log$|\.map$|\.DS_Store$'
+      - name: Verify packaged source parity
+        run: |
+          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.3.0-rc.1.zip
+          ROOT=cf-03-payments-billing-donations-financial-operations
+          TMP="$(mktemp -d)"
+          unzip -q "$ZIP" -d "$TMP"
+          diff -qr src "$TMP/$ROOT/src"
+          diff -qr assets "$TMP/$ROOT/assets"
+          diff -qr manifests "$TMP/$ROOT/manifests"
+          diff -q README.md "$TMP/$ROOT/README.md"
+          diff -q CHANGELOG.md "$TMP/$ROOT/CHANGELOG.md"
+          diff -q SECURITY.md "$TMP/$ROOT/SECURITY.md"
+          diff -q composer.json "$TMP/$ROOT/composer.json"
+          diff -q cf-03-payments-billing-donations-financial-operations.php "$TMP/$ROOT/cf-03-payments-billing-donations-financial-operations.php"
+          echo "$PACKAGE_SHA256  $ZIP"
