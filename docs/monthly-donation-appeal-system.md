@@ -1,20 +1,16 @@
-# Monthly Donation Appeal System — Final Policy
+# Monthly Donation Appeal System — Historical/Superseded Policy
 
-Decision: `SSH-FIN-DONATION-2026-08-04-01`
+> **Status: historical evidence only.** Decision `SSH-FIN-DONATION-2026-08-04-01` and the former 30-day/monthly-donation model are superseded and are not current product law.
 
-- At most one appeal in one calendar month.
-- Remind Me Later, Not Now and Close each suppress the appeal for at least 30 days.
-- A completed one-time donation suppresses the appeal for at least 30 days.
-- An active monthly donor receives no general appeal.
-- No more than one prompt per page view or session and no repeat loop after payment failure.
-- Login, registration, password recovery, guardian consent, clinical consultation, emergency warning, support appeal and payment-error contexts are excluded.
-- Suggested amounts are USD 10, 14 and 50 plus positive custom USD.
-- No amount or recurrence is preselected.
-- Buttons are Donate, Remind Me Later, Not Now and Close.
-- Donation never creates access, ranking, verification, visibility, publishing or other privilege.
+## Current governing truth
 
-Logged-in fields: `last_donation_prompt_at`, `next_donation_prompt_at`, `donation_prompt_status`, `donation_prompt_snoozed_until`, `last_donation_completed_at`, `recurring_donation_status`.
+- The active public donation model is **voluntary one-time donation only**.
+- No recurring/monthly donation mandate, automatic repeat charge, renewal, grace or dunning is active.
+- A new donation appeal is blocked for at least **7 days** after display/dismissal and after a completed one-time donation, subject also to the current session/page/context safeguards.
+- No donation amount or recurrence is preselected.
+- Donation never creates access, ranking, verification, visibility, publishing, support, education, AI, clinic, marketplace or other privilege.
+- The current source of truth is `SSH-PMP-2026-v3.0`, the CF-03 Conditional Complete Master Plan 2026 v1.0, and current repository amendments including `CF03-FUTURE40-2026-09-08`.
 
-Guest first-party keys: `sabri_donation_prompt_seen_at`, `sabri_donation_prompt_next_at`.
+## Historical record retained for provenance
 
-The previous weekly system and seven-day snoozes are superseded.
+The superseded policy used one appeal per calendar month, 30-day snoozes and recurring/monthly donor state. Those rules are retained only to explain migrations, historical tests and audit evidence. They must not be used by active UI, REST, checkout, webhook, manifest, policy or deployment decisions.
