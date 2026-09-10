@@ -164,14 +164,29 @@ final class FutureIntegrationSustainabilityService
     }
 
     /** @return array<string,mixed> */
-    public function sustainabilityModule(string $flow, bool $founderApproved, bool $legalAccountingApproved): array
-    {
+    public function sustainabilityModule(
+        string $flow,
+        bool $founderApproved,
+        bool $legalAccountingApproved,
+        bool $shariaApproved = false,
+        bool $operationalReady = false
+    ): array {
         if (!in_array($flow, ['grant','waqf'], true)) {
             throw new InvalidArgumentException('Only grant or waqf sustainability flow is recognized here.');
         }
+
+        $enabled = $founderApproved
+            && $legalAccountingApproved
+            && $shariaApproved
+            && $operationalReady;
+
         return [
             'flow' => $flow,
-            'enabled' => $founderApproved && $legalAccountingApproved,
+            'enabled' => $enabled,
+            'founder_approved' => $founderApproved,
+            'legal_accounting_approved' => $legalAccountingApproved,
+            'sharia_approved' => $shariaApproved,
+            'operational_ready' => $operationalReady,
             'separate_from_public_donation' => true,
             'separate_accounting_required' => true,
             'change_control_required' => true,
