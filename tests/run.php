@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 
 use Sabri\CF03\Application\ActivationGate;
+use Sabri\CF03\Application\FutureIntegrationSustainabilityService;
 use Sabri\CF03\Domain\CommissionPolicy;
 use Sabri\CF03\Domain\DonationPolicy;
 use Sabri\CF03\Domain\LedgerEntry;
@@ -111,6 +112,16 @@ $tests['ledger balances each currency independently'] = static function (): void
 $tests['activation gate rejects malformed record'] = static function (): void {
     $gate = new ActivationGate(true, static fn (): string => 'invalid');
     assertSame(false, $gate->evaluate()->approved());
+};
+
+$tests['FX-39 requires founder legal-accounting Sharia and operational readiness'] = static function (): void {
+    $service = new FutureIntegrationSustainabilityService();
+
+    assertSame(false, $service->sustainabilityModule('waqf', true, true, false, true)['enabled']);
+    assertSame(false, $service->sustainabilityModule('waqf', true, true, true, false)['enabled']);
+    assertSame(false, $service->sustainabilityModule('waqf', false, true, true, true)['enabled']);
+    assertSame(false, $service->sustainabilityModule('waqf', true, false, true, true)['enabled']);
+    assertSame(true, $service->sustainabilityModule('waqf', true, true, true, true)['enabled']);
 };
 
 $failures = 0;
