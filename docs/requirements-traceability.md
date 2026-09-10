@@ -1,9 +1,10 @@
-# CF-03 Requirements Traceability — Current Governing Plans / 1.3.0-rc.1
+# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.1
 
-This matrix is the current **source-code traceability** for the two governing documents:
+This matrix is the current **source-code traceability** for the two governing documents and the current Future40 amendment:
 
 1. `SSH-PMP-2026-v3.0` — Sabri Social Homeopathy Platform Definitive Master Plan v3.0;
-2. `CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0`.
+2. `CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0`;
+3. `CF03-FUTURE40-2026-09-08` — CF-03 Future Expansion Pack 40 Amendment, software target `1.4.0-rc.1`, active schema `4.0.0`.
 
 It does **not** claim provider, legal, PCI, staging, Live or operational acceptance. Where a requirement contains an external acceptance test, the source contract is implemented but the external acceptance gate remains pending.
 
@@ -43,6 +44,21 @@ It does **not** claim provider, legal, PCI, staging, Live or operational accepta
 | CF03-FR-032 Close and lock | `FinancePeriod`, settlement/reconciliation close controls and later adjustment model | Implemented | Finance close/reopen drill pending |
 | CF03-FR-033 Provider/key incident | `IncidentControl`, `IncidentPathGuard`, `IncidentOperationsService`, kill switches and fail-closed runtime | Implemented | Key rotation/provider outage incident drill pending |
 | CF03-FR-034 Backup/restore reconciliation | `BackupManifest`, `RestoreReconciliation`, provider comparison/outbox/replay controls; active schema has no recurring mandate state | Implemented contract | Isolated restore + provider-authoritative reconciliation drill pending |
+
+## Future40 traceability lock
+
+The authoritative Future40 requirement-to-code/test mapping is additionally maintained by:
+
+- `src/Application/FutureExpansionRegistry.php`;
+- `src/Domain/FutureFinancePolicy.php`;
+- `src/Application/FutureDonationExperienceService.php`;
+- `src/Application/FutureOperationsIntelligenceService.php`;
+- `src/Application/FutureGovernancePrivacyService.php`;
+- `src/Application/FutureIntegrationSustainabilityService.php`;
+- `manifests/cf03-future-expansion-40.json`;
+- `tests/run-future-expansion-40.php`.
+
+All 40 entries remain fail closed by default. `FX-38` and `FX-39` are conditional Change-Control capabilities; their distinct approval gates remain mandatory and code presence is not activation evidence.
 
 ## New-plan supersession lock
 
