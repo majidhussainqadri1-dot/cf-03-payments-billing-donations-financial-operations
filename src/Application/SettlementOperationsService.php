@@ -414,6 +414,12 @@ final class SettlementOperationsService
         string $operatorReference,
         DateTimeImmutable $postedAt
     ): void {
+        // A fully refunded, zero-fee batch can legitimately have no settlement
+        // balance movement. Do not create an empty immutable ledger transaction.
+        if ($batch->net()->minorUnits() === 0 && $batch->fees()->minorUnits() === 0) {
+            return;
+        }
+
         $transactionId = 'txn.settlement.'.substr(hash('sha256', $batch->providerCode().'|'.$batch->batchId()), 0, 32);
         if ($this->repository->get('ledger_transactions', $transactionId) !== null) {
             return;
