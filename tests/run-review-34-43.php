@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__.'/bootstrap.php';
 
+use Sabri\CF03\Application\CatalogDisclosureService;
 use Sabri\CF03\Application\FinancialAuditService;
 use Sabri\CF03\Application\SubscriptionOperationsService;
 use Sabri\CF03\Domain\AiUsageAuthorization;
@@ -123,6 +124,33 @@ $tests['R36 fixed-price lifecycle cannot activate a retired paid price'] = stati
     reviewThrows(static fn () => $lifecycle->activate(
         'actor.activator', new DateTimeImmutable('2026-09-15T00:00:00Z'), 2
     ), InvariantViolation::class);
+};
+
+$tests['R43 approved one-time donation catalog registration follows lifecycle signatures'] = static function (): void {
+    $repo = new MemoryFinancialRepository(true);
+    $service = new CatalogDisclosureService($repo, new FinancialAuditService($repo));
+    $product = new FinancialProduct(
+        'donation.one_time',
+        ProductKind::DONATION,
+        BillingType::VOLUNTARY,
+        'owner.cf03',
+        null,
+        'refund.policy.v1',
+        'cancel.policy.v1',
+        true,
+        true,
+        'approval.donation.043'
+    );
+    $record = $service->registerApprovedDonationProduct(
+        $product,
+        'actor.stager.043',
+        'actor.approver.043',
+        'actor.activator.043',
+        new DateTimeImmutable('2026-09-15T01:00:00Z')
+    );
+    reviewSame('active', $record['lifecycle_state']);
+    reviewSame('owner.cf03', $record['owner']);
+    reviewSame(BillingType::VOLUNTARY->value, $record['billing_type']);
 };
 
 $failures = 0;
