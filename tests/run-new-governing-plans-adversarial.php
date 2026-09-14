@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__.'/bootstrap.php';
 
 use Sabri\CF03\Application\DonationIntentDraft;
+use Sabri\CF03\Application\ProviderWebhookVerifier;
 use Sabri\CF03\Domain\DonationPromptAction;
 use Sabri\CF03\Domain\DonationPromptState;
 use Sabri\CF03\Domain\DonationServiceState;
@@ -74,6 +75,29 @@ $tests['checkout and webhook active paths contain no monthly product settlement'
     contains($webhook, "!== 'donation.one_time'", true);
     contains($webhook, 'quarantined_retired_financial_product', true);
     contains($webhook, "'no_access_event' => true", true);
+};
+
+$tests['signed webhook duplicate remains authenticated for canonical duplicate parity'] = static function (): void {
+    $secret = str_repeat('s', 32);
+    $timestamp = new DateTimeImmutable('2026-09-08T05:00:00+05:00');
+    $body = json_encode([
+        'event_id' => 'evt.duplicate.001',
+        'type' => 'payment.settled',
+        'intent_id' => 'intent.duplicate.001',
+        'amount_minor' => 1000,
+        'currency' => 'USD',
+        'occurred_at' => $timestamp->format(DATE_ATOM),
+    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+    $signature = hash_hmac('sha256', $timestamp->getTimestamp().'.'.$body, $secret);
+    $verifier = new ProviderWebhookVerifier(
+        static fn (string $provider, string $keyVersion): string => $secret,
+        static fn (string $provider, string $eventId): bool => false,
+        300
+    );
+    $evidence = $verifier->verify('provider.test', 'key.v1', $body, $signature, $timestamp, $timestamp);
+    same(false, $evidence->eventIdUnique());
+    $evidence->assertAuthenticated(300);
+    throws(static fn () => $evidence->assertTrusted(300), InvariantViolation::class);
 };
 
 $tests['paid AI billing and subscription services are tombstones not charging paths'] = static function (): void {
