@@ -26,23 +26,43 @@ final class WordPressRequestGuard
         if (!in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
             return $result;
         }
+        if (!self::isSecureTransport()) {
+            return self::error(
+                'sabri_cf03_https_required',
+                'Financial mutation requests require an HTTPS transport.',
+                426
+            );
+        }
         $maximum = str_contains($route, '/webhooks/')
             ? self::MAX_WEBHOOK_BYTES
             : self::MAX_MUTATION_BYTES;
         if (strlen((string)$request->get_body()) <= $maximum) {
             return $result;
         }
-        if (class_exists('WP_Error')) {
-            return new \WP_Error(
-                'sabri_cf03_request_too_large',
-                'The financial request exceeds its accepted size limit.',
-                ['status' => 413]
-            );
+        return self::error(
+            'sabri_cf03_request_too_large',
+            'The financial request exceeds its accepted size limit.',
+            413
+        );
+    }
+
+    public static function isSecureTransport(): bool
+    {
+        if (function_exists('is_ssl') && is_ssl()) {
+            return true;
         }
-        return [
-            'code' => 'sabri_cf03_request_too_large',
-            'message' => 'The financial request exceeds its accepted size limit.',
-            'status' => 413,
-        ];
+        $https = $_SERVER['HTTPS'] ?? null;
+        if (is_string($https) && in_array(strtolower($https), ['on', '1'], true)) {
+            return true;
+        }
+        return (string)($_SERVER['SERVER_PORT'] ?? '') === '443';
+    }
+
+    private static function error(string $code, string $message, int $status): mixed
+    {
+        if (class_exists('WP_Error')) {
+            return new \WP_Error($code, $message, ['status' => $status]);
+        }
+        return ['code' => $code, 'message' => $message, 'status' => $status];
     }
 }
