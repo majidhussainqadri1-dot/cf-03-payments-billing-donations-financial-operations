@@ -8,6 +8,8 @@ use Sabri\CF03\Application\ActivationGate;
 use Sabri\CF03\Application\FinancialAuditService;
 use Sabri\CF03\Application\FutureIntegrationSustainabilityService;
 use Sabri\CF03\Application\LedgerJournal;
+use Sabri\CF03\Application\OutboxDispatcher;
+use Sabri\CF03\Application\OutboxTransport;
 use Sabri\CF03\Application\RuntimeConfiguration;
 use Sabri\CF03\Application\SettlementOperationsService;
 use Sabri\CF03\Application\SystemIntegrityService;
@@ -206,6 +208,43 @@ $tests['fully refunded zero-fee settlement posts without empty ledger transactio
     $posted = $service->postResolvedBatch('batch.zero.001', 'operator.poster.001', $at->modify('+1 minute'));
     assertSame('posted', $posted['status']);
     assertSame([], $repo->all('ledger_transactions'));
+};
+
+$tests['outbox recovers expired leases and rejects tampered payloads'] = static function (): void {
+    $now = new DateTimeImmutable('2026-09-14T12:00:00Z');
+    $transport = new class implements OutboxTransport {
+        /** @var list<string> */ public array $events = [];
+        public function publish(string $eventId, string $eventType, array $payload): void { $this->events[] = $eventId; }
+    };
+
+    $recoveryRepo = new MemoryFinancialRepository(true);
+    $payload = ['amount_minor'=>1000,'currency'=>'USD'];
+    $payloadHash = hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    $recoveryRepo->insert('outbox', 'event.stale.001', [
+        'event_id'=>'event.stale.001','event_type'=>'PaymentSettled','aggregate_id'=>'intent.001',
+        'aggregate_version'=>'1','schema_version'=>'1.0','trace_id'=>'trace.stale.001',
+        'payload_json'=>$payload,'payload_hash'=>$payloadHash,'state'=>'processing','attempts'=>0,
+        'available_at'=>$now->modify('-10 minutes'),'leased_until'=>$now->modify('-1 minute'),
+        'last_error_code'=>null,'created_at'=>$now->modify('-10 minutes'),'delivered_at'=>null,
+    ]);
+    $recovery = (new OutboxDispatcher($recoveryRepo, $transport, 3))->dispatch($now, 10);
+    assertSame(1, $recovery['retried']);
+    assertSame('retry', $recoveryRepo->get('outbox', 'event.stale.001')['state']);
+    assertSame('lease_expired', $recoveryRepo->get('outbox', 'event.stale.001')['last_error_code']);
+    assertSame([], $transport->events);
+
+    $tamperedRepo = new MemoryFinancialRepository(true);
+    $tamperedRepo->insert('outbox', 'event.tampered.001', [
+        'event_id'=>'event.tampered.001','event_type'=>'PaymentSettled','aggregate_id'=>'intent.002',
+        'aggregate_version'=>'1','schema_version'=>'1.0','trace_id'=>'trace.tampered.001',
+        'payload_json'=>['amount_minor'=>9999,'currency'=>'USD'],'payload_hash'=>$payloadHash,
+        'state'=>'pending','attempts'=>0,'available_at'=>$now->modify('-1 minute'),'leased_until'=>null,
+        'last_error_code'=>null,'created_at'=>$now->modify('-1 minute'),'delivered_at'=>null,
+    ]);
+    $tampered = (new OutboxDispatcher($tamperedRepo, $transport, 3))->dispatch($now, 10);
+    assertSame(1, $tampered['retried']);
+    assertSame('retry', $tamperedRepo->get('outbox', 'event.tampered.001')['state']);
+    assertSame([], $transport->events);
 };
 
 $tests['activation gate rejects malformed record'] = static function (): void {
