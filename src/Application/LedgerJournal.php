@@ -7,7 +7,6 @@ namespace Sabri\CF03\Application;
 use DateTimeImmutable;
 use InvalidArgumentException;
 use Sabri\CF03\Domain\LedgerTransaction;
-use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Support\InvariantViolation;
 
 final class LedgerJournal
@@ -87,10 +86,19 @@ final class LedgerJournal
                 if ($entry->amount()->currency() !== $currency) {
                     continue;
                 }
-                $signed = $entry->direction() === 'debit'
-                    ? $entry->amount()->minorUnits()
-                    : -$entry->amount()->minorUnits();
-                $balances[$entry->account()] = ($balances[$entry->account()] ?? 0) + $signed;
+                $amount = $entry->amount()->minorUnits();
+                $current = $balances[$entry->account()] ?? 0;
+                if ($entry->direction() === 'debit') {
+                    if ($amount > PHP_INT_MAX - $current) {
+                        throw new InvariantViolation('Ledger account balance exceeds supported integer range.');
+                    }
+                    $balances[$entry->account()] = $current + $amount;
+                } else {
+                    if ($current < PHP_INT_MIN + $amount) {
+                        throw new InvariantViolation('Ledger account balance exceeds supported integer range.');
+                    }
+                    $balances[$entry->account()] = $current - $amount;
+                }
             }
         }
         ksort($balances);
