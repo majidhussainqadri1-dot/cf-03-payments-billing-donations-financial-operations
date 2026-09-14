@@ -43,6 +43,7 @@ final class RuntimeSchemaExtension
             'refunds',
             'chargebacks',
             'outbox',
+            'retention_ledger',
         ] as $required) {
             if (!isset($tables[$required])) {
                 throw new RuntimeException('CF-03 runtime schema extension is missing '.$required.'.');
@@ -83,6 +84,11 @@ final class RuntimeSchemaExtension
             $tables['adjustments'],
             'currency char(3) NOT NULL, reason_code',
             'currency char(3) NOT NULL, debit_account varchar(128) NOT NULL, credit_account varchar(128) NOT NULL, reason_code'
+        );
+        $tables['retention_ledger'] = self::replaceOnce(
+            $tables['retention_ledger'],
+            'UNIQUE KEY record_once(record_type,record_ref)',
+            'UNIQUE KEY record_once(record_ref)'
         );
 
         // Legacy recurring columns remain nullable/false in the donation table for
