@@ -102,7 +102,8 @@ final class WordPressPublicUi
         try { $result = WordPressRestApi::transparency(); }
         catch (Throwable) { $result = ['status' => 'unavailable', 'snapshot' => null]; }
         $snapshot = $result['snapshot'] ?? null;
-        $body = '<p>'.esc_html((new PlatformFinancialPolicy())->publicDisclosure()['en-US']).'</p>';
+        $locale = function_exists('get_locale') ? (string)get_locale() : 'en-US';
+        $body = '<p>'.esc_html((new PlatformFinancialPolicy())->publicDisclosureForLocale($locale)).'</p>';
         if (is_array($snapshot)) {
             $body .= '<dl>';
             foreach ($snapshot as $key => $value) {
