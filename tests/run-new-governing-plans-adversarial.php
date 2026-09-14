@@ -6,10 +6,13 @@ require_once __DIR__.'/bootstrap.php';
 
 use Sabri\CF03\Application\DonationIntentDraft;
 use Sabri\CF03\Application\ProviderWebhookVerifier;
+use Sabri\CF03\Application\RiskOperationsService;
+use Sabri\CF03\Application\RuntimeConfiguration;
 use Sabri\CF03\Domain\DonationPromptAction;
 use Sabri\CF03\Domain\DonationPromptState;
 use Sabri\CF03\Domain\DonationServiceState;
 use Sabri\CF03\Domain\Money;
+use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
 use Sabri\CF03\Persistence\RuntimeSchemaExtension;
 use Sabri\CF03\Support\InvariantViolation;
 
@@ -98,6 +101,40 @@ $tests['signed webhook duplicate remains authenticated for canonical duplicate p
     same(false, $evidence->eventIdUnique());
     $evidence->assertAuthenticated(300);
     throws(static fn () => $evidence->assertTrusted(300), InvariantViolation::class);
+};
+
+$tests['won zero-fee chargeback creates no empty ledger transaction'] = static function (): void {
+    $repo = new MemoryFinancialRepository();
+    $at = new DateTimeImmutable('2026-09-14T12:00:00Z');
+    $repo->insert('chargebacks', 'case.zero.001', [
+        'case_id' => 'case.zero.001',
+        'provider' => 'provider.test',
+        'provider_case_ref' => 'provider.case.001',
+        'intent_id' => 'intent.case.001',
+        'amount_minor' => 1000,
+        'currency' => 'USD',
+        'reason_code' => 'fraud',
+        'response_deadline' => $at->modify('+30 days'),
+        'evidence_hash' => str_repeat('a', 64),
+        'provider_fee_minor' => 0,
+        'state' => 'won',
+        'record_version' => 5,
+        'created_at' => $at->modify('-1 day'),
+        'updated_at' => $at,
+    ]);
+    $gates = array_fill_keys([
+        'founder_change_control','legal_tax_accounting','pci_scope','provider_selected',
+        'independent_security','staging_acceptance','rollback_evidence','file00_contract',
+        'file20_file25_contract','file24_assurance','operations_ready',
+    ], true);
+    $config = new RuntimeConfiguration(DonationServiceState::SANDBOX, 'provider.test', $gates);
+    $result = (new RiskOperationsService($repo, $config))->adjustChargebackLedger(
+        'case.zero.001', 'operator.finance.001', $at, 5
+    );
+    same(null, $result['transaction_id']);
+    same(true, $result['no_financial_delta']);
+    same([], $repo->all('ledger_transactions'));
+    same('ledger_adjusted', $repo->get('chargebacks', 'case.zero.001')['state']);
 };
 
 $tests['paid AI billing and subscription services are tombstones not charging paths'] = static function (): void {
