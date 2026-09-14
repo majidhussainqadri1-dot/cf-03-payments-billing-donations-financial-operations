@@ -111,7 +111,9 @@ final class ProviderWebhookVerifier
         }
 
         // Reserve only after signature, replay and payload validation. A forged request
-        // must never consume a legitimate provider event ID.
+        // must never consume a legitimate provider event ID. A signed duplicate is
+        // allowed through this authentication boundary so WebhookIngestionService can
+        // compare it with the durable canonical event and acknowledge exact replays.
         $unique = ($this->eventIsUnique)($providerCode, $payload['event_id']);
         $evidence = new ProviderEvidence(
             $providerCode,
@@ -127,7 +129,7 @@ final class ProviderWebhookVerifier
             $unique,
             $occurredAt
         );
-        $evidence->assertTrusted($this->replayWindowSeconds);
+        $evidence->assertAuthenticated($this->replayWindowSeconds);
 
         return $evidence;
     }
