@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 require_once __DIR__.'/bootstrap.php';
 
+use Sabri\CF03\Application\FinancialAuditService;
 use Sabri\CF03\Application\ProviderRegistry;
 use Sabri\CF03\Application\ReconciliationEngine;
 use Sabri\CF03\Application\RefundWorkflowService;
 use Sabri\CF03\Application\RuntimeConfiguration;
+use Sabri\CF03\Application\SystemIntegrityService;
 use Sabri\CF03\Application\WebhookIngestionService;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\ProviderEvidence;
@@ -24,35 +26,20 @@ $tests['R26 refund balance scan cannot truncate after 500 prior records'] = stat
     $actor = 'user.refund.owner';
     $at = new DateTimeImmutable('2026-09-15T00:00:00Z');
     $repo->insert('intents', $intentId, [
-        'intent_id'=>$intentId,
-        'actor_ref'=>$actor,
-        'amount_minor'=>501,
-        'currency'=>'USD',
-        'provider'=>'provider.test',
-        'provider_ref'=>'pay.highcardinality.001',
-        'state'=>'settled',
-        'record_version'=>1,
+        'intent_id'=>$intentId,'actor_ref'=>$actor,'amount_minor'=>501,'currency'=>'USD',
+        'provider'=>'provider.test','provider_ref'=>'pay.highcardinality.001','state'=>'settled','record_version'=>1,
     ]);
     for ($index = 1; $index <= 501; $index++) {
         $refundId = 'refund.prior.'.str_pad((string)$index, 4, '0', STR_PAD_LEFT);
         $repo->insert('refunds', $refundId, [
-            'refund_id'=>$refundId,
-            'intent_id'=>$intentId,
-            'amount_minor'=>1,
-            'currency'=>'USD',
-            'requester_ref'=>$actor,
-            'reason'=>'prior_refund',
-            'state'=>'closed',
-            'record_version'=>1,
+            'refund_id'=>$refundId,'intent_id'=>$intentId,'amount_minor'=>1,'currency'=>'USD',
+            'requester_ref'=>$actor,'reason'=>'prior_refund','state'=>'closed','record_version'=>1,
         ]);
     }
     $service = new RefundWorkflowService($repo, new ProviderRegistry(), RuntimeConfiguration::preparing());
-    reviewThrows(
-        static fn () => $service->request(
-            'refund.new.blocked', $intentId, $actor, new Money(1, 'USD'), 'duplicate_charge', $at
-        ),
-        InvariantViolation::class
-    );
+    reviewThrows(static fn () => $service->request(
+        'refund.new.blocked', $intentId, $actor, new Money(1, 'USD'), 'duplicate_charge', $at
+    ), InvariantViolation::class);
     reviewSame(null, $repo->get('refunds', 'refund.new.blocked'));
 };
 
@@ -63,14 +50,8 @@ $tests['R27 provider refund reconciliation cannot truncate after 500 prior refun
     for ($index = 1; $index <= 501; $index++) {
         $refundId = 'refund.webhook.prior.'.str_pad((string)$index, 4, '0', STR_PAD_LEFT);
         $repo->insert('refunds', $refundId, [
-            'refund_id'=>$refundId,
-            'intent_id'=>$intentId,
-            'amount_minor'=>1,
-            'currency'=>'USD',
-            'requester_ref'=>'user.refund.owner',
-            'reason'=>'prior_refund',
-            'state'=>'closed',
-            'record_version'=>1,
+            'refund_id'=>$refundId,'intent_id'=>$intentId,'amount_minor'=>1,'currency'=>'USD',
+            'requester_ref'=>'user.refund.owner','reason'=>'prior_refund','state'=>'closed','record_version'=>1,
         ]);
     }
     $eventId = 'event.provider.refund.highcardinality';
@@ -85,12 +66,10 @@ $tests['R27 provider refund reconciliation cannot truncate after 500 prior refun
         }, null, WebhookIngestionService::class
     );
     if (!$invoke instanceof \Closure) { throw new RuntimeException('Private refund reconciliation test hook could not be bound.'); }
-    reviewThrows(
-        static fn () => $invoke($service, [
-            'intent_id'=>$intentId, 'product_id'=>'donation.one_time', 'actor_ref'=>'user.refund.owner',
-            'amount_minor'=>501, 'currency'=>'USD',
-        ], $evidence), InvariantViolation::class
-    );
+    reviewThrows(static fn () => $invoke($service, [
+        'intent_id'=>$intentId,'product_id'=>'donation.one_time','actor_ref'=>'user.refund.owner',
+        'amount_minor'=>501,'currency'=>'USD',
+    ], $evidence), InvariantViolation::class);
     $externalId = 'refund.external.'.substr(hash('sha256', 'provider.test|'.$eventId), 0, 32);
     reviewSame(null, $repo->get('refunds', $externalId));
 };
@@ -98,15 +77,8 @@ $tests['R27 provider refund reconciliation cannot truncate after 500 prior refun
 $tests['R28 settlement type mismatch is material even when amount delta is zero'] = static function (): void {
     $at = new DateTimeImmutable('2026-09-15T00:20:00+00:00');
     $batch = new SettlementBatch(
-        'batch.review28',
-        'provider.test',
-        new Money(100, 'USD'),
-        new Money(10, 'USD'),
-        new Money(0, 'USD'),
-        new Money(90, 'USD'),
-        $at,
-        hash('sha256', 'batch-review28'),
-        [
+        'batch.review28','provider.test',new Money(100, 'USD'),new Money(10, 'USD'),
+        new Money(0, 'USD'),new Money(90, 'USD'),$at,hash('sha256', 'batch-review28'),[
             ['reference'=>'payment.review28','type'=>'payment','amount_minor'=>100,'currency'=>'USD'],
             ['reference'=>'semantic.review28','type'=>'fee','amount_minor'=>10,'currency'=>'USD'],
         ]
@@ -115,10 +87,7 @@ $tests['R28 settlement type mismatch is material even when amount delta is zero'
         ['reference'=>'payment.review28','type'=>'payment','amount_minor'=>100,'currency'=>'USD'],
         ['reference'=>'semantic.review28','type'=>'refund','amount_minor'=>10,'currency'=>'USD'],
     ], ['USD'=>1000]);
-    $matches = array_values(array_filter(
-        $result->exceptions(),
-        static fn (array $exception): bool => $exception['type'] === 'type_mismatch'
-    ));
+    $matches = array_values(array_filter($result->exceptions(), static fn (array $exception): bool => $exception['type'] === 'type_mismatch'));
     reviewSame(1, count($matches));
     reviewSame(true, $matches[0]['material']);
 };
@@ -126,6 +95,25 @@ $tests['R28 settlement type mismatch is material even when amount delta is zero'
 $tests['R30 privacy export uses billing-query receipt key'] = static function (): void {
     reviewSame(true, in_array('receipts', WordPressPrivacy::EXPORT_GROUPS, true));
     reviewSame(false, in_array('invoices', WordPressPrivacy::EXPORT_GROUPS, true));
+};
+
+$tests['R31 integrity gate sees material exception beyond first 500 open records'] = static function (): void {
+    $repo = new MemoryFinancialRepository(true);
+    for ($index = 1; $index <= 501; $index++) {
+        $id = 'recon.nonmaterial.'.str_pad((string)$index, 4, '0', STR_PAD_LEFT);
+        $repo->insert('reconciliation_exceptions', $id, [
+            'exception_id'=>$id,'state'=>'open','material'=>false,'batch_id'=>'batch.review31',
+        ]);
+    }
+    $materialId = 'recon.material.0502';
+    $repo->insert('reconciliation_exceptions', $materialId, [
+        'exception_id'=>$materialId,'state'=>'open','material'=>true,'batch_id'=>'batch.review31',
+    ]);
+    $service = new SystemIntegrityService($repo, new FinancialAuditService($repo));
+    $health = $service->health();
+    reviewSame(502, $health['open_reconciliation_exceptions']);
+    reviewSame(1, $health['open_material_exceptions']);
+    reviewThrows(static fn () => $service->assertOperationalIntegrity(), InvariantViolation::class);
 };
 
 $failures = 0;
