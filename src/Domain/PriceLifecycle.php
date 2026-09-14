@@ -50,7 +50,12 @@ final class PriceLifecycle
         $this->recordVersion++;
     }
 
-    /** @param list<PriceLifecycle> $otherPrices */
+    /**
+     * Fixed-price activation is retained only as a historical API boundary.
+     * The current constitution has no collectible fixed-price product: all core
+     * services are free and donations are donor-entered, voluntary and one-time.
+     * @param list<PriceLifecycle> $otherPrices
+     */
     public function activate(
         string $actorReference,
         DateTimeImmutable $at,
@@ -58,33 +63,10 @@ final class PriceLifecycle
         array $otherPrices = []
     ): void {
         $this->assertVersion($expectedVersion);
-        if ($this->state !== 'approved') {
-            throw new InvariantViolation('Only approved prices may be activated.');
-        }
-        $actorReference = $this->actor($actorReference);
-        if ($actorReference === $this->stagedBy || $actorReference === $this->approvedBy) {
-            throw new InvariantViolation('Price activation requires a distinct authorized actor.');
-        }
-        if (! $this->price->isEffectiveAt($at)) {
-            throw new InvariantViolation('Price is not effective at the requested activation time.');
-        }
-
-        foreach ($otherPrices as $other) {
-            if (! $other instanceof self || $other === $this || $other->state !== 'active') {
-                continue;
-            }
-            $candidate = $other->price;
-            if ($candidate->productId() === $this->price->productId()
-                && $candidate->region() === $this->price->region()
-                && $candidate->amount()->currency() === $this->price->amount()->currency()
-                && self::overlap($candidate, $this->price)
-            ) {
-                throw new InvariantViolation('Active approved price windows cannot overlap.');
-            }
-        }
-
-        $this->state = 'active';
-        $this->recordVersion++;
+        $this->actor($actorReference);
+        throw new InvariantViolation(
+            'Fixed-price activation is retired while CF-03 operates the single-free-tier, voluntary one-time donation model.'
+        );
     }
 
     public function retire(int $expectedVersion): void
@@ -114,13 +96,5 @@ final class PriceLifecycle
             throw new InvalidArgumentException('Price lifecycle actor reference is invalid.');
         }
         return $reference;
-    }
-
-    private static function overlap(PriceVersion $left, PriceVersion $right): bool
-    {
-        $leftEnd = $left->effectiveUntil()?->getTimestamp() ?? PHP_INT_MAX;
-        $rightEnd = $right->effectiveUntil()?->getTimestamp() ?? PHP_INT_MAX;
-        return $left->effectiveFrom()->getTimestamp() < $rightEnd
-            && $right->effectiveFrom()->getTimestamp() < $leftEnd;
     }
 }
