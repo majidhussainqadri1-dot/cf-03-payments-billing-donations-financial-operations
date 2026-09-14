@@ -177,6 +177,14 @@ $tests['donation privilege projection is rejected'] = static function (): void {
     same(true, $contract['donor_and_non_donor_education_equal']);
 };
 
+$tests['public disclosure follows Urdu and English locale families'] = static function (): void {
+    $policy = new PlatformFinancialPolicy();
+    same($policy->publicDisclosure()['ur'], $policy->publicDisclosureForLocale('ur_PK'));
+    same($policy->publicDisclosure()['ur'], $policy->publicDisclosureForLocale('UR'));
+    same($policy->publicDisclosure()['en-US'], $policy->publicDisclosureForLocale('en_US'));
+    same($policy->publicDisclosure()['en-US'], $policy->publicDisclosureForLocale('fr_FR'));
+};
+
 $tests['active manifests match release identity'] = static function (): void {
     $root = dirname(__DIR__);
     $contracts = json_decode((string)file_get_contents($root.'/manifests/cf03-contracts.json'), true, 512, JSON_THROW_ON_ERROR);
