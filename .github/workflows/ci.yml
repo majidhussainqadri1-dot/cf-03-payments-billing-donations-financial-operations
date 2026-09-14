@@ -30,6 +30,8 @@ jobs:
         run: php tests/run-new-governing-plans-adversarial.php
       - name: Iterative review hardening acceptance
         run: php tests/run-review-18-27.php
+      - name: Review 26-35 hardening acceptance
+        run: php tests/run-review-26-35.php
       - name: Future Expansion Pack 40 acceptance
         run: php tests/run-future-expansion-40.php
       - name: Validate manifests
