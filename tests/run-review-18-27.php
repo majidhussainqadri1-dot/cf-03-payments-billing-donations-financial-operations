@@ -5,9 +5,11 @@ declare(strict_types=1);
 require_once __DIR__.'/bootstrap.php';
 
 use Sabri\CF03\Application\FinancialAuditService;
+use Sabri\CF03\Application\IncidentPathGuard;
 use Sabri\CF03\Application\RetentionOperationsService;
 use Sabri\CF03\Application\RuntimeConfiguration;
 use Sabri\CF03\Application\SecureExportService;
+use Sabri\CF03\Contracts\IncidentStateStore;
 use Sabri\CF03\Contracts\RetentionActionExecutor;
 use Sabri\CF03\Contracts\SecureArtifactStore;
 use Sabri\CF03\Domain\DonationServiceState;
@@ -17,18 +19,13 @@ use Sabri\CF03\Support\InvariantViolation;
 final class ReviewSecureArtifactStore implements SecureArtifactStore
 {
     /** @var array<string,string> */ public array $objects = [];
-
     public function put(string $filename, string $mediaType, string $contents, DateTimeImmutable $expiresAt): array
     {
         $reference = 'vault://finance/'.$filename;
         $this->objects[$reference] = $contents;
         return ['object_ref'=>$reference, 'sha256'=>hash('sha256', $contents), 'size_bytes'=>strlen($contents)];
     }
-
-    public function delete(string $objectReference): void
-    {
-        unset($this->objects[$objectReference]);
-    }
+    public function delete(string $objectReference): void { unset($this->objects[$objectReference]); }
 }
 
 final class ReviewRetentionExecutor implements RetentionActionExecutor
@@ -37,6 +34,13 @@ final class ReviewRetentionExecutor implements RetentionActionExecutor
     public function archive(string $recordType, string $recordReference): string { $this->actions[]='archive'; return 'evidence.archive.001'; }
     public function anonymize(string $recordType, string $recordReference): string { $this->actions[]='anonymize'; return 'evidence.anonymize.001'; }
     public function delete(string $recordType, string $recordReference): string { $this->actions[]='delete'; return 'evidence.delete.001'; }
+}
+
+final class ReviewIncidentStore implements IncidentStateStore
+{
+    /** @param array<string,mixed> $state */ public function __construct(private array $state) {}
+    public function get(): array { return $this->state; }
+    public function save(array $state): void { $this->state = $state; }
 }
 
 $tests = [];
@@ -58,19 +62,11 @@ $tests['R21 stored export specification is tamper evident'] = static function ()
     $service->request('export.review21.tamper', 'user.finance.001', ['transaction_id'], [], 10, $at->modify('+1 day'), $at);
     $repo->updateWhere('exports', ['job_id'=>'export.review21.tamper'], [
         'specification_json'=>[
-            'job_id'=>'export.review21.tamper',
-            'fields'=>['transaction_id','invoice_number'],
-            'filters'=>[],
-            'maximum_rows'=>10,
-            'expires_at'=>$at->modify('+1 day')->format(DATE_ATOM),
-            'state'=>'queued',
-            'record_version'=>1,
+            'job_id'=>'export.review21.tamper','fields'=>['transaction_id','invoice_number'],'filters'=>[],
+            'maximum_rows'=>10,'expires_at'=>$at->modify('+1 day')->format(DATE_ATOM),'state'=>'queued','record_version'=>1,
         ],
     ]);
-    reviewThrows(
-        static fn () => $service->process('export.review21.tamper', 'user.operator.001', 1, $at->modify('+1 minute')),
-        InvariantViolation::class
-    );
+    reviewThrows(static fn () => $service->process('export.review21.tamper', 'user.operator.001', 1, $at->modify('+1 minute')), InvariantViolation::class);
     reviewSame([], $store->objects);
 };
 
@@ -98,19 +94,10 @@ $tests['R22 retention cannot shorten or change canonical policy'] = static funct
     $executor = new ReviewRetentionExecutor();
     $service = new RetentionOperationsService($repo, $executor);
     $created = new DateTimeImmutable('2026-09-14T00:00:00Z');
-
-    reviewThrows(static fn () => $service->schedule(
-        'donation', 'donation.retention.001', 'C4', $created, $created->modify('+1 year'), 'anonymize'
-    ), InvariantViolation::class);
-    reviewThrows(static fn () => $service->schedule(
-        'donation', 'donation.retention.001', 'C4', $created, $created->modify('+10 years'), 'delete'
-    ), InvariantViolation::class);
-    reviewThrows(static fn () => $service->schedule(
-        'ledger_transaction', 'txn.retention.001', 'C4', $created, $created->modify('+10 years'), 'anonymize'
-    ), InvariantViolation::class);
-    reviewThrows(static fn () => $service->schedule(
-        'unknown_financial_record', 'unknown.retention.001', 'C4', $created, $created->modify('+10 years'), 'delete'
-    ), InvariantViolation::class);
+    reviewThrows(static fn () => $service->schedule('donation', 'donation.retention.001', 'C4', $created, $created->modify('+1 year'), 'anonymize'), InvariantViolation::class);
+    reviewThrows(static fn () => $service->schedule('donation', 'donation.retention.001', 'C4', $created, $created->modify('+10 years'), 'delete'), InvariantViolation::class);
+    reviewThrows(static fn () => $service->schedule('ledger_transaction', 'txn.retention.001', 'C4', $created, $created->modify('+10 years'), 'anonymize'), InvariantViolation::class);
+    reviewThrows(static fn () => $service->schedule('unknown_financial_record', 'unknown.retention.001', 'C4', $created, $created->modify('+10 years'), 'delete'), InvariantViolation::class);
     reviewSame([], $repo->all('retention_ledger'));
     reviewSame([], $executor->actions);
 };
@@ -121,14 +108,10 @@ $tests['R22 due retention obeys legal hold and persisted policy'] = static funct
     $service = new RetentionOperationsService($repo, $executor);
     $created = new DateTimeImmutable('2016-09-14T00:00:00Z');
     $expiry = new DateTimeImmutable('2026-09-14T00:00:00Z');
-
     $scheduled = $service->schedule('donation', 'donation.retention.002', 'C4', $created, $expiry, 'anonymize');
     reviewSame(false, $scheduled['reused']);
     $service->placeLegalHold('donation.retention.002', 'hold.legal.001');
-    reviewThrows(
-        static fn () => $service->executeDue('donation.retention.002', $expiry->modify('+1 day')),
-        InvariantViolation::class
-    );
+    reviewThrows(static fn () => $service->executeDue('donation.retention.002', $expiry->modify('+1 day')), InvariantViolation::class);
     reviewSame([], $executor->actions);
     $service->releaseLegalHold('donation.retention.002', 'hold.legal.001');
     $result = $service->executeDue('donation.retention.002', $expiry->modify('+1 day'));
@@ -136,24 +119,26 @@ $tests['R22 due retention obeys legal hold and persisted policy'] = static funct
     reviewSame(['anonymize'], $executor->actions);
 };
 
+$tests['R23 malformed incident state fails closed on every sensitive path'] = static function (): void {
+    foreach ([[], ['state'=>'garbage'], ['checkout_enabled'=>true]] as $malformed) {
+        $guard = new IncidentPathGuard(new ReviewIncidentStore($malformed));
+        foreach (['checkout','refunds','webhooks'] as $path) {
+            reviewThrows(static fn () => $guard->assertAvailable($path), InvariantViolation::class);
+        }
+    }
+};
+
 $failures = 0;
 foreach ($tests as $name => $test) {
-    try {
-        $test();
-        fwrite(STDOUT, "PASS: {$name}\n");
-    } catch (Throwable $error) {
-        $failures++;
-        fwrite(STDERR, "FAIL: {$name}: {$error->getMessage()}\n");
-    }
+    try { $test(); fwrite(STDOUT, "PASS: {$name}\n"); }
+    catch (Throwable $error) { $failures++; fwrite(STDERR, "FAIL: {$name}: {$error->getMessage()}\n"); }
 }
 fwrite(STDOUT, sprintf("%d review tests, %d failures\n", count($tests), $failures));
 exit($failures === 0 ? 0 : 1);
 
 function reviewSame(mixed $expected, mixed $actual): void
 {
-    if ($expected !== $actual) {
-        throw new RuntimeException('Expected '.var_export($expected, true).', got '.var_export($actual, true));
-    }
+    if ($expected !== $actual) { throw new RuntimeException('Expected '.var_export($expected, true).', got '.var_export($actual, true)); }
 }
 
 /** @param class-string<Throwable> $class */
