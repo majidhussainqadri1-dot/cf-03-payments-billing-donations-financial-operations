@@ -375,29 +375,39 @@ final class WebhookIngestionService
         $amount = $evidence->amount();
         $originalAmount = (int)$intent['amount_minor'];
 
-        $refunds = $this->repository->find('refunds', ['intent_id' => $intentId], 500);
         $alreadyRefunded = 0;
         $matchingOpen = [];
-        foreach ($refunds as $refund) {
-            if ((string)($refund['currency'] ?? '') !== $amount->currency()) { continue; }
-            $state = (string)($refund['state'] ?? '');
-            if (in_array($state, ['succeeded', 'closed'], true)) {
-                $value = (int)($refund['amount_minor'] ?? 0);
-                if ($value <= 0 || $value > PHP_INT_MAX - $alreadyRefunded) {
-                    throw new InvariantViolation('Historical refund balance evidence is invalid.');
+        $offset = 0;
+        do {
+            $refunds = $this->repository->page('refunds', ['intent_id' => $intentId], 500, $offset);
+            foreach ($refunds as $refund) {
+                if ((string)($refund['currency'] ?? '') !== $amount->currency()) { continue; }
+                $state = (string)($refund['state'] ?? '');
+                if (in_array($state, ['succeeded', 'closed'], true)) {
+                    $value = (int)($refund['amount_minor'] ?? 0);
+                    if ($value <= 0 || $value > PHP_INT_MAX - $alreadyRefunded) {
+                        throw new InvariantViolation('Historical refund balance evidence is invalid.');
+                    }
+                    $alreadyRefunded += $value;
                 }
-                $alreadyRefunded += $value;
+                if ((int)($refund['amount_minor'] ?? 0) === $amount->minorUnits()
+                    && in_array($state, ['approved', 'provider_pending', 'uncertain'], true)
+                ) {
+                    $matchingOpen[] = $refund;
+                    if (count($matchingOpen) > 1) {
+                        throw new InvariantViolation('Refund evidence matches multiple open refund requests and requires manual reconciliation.');
+                    }
+                }
             }
-            if ((int)($refund['amount_minor'] ?? 0) === $amount->minorUnits()
-                && in_array($state, ['approved', 'provider_pending', 'uncertain'], true)
-            ) {
-                $matchingOpen[] = $refund;
+            $offset += count($refunds);
+            if ($offset > 100000) {
+                throw new InvariantViolation('Refund reconciliation evidence exceeds the bounded scan; manual reconciliation is required.');
             }
-        }
-        if (count($matchingOpen) > 1) {
-            throw new InvariantViolation('Refund evidence matches multiple open refund requests and requires manual reconciliation.');
-        }
-        if ($alreadyRefunded + $amount->minorUnits() > $originalAmount) {
+        } while (count($refunds) === 500);
+
+        if ($alreadyRefunded > PHP_INT_MAX - $amount->minorUnits()
+            || $alreadyRefunded + $amount->minorUnits() > $originalAmount
+        ) {
             throw new InvariantViolation('Cumulative provider refunds exceed the original payment.');
         }
 
