@@ -14,6 +14,7 @@ use Sabri\CF03\Contracts\RetentionActionExecutor;
 use Sabri\CF03\Contracts\SecureArtifactStore;
 use Sabri\CF03\Domain\DonationServiceState;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
+use Sabri\CF03\Infrastructure\WordPressRequestGuard;
 use Sabri\CF03\Infrastructure\WordPressSchemaInstaller;
 use Sabri\CF03\Persistence\CompleteSchema;
 use Sabri\CF03\Persistence\RuntimeSchemaExtension;
@@ -44,6 +45,14 @@ final class ReviewIncidentStore implements IncidentStateStore
     /** @param array<string,mixed> $state */ public function __construct(private array $state) {}
     public function get(): array { return $this->state; }
     public function save(array $state): void { $this->state = $state; }
+}
+
+final class ReviewRestMutationRequest
+{
+    public function __construct(private readonly string $route, private readonly string $body = '{}') {}
+    public function get_route(): string { return $this->route; }
+    public function get_method(): string { return 'POST'; }
+    public function get_body(): string { return $this->body; }
 }
 
 $tests = [];
@@ -140,6 +149,28 @@ $tests['R24 active schema retires recurring stores and uses canonical retention 
     $indexes = WordPressSchemaInstaller::requiredIndexes($tables['retention_ledger']);
     reviewSame(true, $indexes['record_once']['unique']);
     reviewSame(['record_ref'], $indexes['record_once']['columns']);
+};
+
+$tests['R25 financial REST mutations require secure transport'] = static function (): void {
+    $savedHttps = $_SERVER['HTTPS'] ?? null;
+    $savedPort = $_SERVER['SERVER_PORT'] ?? null;
+    unset($_SERVER['HTTPS'], $_SERVER['SERVER_PORT']);
+    $request = new ReviewRestMutationRequest('/sabri-finance/v1/donation-intents');
+    $blocked = WordPressRequestGuard::guard(null, null, $request);
+    if (is_array($blocked)) {
+        reviewSame(426, $blocked['status'] ?? null);
+        reviewSame('sabri_cf03_https_required', $blocked['code'] ?? null);
+    } elseif (is_object($blocked) && method_exists($blocked, 'get_error_data')) {
+        reviewSame(426, $blocked->get_error_data()['status'] ?? null);
+    } else {
+        throw new RuntimeException('Insecure financial mutation was not rejected.');
+    }
+
+    $_SERVER['HTTPS'] = 'on';
+    reviewSame(null, WordPressRequestGuard::guard(null, null, $request));
+
+    if ($savedHttps === null) { unset($_SERVER['HTTPS']); } else { $_SERVER['HTTPS'] = $savedHttps; }
+    if ($savedPort === null) { unset($_SERVER['SERVER_PORT']); } else { $_SERVER['SERVER_PORT'] = $savedPort; }
 };
 
 $failures = 0;
