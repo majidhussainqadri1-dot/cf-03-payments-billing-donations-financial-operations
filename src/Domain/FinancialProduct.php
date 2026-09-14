@@ -30,17 +30,24 @@ final class FinancialProduct
             self::assertIdentifier($approvalReference, 'Product approval reference');
         }
 
-        if ($kind !== ProductKind::DONATION) {
-            throw new InvariantViolation(
-                'Paid core, education, AI and other non-donation financial products are retired under the current CF-03 constitution.'
-            );
+        if ($kind === ProductKind::DONATION) {
+            if ($billingType !== BillingType::VOLUNTARY || $entitlementCode !== null) {
+                throw new InvariantViolation('Donation must be voluntary and must not map to an entitlement.');
+            }
+            return;
         }
-        if ($billingType !== BillingType::VOLUNTARY) {
-            throw new InvariantViolation('The active donation product must use voluntary one-time financial semantics only.');
+
+        // Historical product definitions remain parseable for migration, audit and
+        // retirement evidence. They can never become checkout-eligible under the
+        // current free-core constitution; PlatformFinancialPolicy is the canonical
+        // collection authority and rejects every non-donation product.
+        if ($billingType === BillingType::VOLUNTARY) {
+            throw new InvariantViolation('Only donation products may use voluntary billing.');
         }
-        if ($entitlementCode !== null) {
-            throw new InvariantViolation('Donation must not map to an entitlement or access advantage.');
+        if ($entitlementCode === null) {
+            throw new InvariantViolation('Historical non-donation products require their original entitlement mapping for audit parity.');
         }
+        self::assertIdentifier($entitlementCode, 'Entitlement code');
     }
 
     public function productId(): string { return $this->productId; }
@@ -54,7 +61,11 @@ final class FinancialProduct
 
     public function isCheckoutEligible(): bool
     {
-        return $this->available && $this->approved;
+        return $this->kind === ProductKind::DONATION
+            && $this->billingType === BillingType::VOLUNTARY
+            && $this->entitlementCode === null
+            && $this->available
+            && $this->approved;
     }
 
     private static function assertIdentifier(string $value, string $label): void
