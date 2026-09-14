@@ -60,16 +60,21 @@ final class FinancialAdjustmentService
             $requesterReference,
             $requestedAt
         );
+
         $existing = $this->repository->get('adjustments', $adjustmentId);
         if ($existing !== null) {
             if (($existing['source_transaction_id'] ?? null) === $sourceTransactionId
                 && (int)($existing['amount_minor'] ?? -1) === $amount->minorUnits()
                 && ($existing['currency'] ?? null) === $amount->currency()
+                && ($existing['debit_account'] ?? null) === $debitAccount
+                && ($existing['credit_account'] ?? null) === $creditAccount
+                && ($existing['reason_code'] ?? null) === $reasonCode
                 && ($existing['evidence_hash'] ?? null) === $evidenceSha256
+                && ($existing['requester_ref'] ?? null) === $requesterReference
             ) {
                 return self::safe($existing) + ['reused' => true];
             }
-            throw new InvariantViolation('Financial adjustment identifier already exists with different evidence.');
+            throw new InvariantViolation('Financial adjustment identifier already exists with different terms or evidence.');
         }
 
         $record = [
@@ -103,32 +108,47 @@ final class FinancialAdjustmentService
     ): array {
         $record = $this->require($adjustmentId, $expectedVersion);
         $adjustment = $this->hydrate($record);
+        if ($decidedAt < $adjustment->requestedAt()) {
+            throw new InvariantViolation('Financial adjustment decision cannot precede the request.');
+        }
         $approve
             ? $adjustment->approve($reviewerReference, $expectedVersion)
             : $adjustment->reject($reviewerReference, $expectedVersion);
 
-        $updated = $this->repository->compareAndSwap(
-            'adjustments',
+        /** @var array<string,mixed> $updated */
+        $updated = $this->repository->transaction(function () use (
+            $adjustment,
             $adjustmentId,
             $expectedVersion,
-            static function (array $current) use ($adjustment): array {
-                $current['state'] = $adjustment->state();
-                $current['approver_ref'] = $adjustment->approverReference();
-                return $current;
-            }
-        );
-        $this->audit->append(new AuditEnvelope(
-            'audit:adjustment-decision:'.substr(hash('sha256', $adjustmentId.'|'.$decidedAt->format(DATE_ATOM)), 0, 32),
             $reviewerReference,
-            $approve ? 'adjustment_approved' : 'adjustment_rejected',
-            'financial_adjustment',
-            $adjustmentId,
-            'financial_correction_control',
-            AuditOutcome::SUCCEEDED,
-            $decidedAt,
-            'trace:adjustment:'.substr(hash('sha256', $adjustmentId), 0, 24),
-            ['evidence_sha256' => $adjustment->evidenceSha256(), 'reason_code' => $adjustment->reasonCode()]
-        ));
+            $approve,
+            $decidedAt
+        ): array {
+            $updated = $this->repository->compareAndSwap(
+                'adjustments',
+                $adjustmentId,
+                $expectedVersion,
+                static function (array $current) use ($adjustment): array {
+                    $current['state'] = $adjustment->state();
+                    $current['approver_ref'] = $adjustment->approverReference();
+                    return $current;
+                }
+            );
+            $this->audit->append(new AuditEnvelope(
+                'audit:adjustment-decision:'.substr(hash('sha256', $adjustmentId.'|'.$decidedAt->format(DATE_ATOM)), 0, 32),
+                $reviewerReference,
+                $approve ? 'adjustment_approved' : 'adjustment_rejected',
+                'financial_adjustment',
+                $adjustmentId,
+                'financial_correction_control',
+                AuditOutcome::SUCCEEDED,
+                $decidedAt,
+                'trace:adjustment:'.substr(hash('sha256', $adjustmentId), 0, 24),
+                ['evidence_sha256' => $adjustment->evidenceSha256(), 'reason_code' => $adjustment->reasonCode()]
+            ));
+            return $updated;
+        });
+
         return self::safe($updated);
     }
 
@@ -146,6 +166,9 @@ final class FinancialAdjustmentService
         }
 
         $adjustment = $this->hydrate($record);
+        if ($executedAt < $adjustment->requestedAt()) {
+            throw new InvariantViolation('Financial adjustment execution cannot precede the request.');
+        }
         $adjustment->execute($executorReference, $expectedVersion);
         $source = $this->repository->get('ledger_transactions', $adjustment->sourceTransactionId());
         if ($source === null) {
@@ -165,6 +188,7 @@ final class FinancialAdjustmentService
 
         $transactionId = 'txn.adjustment.'.substr(hash('sha256', $adjustmentId), 0, 32);
         $traceId = 'trace:adjustment:'.substr(hash('sha256', $adjustmentId), 0, 24);
+
         $this->repository->transaction(function () use (
             $record,
             $adjustment,
@@ -216,24 +240,23 @@ final class FinancialAdjustmentService
                 }
             );
             $this->outbox($adjustment, $transactionId, $traceId, $executedAt);
+            $this->audit->append(new AuditEnvelope(
+                'audit:adjustment-execution:'.substr(hash('sha256', $adjustment->adjustmentId().'|'.$executedAt->format(DATE_ATOM)), 0, 32),
+                $executorReference,
+                'adjustment_executed',
+                'financial_adjustment',
+                $adjustment->adjustmentId(),
+                'immutable_ledger_correction',
+                AuditOutcome::SUCCEEDED,
+                $executedAt,
+                $traceId,
+                [
+                    'source_transaction_id' => $adjustment->sourceTransactionId(),
+                    'transaction_id' => $transactionId,
+                    'evidence_sha256' => $adjustment->evidenceSha256(),
+                ]
+            ));
         });
-
-        $this->audit->append(new AuditEnvelope(
-            'audit:adjustment-execution:'.substr(hash('sha256', $adjustmentId.'|'.$executedAt->format(DATE_ATOM)), 0, 32),
-            $executorReference,
-            'adjustment_executed',
-            'financial_adjustment',
-            $adjustmentId,
-            'immutable_ledger_correction',
-            AuditOutcome::SUCCEEDED,
-            $executedAt,
-            $traceId,
-            [
-                'source_transaction_id' => $adjustment->sourceTransactionId(),
-                'transaction_id' => $transactionId,
-                'evidence_sha256' => $adjustment->evidenceSha256(),
-            ]
-        ));
 
         $updated = $this->repository->get('adjustments', $adjustmentId);
         if ($updated === null) {
