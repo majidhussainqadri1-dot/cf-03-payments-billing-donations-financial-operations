@@ -6,6 +6,7 @@ require_once __DIR__ . '/bootstrap.php';
 
 use Sabri\CF03\Application\ActivationGate;
 use Sabri\CF03\Application\FutureIntegrationSustainabilityService;
+use Sabri\CF03\Application\LedgerJournal;
 use Sabri\CF03\Domain\CommissionPolicy;
 use Sabri\CF03\Domain\DonationPolicy;
 use Sabri\CF03\Domain\LedgerEntry;
@@ -107,6 +108,20 @@ $tests['ledger balances each currency independently'] = static function (): void
         new LedgerEntry('asset.usd', LedgerEntry::DEBIT, new Money(50, 'USD'), 'multi'),
         new LedgerEntry('income.usd', LedgerEntry::CREDIT, new Money(50, 'USD'), 'multi'),
     ]);
+};
+
+$tests['ledger journal rejects aggregate account-balance overflow'] = static function (): void {
+    $journal = new LedgerJournal();
+    $at = new DateTimeImmutable('2026-09-14T12:00:00Z');
+    $journal->post(new LedgerTransaction('txn-max', [
+        new LedgerEntry('asset.provider', LedgerEntry::DEBIT, new Money(PHP_INT_MAX, 'PKR'), 'max-asset'),
+        new LedgerEntry('income.donation', LedgerEntry::CREDIT, new Money(PHP_INT_MAX, 'PKR'), 'max-income'),
+    ]), 'test', 'max', 'system:test', 'overflow-boundary', '2026-09', $at, $at);
+    $journal->post(new LedgerTransaction('txn-one', [
+        new LedgerEntry('asset.provider', LedgerEntry::DEBIT, new Money(1, 'PKR'), 'one-asset'),
+        new LedgerEntry('income.donation', LedgerEntry::CREDIT, new Money(1, 'PKR'), 'one-income'),
+    ]), 'test', 'one', 'system:test', 'overflow-boundary', '2026-09', $at, $at);
+    assertThrows(static fn () => $journal->accountBalances('PKR'), DomainException::class);
 };
 
 $tests['activation gate rejects malformed record'] = static function (): void {
