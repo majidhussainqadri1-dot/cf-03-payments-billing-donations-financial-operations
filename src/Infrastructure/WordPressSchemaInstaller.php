@@ -60,6 +60,9 @@ final class WordPressSchemaInstaller
             if ($name === 'transparency_snapshots') {
                 self::repairTransparencySnapshots($wpdb, $table);
             }
+            if ($name === 'retention_ledger') {
+                self::repairRetentionLedgerIdentity($wpdb, $table);
+            }
 
             $actualColumns = $wpdb->get_col("SHOW COLUMNS FROM {$table}", 0);
             if (!is_array($actualColumns)) {
@@ -184,6 +187,53 @@ final class WordPressSchemaInstaller
             }
         }
         return $defects;
+    }
+
+    private static function repairRetentionLedgerIdentity(object $wpdb, string $table): void
+    {
+        $indexes = $wpdb->get_results("SHOW INDEX FROM {$table}", defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
+        if (!is_array($indexes)) {
+            throw new RuntimeException('Retention ledger indexes could not be read.');
+        }
+        $recordOnce = [];
+        $recordOnceUnique = null;
+        foreach ($indexes as $row) {
+            if (!is_array($row) || ($row['Key_name'] ?? $row['key_name'] ?? null) !== 'record_once') {
+                continue;
+            }
+            $column = $row['Column_name'] ?? $row['column_name'] ?? null;
+            $sequence = $row['Seq_in_index'] ?? $row['seq_in_index'] ?? null;
+            $nonUnique = $row['Non_unique'] ?? $row['non_unique'] ?? null;
+            if (!is_string($column) || !is_numeric($sequence) || !is_numeric($nonUnique)) {
+                throw new RuntimeException('Retention ledger identity index evidence is invalid.');
+            }
+            $recordOnce[(int)$sequence] = strtolower($column);
+            $recordOnceUnique = (int)$nonUnique === 0;
+        }
+        if ($recordOnce === []) {
+            return;
+        }
+        ksort($recordOnce);
+        $recordOnce = array_values($recordOnce);
+        if ($recordOnce === ['record_ref'] && $recordOnceUnique === true) {
+            return;
+        }
+        $duplicates = $wpdb->get_results(
+            "SELECT record_ref, COUNT(*) AS duplicate_count FROM {$table} GROUP BY record_ref HAVING COUNT(*) > 1 LIMIT 1",
+            defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A'
+        );
+        if (!is_array($duplicates)) {
+            throw new RuntimeException('Retention ledger duplicate identity evidence could not be read.');
+        }
+        if ($duplicates !== []) {
+            throw new RuntimeException('Retention ledger contains duplicate record references; automatic identity migration is unsafe.');
+        }
+        if ($wpdb->query("ALTER TABLE {$table} DROP INDEX `record_once`") === false) {
+            throw new RuntimeException('Legacy retention identity index could not be removed.');
+        }
+        if ($wpdb->query("ALTER TABLE {$table} ADD UNIQUE KEY `record_once` (`record_ref`)") === false) {
+            throw new RuntimeException('Canonical retention identity index could not be installed.');
+        }
     }
 
     private static function repairTransparencySnapshots(object $wpdb, string $table): void
