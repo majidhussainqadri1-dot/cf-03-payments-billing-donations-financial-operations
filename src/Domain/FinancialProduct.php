@@ -30,30 +30,16 @@ final class FinancialProduct
             self::assertIdentifier($approvalReference, 'Product approval reference');
         }
 
-        if ($kind === ProductKind::DONATION) {
-            if ($billingType !== BillingType::VOLUNTARY || $entitlementCode !== null) {
-                throw new InvariantViolation('Donation must be voluntary and must not map to an entitlement.');
-            }
-        } else {
-            if ($billingType === BillingType::VOLUNTARY) {
-                throw new InvariantViolation('Only donation products may use voluntary billing.');
-            }
-            if ($entitlementCode === null) {
-                throw new InvariantViolation('Non-donation financial products require an entitlement mapping.');
-            }
-            self::assertIdentifier($entitlementCode, 'Entitlement code');
+        if ($kind !== ProductKind::DONATION) {
+            throw new InvariantViolation(
+                'Paid core, education, AI and other non-donation financial products are retired under the current CF-03 constitution.'
+            );
         }
-
-        if ($kind === ProductKind::EDUCATION_MEMBERSHIP && $billingType !== BillingType::RECURRING) {
-            throw new InvariantViolation('The structured education membership must use recurring billing.');
+        if ($billingType !== BillingType::VOLUNTARY) {
+            throw new InvariantViolation('The active donation product must use voluntary one-time financial semantics only.');
         }
-
-        if ($kind === ProductKind::AI_USAGE && $billingType !== BillingType::METERED) {
-            throw new InvariantViolation('AI usage products must use metered billing.');
-        }
-
-        if ($kind === ProductKind::AI_ADD_ON && $billingType === BillingType::METERED) {
-            throw new InvariantViolation('Metered AI usage must be registered as an AI usage product, not an add-on.');
+        if ($entitlementCode !== null) {
+            throw new InvariantViolation('Donation must not map to an entitlement or access advantage.');
         }
     }
 
