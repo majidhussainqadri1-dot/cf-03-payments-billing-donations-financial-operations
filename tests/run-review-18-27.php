@@ -5,8 +5,10 @@ declare(strict_types=1);
 require_once __DIR__.'/bootstrap.php';
 
 use Sabri\CF03\Application\FinancialAuditService;
+use Sabri\CF03\Application\RetentionOperationsService;
 use Sabri\CF03\Application\RuntimeConfiguration;
 use Sabri\CF03\Application\SecureExportService;
+use Sabri\CF03\Contracts\RetentionActionExecutor;
 use Sabri\CF03\Contracts\SecureArtifactStore;
 use Sabri\CF03\Domain\DonationServiceState;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
@@ -27,6 +29,14 @@ final class ReviewSecureArtifactStore implements SecureArtifactStore
     {
         unset($this->objects[$objectReference]);
     }
+}
+
+final class ReviewRetentionExecutor implements RetentionActionExecutor
+{
+    /** @var list<string> */ public array $actions = [];
+    public function archive(string $recordType, string $recordReference): string { $this->actions[]='archive'; return 'evidence.archive.001'; }
+    public function anonymize(string $recordType, string $recordReference): string { $this->actions[]='anonymize'; return 'evidence.anonymize.001'; }
+    public function delete(string $recordType, string $recordReference): string { $this->actions[]='delete'; return 'evidence.delete.001'; }
 }
 
 $tests = [];
@@ -81,6 +91,49 @@ $tests['R21 export request process grant revoke are audited and artifact is dele
     reviewSame(null, $repo->get('exports', 'export.review21.audit')['encrypted_object_ref']);
     reviewSame(4, count($repo->all('audit')));
     reviewSame(true, $audit->verifyChain());
+};
+
+$tests['R22 retention cannot shorten or change canonical policy'] = static function (): void {
+    $repo = new MemoryFinancialRepository(true);
+    $executor = new ReviewRetentionExecutor();
+    $service = new RetentionOperationsService($repo, $executor);
+    $created = new DateTimeImmutable('2026-09-14T00:00:00Z');
+
+    reviewThrows(static fn () => $service->schedule(
+        'donation', 'donation.retention.001', 'C4', $created, $created->modify('+1 year'), 'anonymize'
+    ), InvariantViolation::class);
+    reviewThrows(static fn () => $service->schedule(
+        'donation', 'donation.retention.001', 'C4', $created, $created->modify('+10 years'), 'delete'
+    ), InvariantViolation::class);
+    reviewThrows(static fn () => $service->schedule(
+        'ledger_transaction', 'txn.retention.001', 'C4', $created, $created->modify('+10 years'), 'anonymize'
+    ), InvariantViolation::class);
+    reviewThrows(static fn () => $service->schedule(
+        'unknown_financial_record', 'unknown.retention.001', 'C4', $created, $created->modify('+10 years'), 'delete'
+    ), InvariantViolation::class);
+    reviewSame([], $repo->all('retention_ledger'));
+    reviewSame([], $executor->actions);
+};
+
+$tests['R22 due retention obeys legal hold and persisted policy'] = static function (): void {
+    $repo = new MemoryFinancialRepository(true);
+    $executor = new ReviewRetentionExecutor();
+    $service = new RetentionOperationsService($repo, $executor);
+    $created = new DateTimeImmutable('2016-09-14T00:00:00Z');
+    $expiry = new DateTimeImmutable('2026-09-14T00:00:00Z');
+
+    $scheduled = $service->schedule('donation', 'donation.retention.002', 'C4', $created, $expiry, 'anonymize');
+    reviewSame(false, $scheduled['reused']);
+    $service->placeLegalHold('donation.retention.002', 'hold.legal.001');
+    reviewThrows(
+        static fn () => $service->executeDue('donation.retention.002', $expiry->modify('+1 day')),
+        InvariantViolation::class
+    );
+    reviewSame([], $executor->actions);
+    $service->releaseLegalHold('donation.retention.002', 'hold.legal.001');
+    $result = $service->executeDue('donation.retention.002', $expiry->modify('+1 day'));
+    reviewSame('anonymize', $result['status']);
+    reviewSame(['anonymize'], $executor->actions);
 };
 
 $failures = 0;
