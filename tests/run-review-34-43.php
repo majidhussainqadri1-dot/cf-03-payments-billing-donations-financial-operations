@@ -12,8 +12,11 @@ use Sabri\CF03\Domain\DunningPolicy;
 use Sabri\CF03\Domain\FinancialProduct;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\PlatformFinancialPolicy;
+use Sabri\CF03\Domain\PriceLifecycle;
+use Sabri\CF03\Domain\PriceVersion;
 use Sabri\CF03\Domain\ProductKind;
 use Sabri\CF03\Domain\Subscription;
+use Sabri\CF03\Domain\TaxMode;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
 use Sabri\CF03\Infrastructure\NullPaidCapabilityAuthorization;
 use Sabri\CF03\Support\InvariantViolation;
@@ -100,6 +103,26 @@ $tests['R35 voluntary donation remains the only checkout-eligible financial prod
     reviewSame(BillingType::VOLUNTARY, $product->billingType());
     reviewSame(null, $product->entitlementCode());
     reviewSame(true, $product->isCheckoutEligible());
+};
+
+$tests['R36 fixed-price lifecycle cannot activate a retired paid price'] = static function (): void {
+    $price = new PriceVersion(
+        'education.membership',
+        'price.education.v1',
+        new Money(40000, 'PKR'),
+        'GLOBAL',
+        TaxMode::NOT_APPLICABLE,
+        new DateTimeImmutable('2026-01-01T00:00:00Z'),
+        null,
+        'refund.policy.v1',
+        'cancel.policy.v1',
+        true,
+        'approval.price.retired.001'
+    );
+    $lifecycle = new PriceLifecycle($price, 'approved', 2, 'actor.stager', 'actor.approver');
+    reviewThrows(static fn () => $lifecycle->activate(
+        'actor.activator', new DateTimeImmutable('2026-09-15T00:00:00Z'), 2
+    ), InvariantViolation::class);
 };
 
 $failures = 0;
