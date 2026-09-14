@@ -71,20 +71,55 @@ final class SystemIntegrityService
     {
         $totals = [];
         $sources = [];
+        $entryCounts = [];
+
+        foreach ($this->repository->all('ledger_transactions') as $transaction) {
+            $transactionId = (string)($transaction['transaction_id'] ?? '');
+            if ($transactionId === '') {
+                throw new InvariantViolation('Ledger transaction identifier is missing.');
+            }
+            if (isset($entryCounts[$transactionId])) {
+                throw new InvariantViolation('Duplicate immutable ledger transaction detected.');
+            }
+            $entryCounts[$transactionId] = 0;
+        }
+
         foreach ($this->repository->all('ledger_entries') as $entry) {
-            $source = (string)$entry['source_ref'];
-            if (isset($sources[$source])) {
-                throw new InvariantViolation('Duplicate immutable ledger source reference detected.');
+            $source = (string)($entry['source_ref'] ?? '');
+            if ($source === '' || isset($sources[$source])) {
+                throw new InvariantViolation('Duplicate or missing immutable ledger source reference detected.');
             }
             $sources[$source] = true;
-            $key = (string)$entry['transaction_id'].'|'.(string)$entry['currency'];
+
+            $transactionId = (string)($entry['transaction_id'] ?? '');
+            if ($transactionId === '' || !array_key_exists($transactionId, $entryCounts)) {
+                throw new InvariantViolation('Orphan immutable ledger entry detected.');
+            }
+            $entryCounts[$transactionId]++;
+
+            $currency = (string)($entry['currency'] ?? '');
+            if (preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
+                throw new InvariantViolation('Ledger entry currency is invalid.');
+            }
+            $amount = (int)($entry['amount_minor'] ?? 0);
+            if ($amount <= 0) {
+                throw new InvariantViolation('Ledger entry amount must be positive.');
+            }
+            $key = $transactionId.'|'.$currency;
             $totals[$key] ??= ['debit' => 0, 'credit' => 0, 'balanced' => false];
-            $direction = (string)$entry['direction'];
+            $direction = (string)($entry['direction'] ?? '');
             if (!in_array($direction, ['debit', 'credit'], true)) {
                 throw new InvariantViolation('Ledger entry direction is invalid.');
             }
-            $totals[$key][$direction] += (int)$entry['amount_minor'];
+            $totals[$key][$direction] = self::safeAdd($totals[$key][$direction], $amount);
         }
+
+        foreach ($entryCounts as $transactionId => $entryCount) {
+            if ($entryCount < 2) {
+                throw new InvariantViolation('Ledger transaction lacks the minimum immutable double-entry evidence: '.$transactionId.'.');
+            }
+        }
+
         foreach ($totals as &$total) {
             $total['balanced'] = $total['debit'] === $total['credit'];
             if (!$total['balanced']) {
@@ -140,6 +175,14 @@ final class SystemIntegrityService
             }
         }
         return hash('sha256', self::canonicalJson($record));
+    }
+
+    private static function safeAdd(int $left, int $right): int
+    {
+        if ($left < 0 || $right < 0 || $right > PHP_INT_MAX - $left) {
+            throw new InvariantViolation('Ledger integrity totals exceed the supported integer range.');
+        }
+        return $left + $right;
     }
 
     private static function canonicalJson(mixed $value): string
