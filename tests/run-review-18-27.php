@@ -14,6 +14,9 @@ use Sabri\CF03\Contracts\RetentionActionExecutor;
 use Sabri\CF03\Contracts\SecureArtifactStore;
 use Sabri\CF03\Domain\DonationServiceState;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
+use Sabri\CF03\Infrastructure\WordPressSchemaInstaller;
+use Sabri\CF03\Persistence\CompleteSchema;
+use Sabri\CF03\Persistence\RuntimeSchemaExtension;
 use Sabri\CF03\Support\InvariantViolation;
 
 final class ReviewSecureArtifactStore implements SecureArtifactStore
@@ -126,6 +129,17 @@ $tests['R23 malformed incident state fails closed on every sensitive path'] = st
             reviewThrows(static fn () => $guard->assertAvailable($path), InvariantViolation::class);
         }
     }
+};
+
+$tests['R24 active schema retires recurring stores and uses canonical retention identity'] = static function (): void {
+    $tables = CompleteSchema::tables('wp_');
+    reviewSame(27, count($tables));
+    foreach (RuntimeSchemaExtension::RETIRED_TABLES as $retired) {
+        reviewSame(false, array_key_exists($retired, $tables));
+    }
+    $indexes = WordPressSchemaInstaller::requiredIndexes($tables['retention_ledger']);
+    reviewSame(true, $indexes['record_once']['unique']);
+    reviewSame(['record_ref'], $indexes['record_once']['columns']);
 };
 
 $failures = 0;
