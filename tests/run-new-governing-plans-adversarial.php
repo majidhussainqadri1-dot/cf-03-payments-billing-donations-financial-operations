@@ -5,6 +5,8 @@ declare(strict_types=1);
 require_once __DIR__.'/bootstrap.php';
 
 use Sabri\CF03\Application\DonationIntentDraft;
+use Sabri\CF03\Application\FinancialAdjustmentService;
+use Sabri\CF03\Application\FinancialAuditService;
 use Sabri\CF03\Application\ProviderWebhookVerifier;
 use Sabri\CF03\Application\RiskOperationsService;
 use Sabri\CF03\Application\RuntimeConfiguration;
@@ -101,6 +103,59 @@ $tests['signed webhook duplicate remains authenticated for canonical duplicate p
     same(false, $evidence->eventIdUnique());
     $evidence->assertAuthenticated(300);
     throws(static fn () => $evidence->assertTrusted(300), InvariantViolation::class);
+};
+
+$tests['adjustment retry requires exact terms and chronology cannot move backwards'] = static function (): void {
+    $repo = new MemoryFinancialRepository(true);
+    $requestedAt = new DateTimeImmutable('2026-09-14T12:00:00Z');
+    $repo->insert('ledger_transactions', 'txn.adjust.source.001', [
+        'transaction_id' => 'txn.adjust.source.001',
+        'source_type' => 'provider_settlement',
+        'source_ref' => 'provider.event.001',
+        'effective_at' => $requestedAt,
+        'recorded_at' => $requestedAt,
+        'actor_ref' => 'system.provider',
+        'reason' => 'trusted_settlement',
+        'period_id' => '2026-09',
+        'reversal_of' => null,
+        'trace_id' => 'trace.adjust.source.001',
+    ]);
+    $gates = array_fill_keys([
+        'founder_change_control','legal_tax_accounting','pci_scope','provider_selected',
+        'independent_security','staging_acceptance','rollback_evidence','file00_contract',
+        'file20_file25_contract','file24_assurance','operations_ready',
+    ], true);
+    $configuration = new RuntimeConfiguration(DonationServiceState::SANDBOX, 'provider.test', $gates);
+    $service = new FinancialAdjustmentService($repo, $configuration, new FinancialAuditService($repo));
+    $service->request(
+        'adjustment.exact.001',
+        'txn.adjust.source.001',
+        new Money(1000, 'USD'),
+        'expense.financial_adjustment',
+        'asset.provider_clearing',
+        'correction',
+        str_repeat('b', 64),
+        'user.requester.001',
+        $requestedAt
+    );
+    throws(static fn () => $service->request(
+        'adjustment.exact.001',
+        'txn.adjust.source.001',
+        new Money(1000, 'USD'),
+        'expense.financial_adjustment',
+        'asset.bank_receivable',
+        'correction',
+        str_repeat('b', 64),
+        'user.requester.001',
+        $requestedAt
+    ), InvariantViolation::class);
+    throws(static fn () => $service->decide(
+        'adjustment.exact.001', true, 'user.reviewer.001', 1, $requestedAt->modify('-1 second')
+    ), InvariantViolation::class);
+    $service->decide('adjustment.exact.001', true, 'user.reviewer.001', 1, $requestedAt);
+    throws(static fn () => $service->execute(
+        'adjustment.exact.001', 'user.executor.001', 2, $requestedAt->modify('-1 second')
+    ), InvariantViolation::class);
 };
 
 $tests['won zero-fee chargeback creates no empty ledger transaction'] = static function (): void {
