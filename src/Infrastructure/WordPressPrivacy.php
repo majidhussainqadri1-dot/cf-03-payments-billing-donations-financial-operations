@@ -9,6 +9,9 @@ use Throwable;
 
 final class WordPressPrivacy
 {
+    /** @var list<string> */
+    public const EXPORT_GROUPS = ['receipts', 'donations', 'subscriptions', 'refunds', 'exports'];
+
     /** @param array<string,string> $exporters @return array<string,array<string,mixed>> */
     public static function exporters(array $exporters): array
     {
@@ -60,7 +63,7 @@ final class WordPressPrivacy
         }
 
         $data = [];
-        foreach (['invoices','donations','subscriptions','refunds','exports'] as $group) {
+        foreach (self::EXPORT_GROUPS as $group) {
             foreach ($records[$group] ?? [] as $index => $record) {
                 $items = [];
                 foreach ($record as $name => $value) {
