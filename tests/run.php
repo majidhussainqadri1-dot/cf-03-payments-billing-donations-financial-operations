@@ -10,6 +10,7 @@ use Sabri\CF03\Application\FutureIntegrationSustainabilityService;
 use Sabri\CF03\Application\LedgerJournal;
 use Sabri\CF03\Application\RuntimeConfiguration;
 use Sabri\CF03\Application\SettlementOperationsService;
+use Sabri\CF03\Application\SystemIntegrityService;
 use Sabri\CF03\Domain\CommissionPolicy;
 use Sabri\CF03\Domain\DonationPolicy;
 use Sabri\CF03\Domain\DonationServiceState;
@@ -128,6 +129,58 @@ $tests['ledger journal rejects aggregate account-balance overflow'] = static fun
         new LedgerEntry('income.donation', LedgerEntry::CREDIT, new Money(1, 'PKR'), 'one-income'),
     ]), 'test', 'one', 'system:test', 'overflow-boundary', '2026-09', $at, $at);
     assertThrows(static fn () => $journal->accountBalances('PKR'), DomainException::class);
+};
+
+$tests['system integrity rejects orphan empty and overflow ledger evidence'] = static function (): void {
+    $orphan = new MemoryFinancialRepository(true);
+    $orphan->insert('ledger_entries', 'entry.orphan.001', [
+        'transaction_id' => 'txn.missing.001',
+        'account' => 'asset.provider',
+        'direction' => 'debit',
+        'amount_minor' => 1,
+        'currency' => 'USD',
+        'source_ref' => 'entry.orphan.001',
+    ]);
+    assertThrows(
+        static fn () => (new SystemIntegrityService($orphan, new FinancialAuditService($orphan)))->ledgerBalance(),
+        DomainException::class
+    );
+
+    $empty = new MemoryFinancialRepository(true);
+    $empty->insert('ledger_transactions', 'txn.empty.001', [
+        'transaction_id' => 'txn.empty.001',
+        'source_type' => 'test',
+        'source_ref' => 'source.empty.001',
+    ]);
+    assertThrows(
+        static fn () => (new SystemIntegrityService($empty, new FinancialAuditService($empty)))->ledgerBalance(),
+        DomainException::class
+    );
+
+    $overflow = new MemoryFinancialRepository(true);
+    $overflow->insert('ledger_transactions', 'txn.overflow.001', [
+        'transaction_id' => 'txn.overflow.001',
+        'source_type' => 'test',
+        'source_ref' => 'source.overflow.001',
+    ]);
+    foreach ([
+        ['entry.max.debit', 'debit', PHP_INT_MAX],
+        ['entry.one.debit', 'debit', 1],
+        ['entry.max.credit', 'credit', PHP_INT_MAX],
+    ] as [$sourceRef, $direction, $amount]) {
+        $overflow->insert('ledger_entries', $sourceRef, [
+            'transaction_id' => 'txn.overflow.001',
+            'account' => $direction === 'debit' ? 'asset.provider' : 'income.donation',
+            'direction' => $direction,
+            'amount_minor' => $amount,
+            'currency' => 'USD',
+            'source_ref' => $sourceRef,
+        ]);
+    }
+    assertThrows(
+        static fn () => (new SystemIntegrityService($overflow, new FinancialAuditService($overflow)))->ledgerBalance(),
+        DomainException::class
+    );
 };
 
 $tests['fully refunded zero-fee settlement posts without empty ledger transaction'] = static function (): void {
