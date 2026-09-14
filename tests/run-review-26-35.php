@@ -13,6 +13,7 @@ use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\ProviderEvidence;
 use Sabri\CF03\Domain\SettlementBatch;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
+use Sabri\CF03\Infrastructure\WordPressPrivacy;
 use Sabri\CF03\Support\InvariantViolation;
 
 $tests = [];
@@ -120,6 +121,11 @@ $tests['R28 settlement type mismatch is material even when amount delta is zero'
     ));
     reviewSame(1, count($matches));
     reviewSame(true, $matches[0]['material']);
+};
+
+$tests['R30 privacy export uses billing-query receipt key'] = static function (): void {
+    reviewSame(true, in_array('receipts', WordPressPrivacy::EXPORT_GROUPS, true));
+    reviewSame(false, in_array('invoices', WordPressPrivacy::EXPORT_GROUPS, true));
 };
 
 $failures = 0;
