@@ -7,8 +7,9 @@ require_once __DIR__.'/bootstrap.php';
 use Sabri\CF03\Application\ProviderRegistry;
 use Sabri\CF03\Application\RefundWorkflowService;
 use Sabri\CF03\Application\RuntimeConfiguration;
-use Sabri\CF03\Domain\DonationServiceState;
+use Sabri\CF03\Application\WebhookIngestionService;
 use Sabri\CF03\Domain\Money;
+use Sabri\CF03\Domain\ProviderEvidence;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
 use Sabri\CF03\Support\InvariantViolation;
 
@@ -50,6 +51,63 @@ $tests['R26 refund balance scan cannot truncate after 500 prior records'] = stat
         InvariantViolation::class
     );
     reviewSame(null, $repo->get('refunds', 'refund.new.blocked'));
+};
+
+$tests['R27 provider refund reconciliation cannot truncate after 500 prior refunds'] = static function (): void {
+    $repo = new MemoryFinancialRepository(true);
+    $intentId = 'intent.webhook.refund.highcardinality';
+    $at = new DateTimeImmutable('2026-09-15T00:10:00+00:00');
+    for ($index = 1; $index <= 501; $index++) {
+        $refundId = 'refund.webhook.prior.'.str_pad((string)$index, 4, '0', STR_PAD_LEFT);
+        $repo->insert('refunds', $refundId, [
+            'refund_id'=>$refundId,
+            'intent_id'=>$intentId,
+            'amount_minor'=>1,
+            'currency'=>'USD',
+            'requester_ref'=>'user.refund.owner',
+            'reason'=>'prior_refund',
+            'state'=>'closed',
+            'record_version'=>1,
+        ]);
+    }
+    $eventId = 'event.provider.refund.highcardinality';
+    $evidence = new ProviderEvidence(
+        'provider.test',
+        $eventId,
+        'payment.refunded',
+        $intentId,
+        new Money(1, 'USD'),
+        'key.v1',
+        $at,
+        $at,
+        hash('sha256', 'refund-webhook'),
+        true,
+        true,
+        $at
+    );
+    $service = new WebhookIngestionService(RuntimeConfiguration::preparing(), new ProviderRegistry(), $repo);
+    $invoke = \Closure::bind(
+        static function (WebhookIngestionService $service, array $intent, ProviderEvidence $evidence): void {
+            $service->postRefund($intent, $evidence, 'trace.refund.highcardinality', 1);
+        },
+        null,
+        WebhookIngestionService::class
+    );
+    if (!$invoke instanceof \Closure) {
+        throw new RuntimeException('Private refund reconciliation test hook could not be bound.');
+    }
+    reviewThrows(
+        static fn () => $invoke($service, [
+            'intent_id'=>$intentId,
+            'product_id'=>'donation.one_time',
+            'actor_ref'=>'user.refund.owner',
+            'amount_minor'=>501,
+            'currency'=>'USD',
+        ], $evidence),
+        InvariantViolation::class
+    );
+    $externalId = 'refund.external.'.substr(hash('sha256', 'provider.test|'.$eventId), 0, 32);
+    reviewSame(null, $repo->get('refunds', $externalId));
 };
 
 $failures = 0;
