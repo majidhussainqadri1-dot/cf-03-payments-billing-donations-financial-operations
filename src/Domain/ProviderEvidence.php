@@ -44,7 +44,7 @@ final class ProviderEvidence
         }
     }
 
-    public function assertTrusted(int $replayWindowSeconds = 300): void
+    public function assertAuthenticated(int $replayWindowSeconds = 300): void
     {
         if ($replayWindowSeconds < 30 || $replayWindowSeconds > 3600) {
             throw new InvalidArgumentException('Webhook replay window must be between 30 and 3600 seconds.');
@@ -54,13 +54,18 @@ final class ProviderEvidence
             throw new InvariantViolation('Provider evidence signature is not verified.');
         }
 
-        if (! $this->eventIdUnique) {
-            throw new InvariantViolation('Provider event ID has already been processed.');
-        }
-
         $age = $this->receivedAt->getTimestamp() - $this->signatureTimestamp->getTimestamp();
         if ($age < 0 || $age > $replayWindowSeconds) {
             throw new InvariantViolation('Provider evidence is outside the accepted replay window.');
+        }
+    }
+
+    public function assertTrusted(int $replayWindowSeconds = 300): void
+    {
+        $this->assertAuthenticated($replayWindowSeconds);
+
+        if (! $this->eventIdUnique) {
+            throw new InvariantViolation('Provider event ID has already been processed.');
         }
     }
 
