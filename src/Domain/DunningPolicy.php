@@ -6,38 +6,25 @@ namespace Sabri\CF03\Domain;
 
 use DateTimeImmutable;
 use DateTimeZone;
-use InvalidArgumentException;
 use Sabri\CF03\Support\InvariantViolation;
 
+/**
+ * Compatibility tombstone for the superseded paid-subscription dunning model.
+ * Automatic retry schedules, renewal collection and grace/dunning behavior are
+ * prohibited by the current single-free-tier, one-time-donation constitution.
+ */
 final class DunningPolicy
 {
-    /** @var list<int> */
-    private array $retryDelaysSeconds;
-
     /** @param list<int> $retryDelaysSeconds */
     public function __construct(
         array $retryDelaysSeconds,
-        private readonly int $quietHourStart = 21,
-        private readonly int $quietHourEnd = 8,
-        private readonly int $maximumAttempts = 4
+        int $quietHourStart = 21,
+        int $quietHourEnd = 8,
+        int $maximumAttempts = 4
     ) {
-        if ($maximumAttempts < 1 || $maximumAttempts > 8) {
-            throw new InvalidArgumentException('Dunning maximum attempts must be between 1 and 8.');
-        }
-        if (count($retryDelaysSeconds) !== $maximumAttempts) {
-            throw new InvalidArgumentException('Dunning retry schedule must match maximum attempts.');
-        }
-        $previous = 0;
-        foreach ($retryDelaysSeconds as $delay) {
-            if (! is_int($delay) || $delay < 300 || $delay <= $previous || $delay > 2592000) {
-                throw new InvalidArgumentException('Dunning retry delays must be increasing between five minutes and thirty days.');
-            }
-            $previous = $delay;
-        }
-        if ($quietHourStart < 0 || $quietHourStart > 23 || $quietHourEnd < 0 || $quietHourEnd > 23) {
-            throw new InvalidArgumentException('Dunning quiet hours are invalid.');
-        }
-        $this->retryDelaysSeconds = array_values($retryDelaysSeconds);
+        throw new InvariantViolation(
+            'Dunning is retired; CF-03 does not perform subscription renewal or automatic repeat collection.'
+        );
     }
 
     public function nextRetryAt(
@@ -48,43 +35,11 @@ final class DunningPolicy
         bool $consentActive = true,
         bool $subscriptionCancelled = false
     ): DateTimeImmutable {
-        if ($providerOutage) {
-            throw new InvariantViolation('Provider outage must use service recovery, not user-failure dunning.');
-        }
-        if (! $consentActive || $subscriptionCancelled) {
-            throw new InvariantViolation('Dunning is prohibited after consent revocation or subscription cancellation.');
-        }
-        if ($attemptNumber < 1 || $attemptNumber > $this->maximumAttempts) {
-            throw new InvariantViolation('Dunning attempts are exhausted or invalid.');
-        }
-
-        $candidate = $failedAt->modify('+' . $this->retryDelaysSeconds[$attemptNumber - 1] . ' seconds');
-        $local = $candidate->setTimezone($userTimeZone);
-        $hour = (int) $local->format('G');
-        if ($this->inQuietHours($hour)) {
-            $local = $local->setTime($this->quietHourEnd, 0, 0);
-            if ($this->quietHourStart > $this->quietHourEnd && $hour >= $this->quietHourStart) {
-                $local = $local->modify('+1 day');
-            }
-            $candidate = $local->setTimezone($failedAt->getTimezone());
-        }
-
-        return $candidate;
+        throw new InvariantViolation('Dunning retry scheduling is retired.');
     }
 
     public function maximumAttempts(): int
     {
-        return $this->maximumAttempts;
-    }
-
-    private function inQuietHours(int $hour): bool
-    {
-        if ($this->quietHourStart === $this->quietHourEnd) {
-            return false;
-        }
-        if ($this->quietHourStart < $this->quietHourEnd) {
-            return $hour >= $this->quietHourStart && $hour < $this->quietHourEnd;
-        }
-        return $hour >= $this->quietHourStart || $hour < $this->quietHourEnd;
+        throw new InvariantViolation('Dunning attempt limits are retired.');
     }
 }
