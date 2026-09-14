@@ -11,6 +11,7 @@ use Sabri\CF03\Domain\BillingType;
 use Sabri\CF03\Domain\DunningPolicy;
 use Sabri\CF03\Domain\FinancialProduct;
 use Sabri\CF03\Domain\Money;
+use Sabri\CF03\Domain\PlatformFinancialPolicy;
 use Sabri\CF03\Domain\ProductKind;
 use Sabri\CF03\Domain\Subscription;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
@@ -65,8 +66,8 @@ $tests['R34 subscription operations tombstone constructs without instantiating r
     ), InvariantViolation::class);
 };
 
-$tests['R35 non-donation paid product construction fails closed'] = static function (): void {
-    reviewThrows(static fn () => new FinancialProduct(
+$tests['R35 historical paid product remains parseable but can never be checkout eligible'] = static function (): void {
+    $product = new FinancialProduct(
         'education.membership',
         ProductKind::EDUCATION_MEMBERSHIP,
         BillingType::RECURRING,
@@ -77,10 +78,12 @@ $tests['R35 non-donation paid product construction fails closed'] = static funct
         true,
         true,
         'approval.retired.001'
-    ), InvariantViolation::class);
+    );
+    reviewSame(false, $product->isCheckoutEligible());
+    reviewThrows(static fn () => (new PlatformFinancialPolicy())->assertCollectibleProduct($product), InvariantViolation::class);
 };
 
-$tests['R35 voluntary donation remains the only constructible active financial product'] = static function (): void {
+$tests['R35 voluntary donation remains the only checkout-eligible financial product'] = static function (): void {
     $product = new FinancialProduct(
         'donation.one_time',
         ProductKind::DONATION,
