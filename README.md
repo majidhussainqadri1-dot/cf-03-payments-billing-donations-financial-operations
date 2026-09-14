@@ -86,6 +86,7 @@ php tests/run-new-governing-plans.php
 php tests/run-new-governing-plans-adversarial.php
 php tests/run-review-18-27.php
 php tests/run-review-26-35.php
+php tests/run-review-34-43.php
 php tests/run-future-expansion-40.php
 find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
 for file in manifests/*.json; do php -r 'json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);' "$file"; done
