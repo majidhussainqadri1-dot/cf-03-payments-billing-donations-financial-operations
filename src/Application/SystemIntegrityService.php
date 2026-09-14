@@ -135,20 +135,40 @@ final class SystemIntegrityService
     {
         $balances = $this->ledgerBalance();
         $auditValid = $this->audit->verifyChain();
-        $deadLetters = count($this->repository->find('outbox', ['state' => 'dead_letter'], 500));
-        $openExceptions = $this->repository->find('reconciliation_exceptions', ['state' => 'open'], 500);
-        $material = 0;
-        foreach ($openExceptions as $exception) {
-            if ((bool)$exception['material']) {
-                $material++;
+        $deadLetters = 0;
+        $deadOffset = 0;
+        do {
+            $deadPage = $this->repository->page('outbox', ['state' => 'dead_letter'], 500, $deadOffset);
+            $deadLetters = self::safeAdd($deadLetters, count($deadPage));
+            $deadOffset += count($deadPage);
+            if ($deadOffset > 100000) {
+                throw new InvariantViolation('Dead-letter integrity evidence exceeds the bounded scan.');
             }
-        }
+        } while (count($deadPage) === 500);
+
+        $openCount = 0;
+        $material = 0;
+        $openOffset = 0;
+        do {
+            $openPage = $this->repository->page('reconciliation_exceptions', ['state' => 'open'], 500, $openOffset);
+            foreach ($openPage as $exception) {
+                $openCount = self::safeAdd($openCount, 1);
+                if ((bool)($exception['material'] ?? false)) {
+                    $material = self::safeAdd($material, 1);
+                }
+            }
+            $openOffset += count($openPage);
+            if ($openOffset > 100000) {
+                throw new InvariantViolation('Reconciliation integrity evidence exceeds the bounded scan.');
+            }
+        } while (count($openPage) === 500);
+
         return [
             'ledger_balanced' => true,
             'balanced_transaction_currency_pairs' => count($balances),
             'audit_chain_valid' => $auditValid,
             'dead_letter_count' => $deadLetters,
-            'open_reconciliation_exceptions' => count($openExceptions),
+            'open_reconciliation_exceptions' => $openCount,
             'open_material_exceptions' => $material,
             'backup_manifest' => $this->buildBackupManifest(),
         ];
