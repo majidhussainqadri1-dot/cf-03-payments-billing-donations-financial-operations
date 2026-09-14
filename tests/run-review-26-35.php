@@ -5,11 +5,13 @@ declare(strict_types=1);
 require_once __DIR__.'/bootstrap.php';
 
 use Sabri\CF03\Application\ProviderRegistry;
+use Sabri\CF03\Application\ReconciliationEngine;
 use Sabri\CF03\Application\RefundWorkflowService;
 use Sabri\CF03\Application\RuntimeConfiguration;
 use Sabri\CF03\Application\WebhookIngestionService;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\ProviderEvidence;
+use Sabri\CF03\Domain\SettlementBatch;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
 use Sabri\CF03\Support\InvariantViolation;
 
@@ -72,42 +74,52 @@ $tests['R27 provider refund reconciliation cannot truncate after 500 prior refun
     }
     $eventId = 'event.provider.refund.highcardinality';
     $evidence = new ProviderEvidence(
-        'provider.test',
-        $eventId,
-        'payment.refunded',
-        $intentId,
-        new Money(1, 'USD'),
-        'key.v1',
-        $at,
-        $at,
-        hash('sha256', 'refund-webhook'),
-        true,
-        true,
-        $at
+        'provider.test', $eventId, 'payment.refunded', $intentId, new Money(1, 'USD'), 'key.v1',
+        $at, $at, hash('sha256', 'refund-webhook'), true, true, $at
     );
     $service = new WebhookIngestionService(RuntimeConfiguration::preparing(), new ProviderRegistry(), $repo);
     $invoke = \Closure::bind(
         static function (WebhookIngestionService $service, array $intent, ProviderEvidence $evidence): void {
             $service->postRefund($intent, $evidence, 'trace.refund.highcardinality', 1);
-        },
-        null,
-        WebhookIngestionService::class
+        }, null, WebhookIngestionService::class
     );
-    if (!$invoke instanceof \Closure) {
-        throw new RuntimeException('Private refund reconciliation test hook could not be bound.');
-    }
+    if (!$invoke instanceof \Closure) { throw new RuntimeException('Private refund reconciliation test hook could not be bound.'); }
     reviewThrows(
         static fn () => $invoke($service, [
-            'intent_id'=>$intentId,
-            'product_id'=>'donation.one_time',
-            'actor_ref'=>'user.refund.owner',
-            'amount_minor'=>501,
-            'currency'=>'USD',
-        ], $evidence),
-        InvariantViolation::class
+            'intent_id'=>$intentId, 'product_id'=>'donation.one_time', 'actor_ref'=>'user.refund.owner',
+            'amount_minor'=>501, 'currency'=>'USD',
+        ], $evidence), InvariantViolation::class
     );
     $externalId = 'refund.external.'.substr(hash('sha256', 'provider.test|'.$eventId), 0, 32);
     reviewSame(null, $repo->get('refunds', $externalId));
+};
+
+$tests['R28 settlement type mismatch is material even when amount delta is zero'] = static function (): void {
+    $at = new DateTimeImmutable('2026-09-15T00:20:00+00:00');
+    $batch = new SettlementBatch(
+        'batch.review28',
+        'provider.test',
+        new Money(100, 'USD'),
+        new Money(10, 'USD'),
+        new Money(0, 'USD'),
+        new Money(90, 'USD'),
+        $at,
+        hash('sha256', 'batch-review28'),
+        [
+            ['reference'=>'payment.review28','type'=>'payment','amount_minor'=>100,'currency'=>'USD'],
+            ['reference'=>'semantic.review28','type'=>'fee','amount_minor'=>10,'currency'=>'USD'],
+        ]
+    );
+    $result = (new ReconciliationEngine())->reconcile($batch, [
+        ['reference'=>'payment.review28','type'=>'payment','amount_minor'=>100,'currency'=>'USD'],
+        ['reference'=>'semantic.review28','type'=>'refund','amount_minor'=>10,'currency'=>'USD'],
+    ], ['USD'=>1000]);
+    $matches = array_values(array_filter(
+        $result->exceptions(),
+        static fn (array $exception): bool => $exception['type'] === 'type_mismatch'
+    ));
+    reviewSame(1, count($matches));
+    reviewSame(true, $matches[0]['material']);
 };
 
 $failures = 0;
