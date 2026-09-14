@@ -27,12 +27,12 @@ final class IncidentPathGuard
         }
 
         $state = $this->store->get();
-        $mode = (string)($state['state'] ?? 'normal');
+        $mode = $state['state'] ?? null;
+        if (!is_string($mode) || !in_array($mode, ['normal', 'contained', 'recovered'], true)) {
+            throw new InvariantViolation('Unknown or malformed financial incident state blocks sensitive operations.');
+        }
         if ($mode === 'normal') {
             return;
-        }
-        if (!in_array($mode, ['contained', 'recovered'], true)) {
-            throw new InvariantViolation('Unknown financial incident state blocks sensitive operations.');
         }
         if (($state[$flag] ?? false) !== true) {
             throw new InvariantViolation('Financial '.$path.' path is disabled by incident control.');
