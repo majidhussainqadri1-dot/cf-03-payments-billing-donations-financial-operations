@@ -45,8 +45,8 @@ They are grouped as:
 
 - **FX-01—FX-08 Donation Experience:** purpose funds, reminder preferences including Never Remind Me, privacy controls, receipt vault, receipt authenticity, transparency dashboard, use-of-funds reporting and multi-currency readiness.
 - **FX-09—FX-20 Provider/Operations Intelligence:** provider selection, health, failover, webhook forensics, uncertainty resolution, reconciliation queue/confidence, close checklist, dual approval, refund preview/SLA and chargeback evidence.
-- **FX-21—FX-30 Governance/Privacy:** financial privacy center, user/accountant exports, immutable audit evidence, configuration history, policy simulation, sandbox, deployment readiness, kill switches and restore verification.
-- **FX-31—FX-40 Integration/Compliance/Sustainability:** privacy-preserving analytics, accessibility-first UX, CF-02 support bridge, notification preferences, internal finance events, jurisdiction registry, tax/legal disclosure, conditional Sharia classification, conditional waqf/grant sustainability and Founder Financial Command Center.
+- **FX-21—FX-30 Governance/Privacy:** financial privacy center, user/accountant exports, immutable audit evidence, configuration history, policy simulation, sandbox, deployment-readiness, kill-switch and restore-verification contracts.
+- **FX-31—FX-40 Integration/Compliance/Sustainability:** privacy-preserving analytics, accessibility-first UX, CF-02 support bridge, notification preferences, internal finance events, jurisdiction registry, tax/legal disclosure registry, conditional Sharia classification, conditional waqf/grant sustainability and Founder Financial Command Center.
 
 Authoritative code and manifest:
 
@@ -78,15 +78,21 @@ Source-code presence is not operational acceptance. Donation checkout remains un
 
 ## Current QA commands
 
+The following commands mirror the executable PHP acceptance suites and deterministic package gate used by current CI:
+
 ```bash
+php tests/run.php
 php tests/run-new-governing-plans.php
 php tests/run-new-governing-plans-adversarial.php
+php tests/run-review-18-27.php
+php tests/run-review-26-35.php
 php tests/run-future-expansion-40.php
 find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
+for file in manifests/*.json; do php -r 'json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);' "$file"; done
 bash scripts/build-package.sh
 ```
 
-Current acceptance requires all current-governing-plan suites, the Future Expansion Pack 40 suite, PHP syntax scan, JSON validation, credential-material scan and deterministic package parity on the same exact candidate HEAD.
+Current acceptance additionally requires the CI credential-material scan, current-governing-source assertions, Future40 constitutional assertions, PHP 8.1/8.2/8.3 matrix execution and deterministic packaged-source parity on the same exact candidate HEAD.
 
 ## External acceptance boundary
 
