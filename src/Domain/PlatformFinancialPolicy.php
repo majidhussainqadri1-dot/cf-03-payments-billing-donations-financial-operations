@@ -105,4 +105,10 @@ final class PlatformFinancialPolicy
             'en-US' => 'Sabri Social Homeopathy Platform is founder-owned and is not a trust or charitable trust. Approved core platform services, structured education, and Sabri Classical Homeopathy AI are available on one free tier. Donations are voluntary, one-time only, non-privileging, and unrelated to access, ranking, verification, support, or any core capability. No amount is preselected, no recurring mandate or automatic repeat charge is permitted, and Clinic/Marketplace platform commission is 0%.'
         ];
     }
+
+    public function publicDisclosureForLocale(string $locale): string
+    {
+        $copy = $this->publicDisclosure();
+        return str_starts_with(strtolower($locale), 'ur') ? $copy['ur'] : $copy['en-US'];
+    }
 }
