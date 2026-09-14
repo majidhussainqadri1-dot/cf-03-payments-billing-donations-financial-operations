@@ -98,15 +98,15 @@ final class CatalogDisclosureService
             throw new InvariantViolation('Only the approved voluntary one-time donation product may become active.');
         }
         $lifecycle = new ProductLifecycle($product);
-        $lifecycle->stage($stagedBy, $at);
-        $lifecycle->approve($approvedBy, $at, 2);
+        $lifecycle->stage($stagedBy, 1);
+        $lifecycle->approve($approvedBy, 2);
         $lifecycle->activate($activatedBy, $at, 3);
 
         $record = [
             'product_id' => $product->productId(),
             'kind' => $product->kind()->value,
             'billing_type' => $product->billingType()->value,
-            'owner' => $product->ownerReference(),
+            'owner' => $product->owner(),
             'entitlement_mapping' => null,
             'lifecycle_state' => 'active',
             'policy_version' => PlatformFinancialPolicy::DECISION_ID,
