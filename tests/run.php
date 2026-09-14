@@ -5,15 +5,21 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 
 use Sabri\CF03\Application\ActivationGate;
+use Sabri\CF03\Application\FinancialAuditService;
 use Sabri\CF03\Application\FutureIntegrationSustainabilityService;
 use Sabri\CF03\Application\LedgerJournal;
+use Sabri\CF03\Application\RuntimeConfiguration;
+use Sabri\CF03\Application\SettlementOperationsService;
 use Sabri\CF03\Domain\CommissionPolicy;
 use Sabri\CF03\Domain\DonationPolicy;
+use Sabri\CF03\Domain\DonationServiceState;
 use Sabri\CF03\Domain\LedgerEntry;
 use Sabri\CF03\Domain\LedgerTransaction;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\PaymentIntentState;
 use Sabri\CF03\Domain\PaymentIntentTransition;
+use Sabri\CF03\Domain\SettlementBatch;
+use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
 
 $tests = [];
 
@@ -122,6 +128,31 @@ $tests['ledger journal rejects aggregate account-balance overflow'] = static fun
         new LedgerEntry('income.donation', LedgerEntry::CREDIT, new Money(1, 'PKR'), 'one-income'),
     ]), 'test', 'one', 'system:test', 'overflow-boundary', '2026-09', $at, $at);
     assertThrows(static fn () => $journal->accountBalances('PKR'), DomainException::class);
+};
+
+$tests['fully refunded zero-fee settlement posts without empty ledger transaction'] = static function (): void {
+    $repo = new MemoryFinancialRepository(true);
+    $at = new DateTimeImmutable('2026-09-14T12:00:00Z');
+    $gates = array_fill_keys([
+        'founder_change_control','legal_tax_accounting','pci_scope','provider_selected',
+        'independent_security','staging_acceptance','rollback_evidence','file00_contract',
+        'file20_file25_contract','file24_assurance','operations_ready',
+    ], true);
+    $runtime = new RuntimeConfiguration(DonationServiceState::SANDBOX, 'provider.test', $gates);
+    $audit = new FinancialAuditService($repo);
+    $service = new SettlementOperationsService($repo, $runtime, $audit);
+    $lines = [
+        ['reference'=>'pay.zero.001','type'=>'payment','amount_minor'=>1000,'currency'=>'USD'],
+        ['reference'=>'refund.zero.001','type'=>'refund','amount_minor'=>1000,'currency'=>'USD'],
+    ];
+    $batch = new SettlementBatch(
+        'batch.zero.001', 'provider.test', new Money(1000, 'USD'), new Money(0, 'USD'),
+        new Money(1000, 'USD'), new Money(0, 'USD'), $at, str_repeat('b', 64), $lines
+    );
+    $service->importAndReconcile($batch, $lines, ['USD'=>0], 'operator.importer.001', $at);
+    $posted = $service->postResolvedBatch('batch.zero.001', 'operator.poster.001', $at->modify('+1 minute'));
+    assertSame('posted', $posted['status']);
+    assertSame([], $repo->all('ledger_transactions'));
 };
 
 $tests['activation gate rejects malformed record'] = static function (): void {
