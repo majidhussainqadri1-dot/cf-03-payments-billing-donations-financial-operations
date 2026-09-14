@@ -7,8 +7,11 @@ require_once __DIR__.'/bootstrap.php';
 use Sabri\CF03\Application\FinancialAuditService;
 use Sabri\CF03\Application\SubscriptionOperationsService;
 use Sabri\CF03\Domain\AiUsageAuthorization;
+use Sabri\CF03\Domain\BillingType;
 use Sabri\CF03\Domain\DunningPolicy;
+use Sabri\CF03\Domain\FinancialProduct;
 use Sabri\CF03\Domain\Money;
+use Sabri\CF03\Domain\ProductKind;
 use Sabri\CF03\Domain\Subscription;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
 use Sabri\CF03\Infrastructure\NullPaidCapabilityAuthorization;
@@ -62,6 +65,40 @@ $tests['R34 subscription operations tombstone constructs without instantiating r
     ), InvariantViolation::class);
 };
 
+$tests['R35 non-donation paid product construction fails closed'] = static function (): void {
+    reviewThrows(static fn () => new FinancialProduct(
+        'education.membership',
+        ProductKind::EDUCATION_MEMBERSHIP,
+        BillingType::RECURRING,
+        'owner.cf03',
+        'entitlement.education',
+        'refund.policy.v1',
+        'cancel.policy.v1',
+        true,
+        true,
+        'approval.retired.001'
+    ), InvariantViolation::class);
+};
+
+$tests['R35 voluntary donation remains the only constructible active financial product'] = static function (): void {
+    $product = new FinancialProduct(
+        'donation.one_time',
+        ProductKind::DONATION,
+        BillingType::VOLUNTARY,
+        'owner.cf03',
+        null,
+        'refund.policy.v1',
+        'cancel.policy.v1',
+        true,
+        true,
+        'approval.donation.001'
+    );
+    reviewSame(ProductKind::DONATION, $product->kind());
+    reviewSame(BillingType::VOLUNTARY, $product->billingType());
+    reviewSame(null, $product->entitlementCode());
+    reviewSame(true, $product->isCheckoutEligible());
+};
+
 $failures = 0;
 foreach ($tests as $name => $test) {
     try { $test(); fwrite(STDOUT, "PASS: {$name}\n"); }
@@ -69,6 +106,13 @@ foreach ($tests as $name => $test) {
 }
 fwrite(STDOUT, sprintf("%d review tests, %d failures\n", count($tests), $failures));
 exit($failures === 0 ? 0 : 1);
+
+function reviewSame(mixed $expected, mixed $actual): void
+{
+    if ($expected !== $actual) {
+        throw new RuntimeException('Expected '.var_export($expected, true).', got '.var_export($actual, true));
+    }
+}
 
 /** @param class-string<Throwable> $class */
 function reviewThrows(callable $callback, string $class): void
