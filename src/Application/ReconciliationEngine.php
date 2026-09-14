@@ -30,7 +30,12 @@ final class ReconciliationEngine
             }
             $other = $provider[$reference];
             if ($line['type'] !== $other['type']) {
-                $exceptions[] = $this->exception('type_mismatch', $reference, $line['amount_minor'], $other['amount_minor'], $line['currency'], $materialityByCurrency);
+                $typeMismatch = $this->exception('type_mismatch', $reference, $line['amount_minor'], $other['amount_minor'], $line['currency'], $materialityByCurrency);
+                // A payment/fee/refund semantic mismatch can reverse the accounting meaning
+                // even when the numeric amount is identical, so it is never eligible for
+                // threshold-based non-material treatment or accepted-risk closure.
+                $typeMismatch['material'] = true;
+                $exceptions[] = $typeMismatch;
             }
             if ($line['currency'] !== $other['currency']) {
                 $exceptions[] = [
