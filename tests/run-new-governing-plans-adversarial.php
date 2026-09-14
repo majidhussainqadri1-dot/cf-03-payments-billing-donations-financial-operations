@@ -104,7 +104,7 @@ $tests['signed webhook duplicate remains authenticated for canonical duplicate p
 };
 
 $tests['won zero-fee chargeback creates no empty ledger transaction'] = static function (): void {
-    $repo = new MemoryFinancialRepository();
+    $repo = new MemoryFinancialRepository(true);
     $at = new DateTimeImmutable('2026-09-14T12:00:00Z');
     $repo->insert('chargebacks', 'case.zero.001', [
         'case_id' => 'case.zero.001',
