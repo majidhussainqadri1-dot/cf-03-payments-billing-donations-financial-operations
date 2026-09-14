@@ -21,7 +21,7 @@ final class SubscriptionOperationsService
         private readonly QueryableFinancialRepository $repository,
         private readonly PaidCapabilityAuthorization $authorization,
         private readonly FinancialAuditService $audit,
-        private readonly DunningPolicy $dunning = new DunningPolicy()
+        private readonly ?DunningPolicy $dunning = null
     ) {}
 
     /** @return array<string,mixed> */
