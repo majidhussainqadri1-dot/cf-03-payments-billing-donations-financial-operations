@@ -10,6 +10,9 @@ final class GoverningPlanRegistry
 {
     public const DEFINITIVE_MASTER_PLAN = 'SSH-PMP-2026-v3.0';
     public const CF03_CONDITIONAL_MASTER_PLAN = 'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0';
+    public const CF03_FUTURE40_AMENDMENT = 'CF03-FUTURE40-2026-09-08';
+    public const CF03_WRITTEN_PLAN_AMENDMENT_VERSION = 'v1.1';
+    public const CF03_WRITTEN_PLAN_AMENDMENT_DATE = '2026-09-09';
 
     public const FREE_BASELINE = 'CHAT-BIZ-022';
     public const SEVEN_DAY_APPEAL = 'CF03-FR-019';
@@ -20,7 +23,11 @@ final class GoverningPlanRegistry
     /** @return list<string> */
     public static function governingPlans(): array
     {
-        return [self::DEFINITIVE_MASTER_PLAN, self::CF03_CONDITIONAL_MASTER_PLAN];
+        return [
+            self::DEFINITIVE_MASTER_PLAN,
+            self::CF03_CONDITIONAL_MASTER_PLAN,
+            self::CF03_FUTURE40_AMENDMENT,
+        ];
     }
 
     /** @return array<string,array<string,string>> */
@@ -52,6 +59,11 @@ final class GoverningPlanRegistry
                 'implemented_by' => 'CommissionPolicy and PlatformFinancialPolicy',
                 'rule' => 'Clinic and Marketplace platform commission is 0%.',
             ],
+            self::CF03_FUTURE40_AMENDMENT => [
+                'status' => 'active_governing_amendment',
+                'implemented_by' => 'FutureExpansionRegistry and Future*Service contracts',
+                'rule' => 'Written-plan amendment v1.1 dated 2026-09-09 adds 40 fail-closed future capabilities without changing the one-free-tier, one-time-donation or 0% commission laws.',
+            ],
             'LEGACY-30-DAY-MONTHLY-DONATION' => [
                 'status' => 'superseded_prohibited',
                 'implemented_by' => 'migration and source guards',
@@ -70,6 +82,9 @@ final class GoverningPlanRegistry
     {
         return [
             'governing_plans' => self::governingPlans(),
+            'cf03_base_plan_version' => 'v1.0',
+            'cf03_written_plan_amendment_version' => self::CF03_WRITTEN_PLAN_AMENDMENT_VERSION,
+            'cf03_written_plan_amendment_date' => self::CF03_WRITTEN_PLAN_AMENDMENT_DATE,
             'financial_policy' => PlatformFinancialPolicy::DECISION_ID,
             'appeal_minimum_days' => PlatformFinancialPolicy::APPEAL_MINIMUM_DAYS,
             'one_time_donation_only' => true,
