@@ -9,7 +9,7 @@ use Sabri\CF03\Support\InvariantViolation;
 
 final class RuntimeSchemaExtension
 {
-    public const VERSION = '4.0.0';
+    public const VERSION = '4.0.1';
 
     /** @var list<string> */
     public const RETIRED_TABLES = [
