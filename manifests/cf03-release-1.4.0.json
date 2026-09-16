@@ -1,7 +1,7 @@
 {
   "module": "CF-03",
-  "software_version": "1.4.0-rc.1",
-  "schema_version": "4.0.0",
+  "software_version": "1.4.0-rc.2",
+  "schema_version": "4.0.1",
   "canonical_tables": 27,
   "base_plan_version": "v1.0",
   "written_plan_amendment_version": "v1.1",
