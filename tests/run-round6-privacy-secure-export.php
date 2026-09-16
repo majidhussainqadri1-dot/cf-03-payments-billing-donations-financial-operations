@@ -47,10 +47,20 @@ $now=new DateTimeImmutable('2026-09-16T10:00:00+05:00');
 $fields=['transaction_id','source_type','amount_minor','currency','effective_at','period_id'];
 $tests=[];
 
-$tests['privacy exporter uses billing receipt group']=static function():void{
+$tests['privacy exporter uses billing receipt group and erasure is bounded-page complete']=static function():void{
     $source=file_get_contents(__DIR__.'/../src/Infrastructure/WordPressPrivacy.php');
     if(!is_string($source)||!str_contains($source,"['receipts','donations','refunds','exports']")){
         throw new RuntimeException('Privacy exporter does not consume the canonical receipt group.');
+    }
+    foreach([
+        'ERASURE_ACKNOWLEDGMENT_BATCH = 100',
+        "['donor_ref' => \$actor, 'state' => 'active']",
+        'count($acknowledgments) < self::ERASURE_ACKNOWLEDGMENT_BATCH',
+    ] as $needle){
+        if(!str_contains($source,$needle)){throw new RuntimeException('Privacy erasure pagination control missing: '.$needle);}
+    }
+    if(str_contains($source,"find('donor_acknowledgments', ['donor_ref' => \$actor], 500")){
+        throw new RuntimeException('Privacy erasure still uses a truncating fixed acknowledgment query.');
     }
 };
 
