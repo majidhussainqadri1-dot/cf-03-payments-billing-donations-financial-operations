@@ -51,6 +51,7 @@ final class Plugin
         'sabri_manage_finance_risk','sabri_manage_finance_retention',
         'sabri_manage_finance_incidents','sabri_view_finance_audit',
     ];
+    private const ADMINISTRATOR_BASELINE_CAPABILITIES = ['sabri_manage_finance'];
 
     public static function activate(): void
     {
@@ -68,7 +69,7 @@ final class Plugin
         add_option(WordPressIncidentStateStore::OPTION, WordPressIncidentStateStore::normal(), '', false);
 
         self::installAndRecordSchema();
-        self::grantAdministratorCapabilities();
+        self::configureAdministratorCapabilities();
         WordPressScheduler::schedule();
         WordPressDailyReconciliation::schedule();
     }
@@ -128,7 +129,7 @@ final class Plugin
             update_option(WordPressRuntimeConfiguration::OPTION_WEBHOOK, false, false);
             update_option(WordPressRuntimeConfiguration::OPTION_DOWNLOAD, false, false);
             self::installAndRecordSchema();
-            self::grantAdministratorCapabilities();
+            self::configureAdministratorCapabilities();
         } catch (Throwable) {
             update_option(self::OPTION_RUNTIME_STATUS, 'schema_upgrade_failed_fail_closed', false);
             update_option(WordPressRuntimeConfiguration::OPTION_MODE, 'preparing', false);
@@ -149,10 +150,9 @@ final class Plugin
                 'show_in_rest' => false,
                 'default' => '',
                 'auth_callback' => static function (bool $allowed, string $metaKey, int $objectId): bool {
-                    if (!function_exists('get_current_user_id') || !function_exists('current_user_can')) { return false; }
-                    $currentUserId = get_current_user_id();
-                    return ($currentUserId > 0 && $currentUserId === $objectId)
-                        || current_user_can('sabri_manage_finance');
+                    if (!function_exists('get_current_user_id')) { return false; }
+                    $currentUserId = (int)get_current_user_id();
+                    return $currentUserId > 0 && $currentUserId === $objectId;
                 },
             ]);
         }
@@ -276,12 +276,23 @@ final class Plugin
         }
     }
 
-    private static function grantAdministratorCapabilities(): void
+    private static function configureAdministratorCapabilities(): void
     {
         if (!function_exists('get_role')) { return; }
         $administrator = get_role('administrator');
-        if (!is_object($administrator) || !method_exists($administrator, 'add_cap')) { return; }
+        if (!is_object($administrator)
+            || !method_exists($administrator, 'add_cap')
+            || !method_exists($administrator, 'remove_cap')
+        ) {
+            throw new RuntimeException('Administrator capability APIs are unavailable for least-privilege provisioning.');
+        }
+
         foreach (self::FINANCE_CAPABILITIES as $capability) {
+            if (!in_array($capability, self::ADMINISTRATOR_BASELINE_CAPABILITIES, true)) {
+                $administrator->remove_cap($capability);
+            }
+        }
+        foreach (self::ADMINISTRATOR_BASELINE_CAPABILITIES as $capability) {
             $administrator->add_cap($capability);
         }
     }
