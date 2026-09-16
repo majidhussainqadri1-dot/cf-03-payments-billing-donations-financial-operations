@@ -10,6 +10,7 @@ use InvalidArgumentException;
 use JsonException;
 use RuntimeException;
 use Sabri\CF03\Contracts\QueryableFinancialRepository;
+use Sabri\CF03\Persistence\RuntimeSchemaExtension;
 use Sabri\CF03\Support\InvariantViolation;
 use Throwable;
 
@@ -308,6 +309,7 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
 
     private function assertMutable(string $collection): void
     {
+        RuntimeSchemaExtension::assertActiveCollection($collection);
         if (in_array($collection, self::IMMUTABLE_COLLECTIONS, true)) {
             throw new InvariantViolation('Immutable financial evidence cannot be updated or deleted through the generic repository.');
         }
@@ -316,6 +318,7 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
     /** @return array{0:string,1:string} */
     private function spec(string $collection): array
     {
+        RuntimeSchemaExtension::assertActiveCollection($collection);
         $spec = self::COLLECTIONS[$collection] ?? null;
         if ($spec === null) {
             throw new InvalidArgumentException('Unknown canonical financial collection.');
