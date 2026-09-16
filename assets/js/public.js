@@ -56,6 +56,7 @@
     }
 
     form.dataset.submitting='1';
+    form.setAttribute('aria-busy','true');
     if(submit)submit.disabled=true;
     if(status)status.textContent=cfg.messages?.working||'Working…';
 
@@ -90,6 +91,7 @@
       if(status)status.textContent=error instanceof Error?error.message:(cfg.messages?.failed||'Request failed');
     }finally{
       form.dataset.submitting='0';
+      form.setAttribute('aria-busy','false');
       if(submit&&cfg.collectionEnabled===true)submit.disabled=false;
     }
   });
@@ -101,6 +103,7 @@
     const target=root?.querySelector('.sabri-cf03-billing-results');
     if(!target)return;
     button.disabled=true;
+    target.setAttribute('aria-busy','true');
     target.textContent=cfg.messages?.working||'Working…';
     try{
       const result=await request('billing');
@@ -127,6 +130,9 @@
       }
     }catch(error){
       target.textContent=error instanceof Error?error.message:(cfg.messages?.failed||'Request failed');
-    }finally{button.disabled=false;}
+    }finally{
+      target.setAttribute('aria-busy','false');
+      button.disabled=false;
+    }
   });
 })();
