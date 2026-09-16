@@ -107,7 +107,10 @@ final class WordPressFinancialDocumentApi
 
     private static function financeOverride(): bool
     {
-        return function_exists('current_user_can') && current_user_can('sabri_manage_finance');
+        return WordPressSensitiveActionGuard::can(
+            'sabri_view_finance_audit',
+            'financial_document_override'
+        );
     }
 
     private static function param(mixed $request, string $name): mixed
