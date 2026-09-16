@@ -37,6 +37,7 @@ final class RuntimeSchemaExtension
             'finance_periods',
             'audit',
             'adjustments',
+            'retention_ledger',
             'transparency_snapshots',
             'donations',
             'intents',
@@ -83,6 +84,11 @@ final class RuntimeSchemaExtension
             $tables['adjustments'],
             'currency char(3) NOT NULL, reason_code',
             'currency char(3) NOT NULL, debit_account varchar(128) NOT NULL, credit_account varchar(128) NOT NULL, reason_code'
+        );
+        $tables['retention_ledger'] = self::replaceOnce(
+            $tables['retention_ledger'],
+            'legal_hold_ref varchar(191) NULL, actioned_at datetime(6) NULL',
+            "legal_hold_ref varchar(191) NULL, action_state varchar(32) NOT NULL DEFAULT 'pending', action_evidence_ref varchar(191) NULL, actioned_at datetime(6) NULL"
         );
 
         // Legacy recurring columns remain nullable/false in the donation table for
