@@ -40,6 +40,8 @@ jobs:
         run: php tests/run-round7-concurrency-outbox.php
       - name: Round 8 runtime secure delivery regression
         run: php tests/run-round8-runtime-delivery-gates.php
+      - name: Round 9 governance and security regression
+        run: php tests/run-round9-governance-security.php
       - name: Future Expansion Pack 40 acceptance
         run: php tests/run-future-expansion-40.php
       - name: Validate manifests
@@ -89,6 +91,13 @@ jobs:
           grep -q 'expiredProcessingCandidates' src/Application/OutboxDispatcher.php
           grep -q 'Refund balance is a shared monetary invariant' src/Application/RefundWorkflowService.php
           grep -q '\$this->assertFinancialMutationReady();' src/Application/RuntimeConfiguration.php
+          grep -q 'sabri_cf03_recent_auth_approved' src/Infrastructure/WordPressSensitiveActionGuard.php
+          grep -q '/reopen-request' src/Infrastructure/WordPressFinanceAdminApi.php
+          grep -q '/recover-request' src/Infrastructure/WordPressFinanceAdminApi.php
+          grep -q 'CanonicalSettlementImportService' src/Infrastructure/WordPressFinanceAdminApi.php
+          ! grep -q "param(\$request,'internal_lines')" src/Infrastructure/WordPressFinanceAdminApi.php
+          ! grep -q "param(\$request,'requester_reference')" src/Infrastructure/WordPressFinanceAdminApi.php
+          ! grep -q "stateCounts('subscriptions'" src/Application/FinancialOperationsDashboard.php
           grep -q 'SHOW INDEX FROM' src/Infrastructure/WordPressSchemaInstaller.php
           grep -q 'snapshot_hash char(64) NOT NULL' src/Persistence/TransparencySchema.php
           test -f manifests/cf03-release-1.4.0.json
@@ -101,6 +110,7 @@ jobs:
           test -f tests/run-round6-privacy-secure-export.php
           test -f tests/run-round7-concurrency-outbox.php
           test -f tests/run-round8-runtime-delivery-gates.php
+          test -f tests/run-round9-governance-security.php
       - name: Future 40 constitutional assertions
         run: |
           grep -q "AMENDMENT_ID = 'CF03-FUTURE40-2026-09-08'" src/Application/FutureExpansionRegistry.php
