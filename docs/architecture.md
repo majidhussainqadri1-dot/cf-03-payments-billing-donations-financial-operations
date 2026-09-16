@@ -36,7 +36,7 @@ It does not own identity/entitlement (File 00), global shell/download manager (F
 
 ## Persistence architecture
 
-`Schema::VERSION = 2.0.0` is historical provenance. The **active canonical schema is `4.0.0` with 27 canonical tables**. `RuntimeSchemaExtension::RETIRED_TABLES` removes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from active canonical truth. Historical physical tables on an upgraded installation may remain only for bounded retention/audit/migration evidence; active code does not create or revive them.
+`Schema::VERSION = 2.0.0` is historical provenance. The **active canonical schema is `4.0.1` with 27 canonical tables**. `RuntimeSchemaExtension::RETIRED_TABLES` removes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from active canonical truth. Schema `4.0.1` gives the retention action claim/evidence columns their own migration/checksum identity rather than silently altering `4.0.0`. Historical physical tables on an upgraded installation may remain only for bounded retention/audit/migration evidence; active code does not create or revive them.
 
 Activation/upgrade verification includes safe table prefixes, required tables/columns/indexes/uniqueness, migration evidence, transparency source integrity and fail-closed handling of malformed or stale state.
 
@@ -60,7 +60,7 @@ Published transparency is aggregate-only and hash-bound. Donor identities, priva
 
 ## Packaging and QA
 
-Current acceptance includes PHP syntax scanning, current governing-plan functional/adversarial suites, Future40 acceptance, manifest validation, credential-material scanning, constitutional source assertions and deterministic package/source parity across supported PHP versions.
+Current acceptance includes PHP syntax scanning, current governing-plan functional/adversarial suites, Future40 acceptance, manifest validation, credential-material scanning, constitutional source assertions and deterministic package/source parity across supported PHP versions. Historical/superseded test suites are explicitly quarantined from current acceptance truth.
 
 ## External boundary
 
