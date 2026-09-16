@@ -226,9 +226,9 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         if ($limit < 1 || $limit > 500) {
             throw new InvalidArgumentException('Financial query limit must be between 1 and 500.');
         }
-        [$table] = $this->spec($collection);
+        [$table, $idField] = $this->spec($collection);
         [$where, $values] = $this->where($table, $criteria);
-        $sql = "SELECT * FROM {$table}{$where} ORDER BY id DESC LIMIT ".(int)$limit;
+        $sql = "SELECT * FROM {$table}{$where} ORDER BY {$idField} DESC LIMIT ".(int)$limit;
         if ($values !== []) {
             $prepared = $this->wpdb->prepare($sql, ...$values);
             if (!is_string($prepared) || $prepared === '') {
@@ -251,9 +251,9 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         if ($offset < 0 || $offset > 100000000) {
             throw new InvalidArgumentException('Financial page offset is invalid.');
         }
-        [$table] = $this->spec($collection);
+        [$table, $idField] = $this->spec($collection);
         [$where, $values] = $this->where($table, $criteria);
-        $sql = "SELECT * FROM {$table}{$where} ORDER BY id ASC LIMIT ".(int)$limit.' OFFSET '.(int)$offset;
+        $sql = "SELECT * FROM {$table}{$where} ORDER BY {$idField} ASC LIMIT ".(int)$limit.' OFFSET '.(int)$offset;
         if ($values !== []) {
             $prepared = $this->wpdb->prepare($sql, ...$values);
             if (!is_string($prepared) || $prepared === '') {
