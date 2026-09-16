@@ -49,7 +49,7 @@ for ($i = 1; $i <= DonationRequestVelocityGuard::MAX_ACTIVE_PROVIDER_PENDING_INT
         'updated_at' => $now,
     ]);
 }
-expectInvariant(static fn () => $guard->assertAllowed($actor2, $now), 'active hosted checkout');
+expectInvariant(static fn () => $guard->assertAllowed($actor2, $now), 'active hosted donation checkouts');
 $guard->assertAllowed($actor2, $now->modify('+2 hours'));
 
 fwrite(STDOUT, "PASS: donation mutation velocity and active hosted-intent limits fail closed\n");
