@@ -52,7 +52,37 @@ for ($i = 1; $i <= DonationRequestVelocityGuard::MAX_ACTIVE_PROVIDER_PENDING_INT
 expectInvariant(static fn () => $guard->assertAllowed($actor2, $now), 'active hosted donation checkouts');
 $guard->assertAllowed($actor2, $now->modify('+2 hours'));
 
-fwrite(STDOUT, "PASS: donation mutation velocity and active hosted-intent limits fail closed\n");
+// Regression: old records must not hide recent attempts beyond a small first page.
+$actor3 = 'user:pagination-rate';
+for ($i = 1; $i <= 120; $i++) {
+    $repo->insert('idempotency', 'idem.old.'.str_pad((string)$i, 3, '0', STR_PAD_LEFT), [
+        'scope' => 'donation_checkout',
+        'idempotency_key' => 'idem.old.'.str_pad((string)$i, 3, '0', STR_PAD_LEFT),
+        'actor_ref' => $actor3,
+        'request_hash' => hash('sha256', 'old-'.$i),
+        'state' => 'failed',
+        'result_ref' => null,
+        'created_at' => $now->modify('-2 days'),
+        'completed_at' => $now->modify('-2 days'),
+        'expires_at' => $now->modify('-1 day'),
+    ]);
+}
+for ($i = 1; $i <= DonationRequestVelocityGuard::MAX_NEW_ATTEMPTS_PER_WINDOW; $i++) {
+    $repo->insert('idempotency', 'idem.recent.'.str_pad((string)$i, 2, '0', STR_PAD_LEFT), [
+        'scope' => 'donation_checkout',
+        'idempotency_key' => 'idem.recent.'.str_pad((string)$i, 2, '0', STR_PAD_LEFT),
+        'actor_ref' => $actor3,
+        'request_hash' => hash('sha256', 'recent-'.$i),
+        'state' => 'failed',
+        'result_ref' => null,
+        'created_at' => $now->modify('-'.($i * 5).' seconds'),
+        'completed_at' => $now,
+        'expires_at' => $now->modify('+1 day'),
+    ]);
+}
+expectInvariant(static fn () => $guard->assertAllowed($actor3, $now), 'rate limit');
+
+fwrite(STDOUT, "PASS: donation mutation velocity and active hosted-intent limits fail closed across complete bounded actor scans\n");
 
 function expectInvariant(callable $operation, string $messagePart): void
 {
