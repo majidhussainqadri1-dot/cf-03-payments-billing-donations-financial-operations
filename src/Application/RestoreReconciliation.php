@@ -35,18 +35,31 @@ final class RestoreReconciliation
             }
         }
 
+        $providerCounts = array_count_values($providerEventIds);
+        $duplicateAuthoritative = array_keys(array_filter($providerCounts, static fn (int $count): bool => $count > 1));
+        if ($duplicateAuthoritative !== []) {
+            throw new InvariantViolation('Authoritative provider-event evidence itself contains duplicate identifiers.');
+        }
+
         $postedCounts = array_count_values($postedProviderEventIds);
         $duplicates = array_keys(array_filter($postedCounts, static fn (int $count): bool => $count > 1));
-        $missing = array_values(array_diff(array_unique($providerEventIds), array_keys($postedCounts)));
+        $missing = array_values(array_diff(array_keys($providerCounts), array_keys($postedCounts)));
+        $unexpected = array_values(array_diff(array_keys($postedCounts), array_keys($providerCounts)));
 
         if ($duplicates !== []) {
             throw new InvariantViolation('Restore would duplicate provider event posting.');
         }
+        if ($missing !== []) {
+            throw new InvariantViolation('Restore is missing authoritative provider event posting and requires reconciliation.');
+        }
+        if ($unexpected !== []) {
+            throw new InvariantViolation('Restore contains posted provider events absent from authoritative provider evidence.');
+        }
 
         return [
             'balanced' => true,
-            'duplicate_provider_events' => $duplicates,
-            'missing_provider_events' => $missing,
+            'duplicate_provider_events' => [],
+            'missing_provider_events' => [],
         ];
     }
 
