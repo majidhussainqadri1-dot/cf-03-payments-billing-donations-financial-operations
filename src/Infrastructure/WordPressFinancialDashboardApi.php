@@ -22,8 +22,10 @@ final class WordPressFinancialDashboardApi
         register_rest_route(self::NAMESPACE, '/admin/dashboard', [
             'methods' => 'GET',
             'callback' => [self::class, 'dashboard'],
-            'permission_callback' => static fn (): bool => function_exists('current_user_can')
-                && current_user_can('sabri_view_finance_audit'),
+            'permission_callback' => static fn (): bool => WordPressSensitiveActionGuard::can(
+                'sabri_view_finance_audit',
+                'finance_dashboard_read'
+            ),
         ]);
     }
 
