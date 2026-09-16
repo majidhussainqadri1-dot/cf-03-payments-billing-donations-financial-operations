@@ -29,11 +29,14 @@ use Sabri\CF03\Support\InvariantViolation;
 $tests = [];
 $now = new DateTimeImmutable('2026-09-08T04:30:00+05:00');
 
-$tests['only two new plans govern current candidate'] = static function (): void {
+$tests['base plans plus v1.1 Future40 amendment govern current candidate'] = static function (): void {
     same([
         'SSH-PMP-2026-v3.0',
         'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0',
+        'CF03-FUTURE40-2026-09-08',
     ], GoverningPlanRegistry::governingPlans());
+    same('v1.1', GoverningPlanRegistry::CF03_WRITTEN_PLAN_AMENDMENT_VERSION);
+    same('2026-09-09', GoverningPlanRegistry::CF03_WRITTEN_PLAN_AMENDMENT_DATE);
     same('CF03-2026-v1.0', PlatformFinancialPolicy::DECISION_ID);
 };
 
@@ -177,7 +180,7 @@ $tests['donation privilege projection is rejected'] = static function (): void {
     same(true, $contract['donor_and_non_donor_education_equal']);
 };
 
-$tests['active manifests match release identity'] = static function (): void {
+$tests['active manifests match release and written-plan amendment identity'] = static function (): void {
     $root = dirname(__DIR__);
     $contracts = json_decode((string)file_get_contents($root.'/manifests/cf03-contracts.json'), true, 512, JSON_THROW_ON_ERROR);
     $release = json_decode((string)file_get_contents($root.'/manifests/cf03-release-1.4.0.json'), true, 512, JSON_THROW_ON_ERROR);
@@ -186,6 +189,10 @@ $tests['active manifests match release identity'] = static function (): void {
     same('1.4.0-rc.1', $contracts['software_version']);
     same('4.0.0', $contracts['active_schema_version']);
     same('1.4.0-rc.1', $release['software_version']);
+    same('v1.0', $release['base_plan_version']);
+    same('v1.1', $release['written_plan_amendment_version']);
+    same('2026-09-09', $release['written_plan_amendment_date']);
+    same('CF03-FUTURE40-2026-09-08', $release['amendment_id']);
     same(40, $future['feature_count']);
     same('fail_closed_by_default', $future['activation']);
     same(7, $appeal['frequency']['minimum_days_between_appeals']);
