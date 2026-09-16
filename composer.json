@@ -17,10 +17,11 @@
       "php tests/run-round7-concurrency-outbox.php",
       "php tests/run-round8-runtime-delivery-gates.php",
       "php tests/run-round9-governance-security.php",
+      "php tests/run-release-inventory.php",
       "php tests/run-future-expansion-40.php"
     ],
     "test:historical": [
-      "@php -r \"fwrite(STDOUT, 'Historical suites remain for provenance only and encode superseded business rules.\\n');\""
+      "@php -r \"fwrite(STDOUT, 'Historical suites are centrally quarantined in tests/bootstrap.php and retained only as superseded provenance.\\n');\""
     ],
     "lint": "find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l"
   }
