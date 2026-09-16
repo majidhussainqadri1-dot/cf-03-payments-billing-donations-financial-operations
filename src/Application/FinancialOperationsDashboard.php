@@ -41,7 +41,13 @@ final class FinancialOperationsDashboard
             'providers' => $this->providers->health(),
             'payment_intents' => $this->stateCounts('intents', 'state'),
             'provider_events' => $this->stateCounts('provider_events', 'status'),
-            'subscriptions' => $this->stateCounts('subscriptions', 'state'),
+            // Schema 4 retired subscription truth completely. The operations dashboard
+            // must never query a retired physical table or treat it as active state.
+            'retired_financial_models' => [
+                'subscriptions' => true,
+                'recurring_donations' => true,
+                'paid_ai_usage' => true,
+            ],
             'refunds' => $this->stateCounts('refunds', 'state'),
             'chargebacks' => $this->stateCounts('chargebacks', 'state') + ['due_within_seven_days' => $chargebacksDue],
             'settlements' => $this->stateCounts('settlements', 'status'),
@@ -76,16 +82,8 @@ final class FinancialOperationsDashboard
 
     private static function date(mixed $value): ?DateTimeImmutable
     {
-        if ($value instanceof DateTimeImmutable) {
-            return $value;
-        }
-        if (!is_string($value) || $value === '') {
-            return null;
-        }
-        try {
-            return new DateTimeImmutable($value);
-        } catch (\Throwable) {
-            return null;
-        }
+        if ($value instanceof DateTimeImmutable) { return $value; }
+        if (!is_string($value) || $value === '') { return null; }
+        try { return new DateTimeImmutable($value); } catch (\Throwable) { return null; }
     }
 }
