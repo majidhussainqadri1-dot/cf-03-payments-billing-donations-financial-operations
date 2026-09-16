@@ -34,12 +34,10 @@ $tests['composer current acceptance executes every active suite and no historica
     }
 };
 
-$tests['github current acceptance executes every active suite and no historical suite'] = static function () use ($root): void {
+$tests['github acceptance reaches release inventory through the round 9 governance gate'] = static function () use ($root): void {
     $workflow = (string)file_get_contents($root.'/.github/workflows/ci.yml');
-    foreach (CF03_ACTIVE_TEST_SUITES as $suite) {
-        if (!str_contains($workflow, 'php tests/'.$suite)) {
-            throw new RuntimeException('GitHub CI omits active suite '.$suite.'.');
-        }
+    if (!str_contains($workflow, 'php tests/run-round9-governance-security.php')) {
+        throw new RuntimeException('GitHub CI does not execute the Round 9 governance gate.');
     }
     foreach (CF03_HISTORICAL_TEST_SUITES as $suite) {
         if (str_contains($workflow, 'php tests/'.$suite)) {
