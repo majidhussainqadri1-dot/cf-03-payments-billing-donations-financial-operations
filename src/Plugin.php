@@ -11,6 +11,7 @@ use Sabri\CF03\Infrastructure\WordPressDailyReconciliation;
 use Sabri\CF03\Infrastructure\WordPressFinanceAdminApi;
 use Sabri\CF03\Infrastructure\WordPressFinancialDashboardApi;
 use Sabri\CF03\Infrastructure\WordPressFinancialDocumentApi;
+use Sabri\CF03\Infrastructure\WordPressFinancialRepository;
 use Sabri\CF03\Infrastructure\WordPressIncidentStateStore;
 use Sabri\CF03\Infrastructure\WordPressPrivacy;
 use Sabri\CF03\Infrastructure\WordPressProviderRegistryFactory;
@@ -219,6 +220,8 @@ final class Plugin
             update_option(self::OPTION_RUNTIME_STATUS, 'schema_incomplete_fail_closed', false);
             throw new RuntimeException('CF-03 schema installation did not verify every canonical schema migration.');
         }
+        self::recordMigrationEvidence($migrations);
+
         $version = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.3.0-rc.1';
         update_option(self::OPTION_VERSION, $version, false);
         update_option(self::OPTION_SCHEMA_VERSION, CompleteSchema::VERSION, false);
@@ -231,6 +234,46 @@ final class Plugin
             'completed_at' => gmdate(DATE_ATOM),
         ], false);
         update_option(self::OPTION_RUNTIME_STATUS, self::RUNTIME_STATUS, false);
+    }
+
+    /** @param list<string> $migrationIds */
+    private static function recordMigrationEvidence(array $migrationIds): void
+    {
+        global $wpdb;
+        if (!isset($wpdb) || !is_object($wpdb) || !isset($wpdb->prefix) || !is_string($wpdb->prefix)) {
+            throw new RuntimeException('WordPress database connection is unavailable for migration evidence recording.');
+        }
+        $tables = CompleteSchema::tables($wpdb->prefix);
+        if (count($migrationIds) !== count($tables)) {
+            throw new RuntimeException('Verified migration ID set does not match the canonical schema.');
+        }
+
+        $repository = WordPressFinancialRepository::fromWordPress();
+        $completedAt = gmdate('Y-m-d H:i:s');
+        foreach ($tables as $name => $sql) {
+            $id = 'cf03-'.CompleteSchema::VERSION.'-'.$name;
+            if (!in_array($id, $migrationIds, true)) {
+                throw new RuntimeException('Verified migration set is missing '.$id.'.');
+            }
+            $checksum = hash('sha256', $sql);
+            $existing = $repository->get('migrations', $id);
+            if ($existing === null) {
+                $repository->insert('migrations', $id, [
+                    'checksum' => $checksum,
+                    'status' => 'completed',
+                    'started_at' => $completedAt,
+                    'completed_at' => $completedAt,
+                    'error_code' => null,
+                ]);
+                continue;
+            }
+            if (($existing['checksum'] ?? null) !== $checksum
+                || ($existing['status'] ?? null) !== 'completed'
+                || ($existing['completed_at'] ?? null) === null
+            ) {
+                throw new RuntimeException('Stored migration evidence drift detected for '.$id.'.');
+            }
+        }
     }
 
     private static function grantAdministratorCapabilities(): void
