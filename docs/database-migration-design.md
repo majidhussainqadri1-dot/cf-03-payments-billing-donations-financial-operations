@@ -2,7 +2,7 @@
 
 ## Current status
 
-CF-03 retains `Schema::VERSION = 2.0.0` as historical base provenance. The **active canonical schema is `4.0.0` with 27 canonical tables**. Runtime remains fail closed until external activation gates pass; repository-source presence alone does not activate collection.
+CF-03 retains `Schema::VERSION = 2.0.0` as historical base provenance. The **active canonical schema is `4.0.1` with 27 canonical tables**. Runtime remains fail closed until external activation gates pass; repository-source presence alone does not activate collection.
 
 ## Active schema law
 
@@ -25,9 +25,11 @@ The WordPress upgrade path remains fail closed. It acquires a bounded lock, reco
 
 Installer verification covers safe physical table identifiers, table presence, required columns, primary/secondary indexes, index ordering, uniqueness semantics and current migration invariants. Missing or malformed canonical structure blocks readiness.
 
-## Schema 4.0 migration law
+## Schema 4.0/4.0.1 migration law
 
-The 4.0 migration retires recurring-consent, paid-subscription and paid-AI-usage stores from the active canonical schema while preserving historical evidence non-destructively when required. Active product seeding is restricted to `donation.one_time`; legacy recurring/monthly products are retired rather than silently revived.
+Schema 4.0 retires recurring-consent, paid-subscription and paid-AI-usage stores from the active canonical schema while preserving historical evidence non-destructively when required. Active product seeding is restricted to `donation.one_time`; legacy recurring/monthly products are retired rather than silently revived.
+
+Schema `4.0.1` advances the migration/checksum identity for the retention ledger action-claim/evidence fields (`action_state` and `action_evidence_ref`). This prevents changed persistent SQL from being represented by the already-issued `4.0.0` identity.
 
 ## Transparency migration
 
