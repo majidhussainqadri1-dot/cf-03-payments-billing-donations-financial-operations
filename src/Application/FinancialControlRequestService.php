@@ -297,28 +297,59 @@ final class FinancialControlRequestService
             throw new InvariantViolation('Incident recovery approval differs from the persisted requester proposal.');
         }
 
-        $recovered = $this->incidents->recover(
-            $incidentId,
-            $requester,
-            $approverReference,
-            $resolutionEvidenceReference,
-            $approvedAt,
-            $enableCheckout,
-            $enableRefunds,
-            $enableWebhooks
-        );
-        $completed = $this->repository->updateWhere('idempotency', [
-            'idempotency_key' => $claimId,
-            'scope' => 'incident_recovery',
-            'state' => 'pending',
-        ], [
-            'state' => 'completed',
-            'completed_at' => $approvedAt,
-        ]);
-        if ($completed !== 1) {
-            throw new InvariantViolation('Incident recovery completed but its dual-control request was not durably acknowledged.');
+        try {
+            return $this->repository->transaction(function () use (
+                $incidentId,
+                $requester,
+                $approverReference,
+                $resolutionEvidenceReference,
+                $approvedAt,
+                $enableCheckout,
+                $enableRefunds,
+                $enableWebhooks,
+                $claimId
+            ): array {
+                $recovered = $this->incidents->recover(
+                    $incidentId,
+                    $requester,
+                    $approverReference,
+                    $resolutionEvidenceReference,
+                    $approvedAt,
+                    $enableCheckout,
+                    $enableRefunds,
+                    $enableWebhooks
+                );
+                $completed = $this->repository->updateWhere('idempotency', [
+                    'idempotency_key' => $claimId,
+                    'scope' => 'incident_recovery',
+                    'state' => 'pending',
+                ], [
+                    'state' => 'completed',
+                    'completed_at' => $approvedAt,
+                ]);
+                if ($completed !== 1) {
+                    throw new InvariantViolation('Incident recovery completed but its dual-control request was not durably acknowledged.');
+                }
+                return $recovered + ['requester_ref' => $requester, 'approver_ref' => $approverReference];
+            });
+        } catch (\Throwable $error) {
+            $current = $this->incidentState->get();
+            if (($current['state'] ?? null) === 'recovered'
+                && ($current['incident_id'] ?? null) === $incidentId
+                && (int)($current['record_version'] ?? 0) === $version + 1
+            ) {
+                try {
+                    $this->incidentState->save($state);
+                } catch (\Throwable $restoreError) {
+                    throw new \RuntimeException(
+                        'Incident recovery failed and the prior containment state could not be restored safely.',
+                        0,
+                        $restoreError
+                    );
+                }
+            }
+            throw $error;
         }
-        return $recovered + ['requester_ref' => $requester, 'approver_ref' => $approverReference];
     }
 
     /** @return array<string,mixed> */
