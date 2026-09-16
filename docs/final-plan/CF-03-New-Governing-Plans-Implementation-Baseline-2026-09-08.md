@@ -1,16 +1,18 @@
 # CF-03 New Governing Plans — Implementation Baseline
 
-**Source candidate:** `1.3.0-rc.1`  
-**Active schema:** `4.0.0`  
-**Baseline date:** 2026-09-08  
-**Status:** source implementation baseline; runtime collection remains fail closed.
+**Current hardened source candidate:** `1.4.0-rc.2`  
+**Active schema:** `4.0.1`  
+**Original baseline date:** 2026-09-08  
+**Current written-plan amendment:** `v1.1`, dated 2026-09-09, amendment ID `CF03-FUTURE40-2026-09-08`  
+**Status:** repository source implementation baseline; runtime collection remains fail closed.
 
 ## Governing sources
 
 1. `SSH-PMP-2026-v3.0` — Sabri Social Homeopathy Platform Definitive Master Plan v3.0.
-2. `CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0`.
+2. `CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0` — base plan.
+3. `CF03-FUTURE40-2026-09-08` — written-plan amendment v1.1, which adds 40 future fail-closed contracts without changing current financial law.
 
-No earlier recovered directive, CF-03 v2.0 text, README, PR description or runtime code overrides these two current plans.
+No earlier recovered directive, CF-03 integrated v2.x document, README, PR description or runtime code overrides these current governing sources.
 
 ## Reconciled constitutional decisions
 
@@ -32,7 +34,7 @@ No earlier recovered directive, CF-03 v2.0 text, README, PR description or runti
 
 ### Donation policy and appeal
 
-`PlatformFinancialPolicy`, `DonationPromptPolicy`, `DonationPromptState`, `DonationAppealCopy`, REST, public UI and browser JavaScript now encode seven-day, one-time-only behavior and explicit one-time consent.
+`PlatformFinancialPolicy`, `DonationPromptPolicy`, `DonationPromptState`, `DonationAppealCopy`, REST, public UI and browser JavaScript encode seven-day, one-time-only behavior and explicit one-time consent.
 
 ### Recurring/subscription retirement
 
@@ -49,16 +51,16 @@ The former active recurring/subscription model is not merely hidden in UI. Activ
 
 `AiUsageBillingService` is retained only as a fail-closed compatibility boundary. It cannot authorize charges, post AI receivables or meter AI through finance. Fair-use/reliability controls, if any, are non-financial concerns owned outside a paid CF-03 path.
 
-### Active schema v4
+### Active schema
 
-`RuntimeSchemaExtension::VERSION = 4.0.0` and the active canonical schema excludes:
+`RuntimeSchemaExtension::VERSION = 4.0.1` and the active canonical schema excludes:
 
 - `recurring_consents`;
 - `subscriptions`;
 - `usage_authorizations`;
 - `usage_facts`.
 
-Existing installations may physically retain legacy tables during bounded migration/audit retention. Their presence does not make them active truth and no current route/service may create a new recurring mandate or paid-AI/subscription state.
+Schema `4.0.1` gives the retention action claim/evidence columns their own migration/checksum identity. Existing installations may physically retain legacy tables during bounded migration/audit retention. Their presence does not make them active truth and no current route/service may create a new recurring mandate or paid-AI/subscription state.
 
 ### Provider/webhook and accounting safety
 
