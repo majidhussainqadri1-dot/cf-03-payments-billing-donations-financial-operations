@@ -63,11 +63,8 @@ final class SecureExportService
             if (($existing['requester_ref'] ?? null) === $requesterReference
                 && ($existing['specification_hash'] ?? null) === $specificationHash
             ) {
-                $this->auditEvent('finance_export_requested', $requesterReference, $jobId, $requestedAt, [
-                    'specification_hash' => $specificationHash,
-                    'maximum_rows' => $maximumRows,
-                    'reused' => true,
-                ]);
+                // The original immutable request audit already proves this canonical request.
+                // Exact idempotent replays must not manufacture a second audit identity.
                 return self::safe($existing) + ['reused' => true];
             }
             throw new InvariantViolation('Finance export identifier already exists with different scope.');
@@ -107,7 +104,7 @@ final class SecureExportService
             $specification = (array)$record['specification_json'];
             $csv = $this->buildCsv($specification);
             $filename = 'cf03-financial-export-'.preg_replace('/[^A-Za-z0-9._-]+/', '-', $jobId).'.csv';
-            $stored = $this->store->put($filename, 'text/csv', $csv, new DateTimeImmutable((string)$record['expires_at']));
+            $stored = $this->store->put($filename, 'text/csv', $csv, self::immutableDate($record['expires_at'] ?? null));
             if (!isset($stored['object_ref'], $stored['sha256'], $stored['size_bytes'])
                 || preg_match('/^[a-f0-9]{64}$/', (string)$stored['sha256']) !== 1
                 || (int)$stored['size_bytes'] !== strlen($csv)
@@ -171,7 +168,7 @@ final class SecureExportService
         }
         $job = $this->hydrate($record);
         $job->assertDownloadable($now);
-        $jobExpiry = new DateTimeImmutable((string)$record['expires_at']);
+        $jobExpiry = self::immutableDate($record['expires_at'] ?? null);
         $expires = $grantExpiresAt < $jobExpiry ? $grantExpiresAt : $jobExpiry;
         if ($expires <= $now || $expires > $now->modify('+30 minutes')) {
             throw new InvariantViolation('Finance export download grant expiry is invalid.');
@@ -391,7 +388,7 @@ final class SecureExportService
             (array)$spec['fields'],
             (array)$spec['filters'],
             (int)$record['maximum_rows'],
-            new DateTimeImmutable((string)$record['expires_at']),
+            self::immutableDate($record['expires_at'] ?? null),
             (string)$record['state'],
             (int)($record['version'] ?? $record['record_version'] ?? 1),
             is_string($record['manifest_hash'] ?? null) ? $record['manifest_hash'] : null,
@@ -429,6 +426,17 @@ final class SecureExportService
             'trace:export:'.substr(hash('sha256', $jobId), 0, 24),
             $metadata
         ));
+    }
+
+    private static function immutableDate(mixed $value): DateTimeImmutable
+    {
+        if ($value instanceof DateTimeImmutable) {
+            return $value;
+        }
+        if (is_string($value) && $value !== '') {
+            return new DateTimeImmutable($value);
+        }
+        throw new InvariantViolation('Finance export timestamp is missing or invalid.');
     }
 
     private static function dateString(mixed $value): string
