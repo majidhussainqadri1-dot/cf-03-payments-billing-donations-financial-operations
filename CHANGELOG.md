@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0-rc.2 — Ten-Round Hardening and Migration Identity
+
+- Carried forward the Future Expansion Pack 40 amendment without changing current financial law or activating any future capability.
+- Completed repository hardening across governing-plan traceability, out-of-order webhook recovery, donation mutation velocity, schema/restore/retention safety, privacy and secure exports, refund concurrency, outbox lease recovery, runtime secure-delivery gates, recent-auth/separation-of-duties controls and atomic incident-recovery handling.
+- Tightened WordPress role provisioning so the default Administrator receives only the non-specialist finance baseline instead of toxic reviewer/executor/import/close/audit combinations; specialist duties require explicit separately authorized role assignment and recent-auth assurance.
+- Made donation checkout velocity evidence scans complete across bounded pagination and fail closed when the actor-specific audit window cannot be proven safe.
+- Advanced the active schema identity to `4.0.1` so the retention action claim/evidence columns introduced during hardening have a new immutable migration/checksum identity rather than silently changing `4.0.0`.
+- Aligned plugin header/constants, manifests, Future40 carrier target, traceability, QA documentation and deterministic package naming with source candidate `1.4.0-rc.2` / schema `4.0.1`.
+- Deterministic package target is `cf-03-payments-billing-donations-financial-operations-1.4.0-rc.2.zip`.
+- This release record is repository-source/automated-QA evidence only; it does not claim Staging acceptance, Live deployment, provider enablement or operational readiness.
+
 ## 1.4.0-rc.1 — Future Expansion Pack 40
 
 - Added governing amendment `CF03-FUTURE40-2026-09-08` with exactly **40** coded future financial-governance capabilities.
@@ -13,8 +24,6 @@
 - Active schema remains `4.0.0` / 27 canonical tables because this release adds future contracts and deterministic services without activating new persistent financial truth.
 - Added `manifests/cf03-future-expansion-40.json`, `manifests/cf03-release-1.4.0.json`, the written plan appendix and `tests/run-future-expansion-40.php`.
 - Deterministic package target changed to `cf-03-payments-billing-donations-financial-operations-1.4.0-rc.1.zip`.
-- Completed a ten-round repository hardening cycle on this same source candidate covering governing-plan traceability, out-of-order webhook recovery, donation mutation velocity, schema/restore/retention safety, privacy and secure exports, refund concurrency, outbox lease recovery, runtime secure-delivery gates, recent-auth/separation-of-duties controls and atomic incident-recovery handling.
-- The hardening cycle is repository-source/automated-QA evidence only: it does not claim Staging acceptance, Live deployment, provider enablement or operational readiness.
 
 ## 1.3.0-rc.1 — New Governing Plans: Free Core + One-Time Donation Reconciliation
 
