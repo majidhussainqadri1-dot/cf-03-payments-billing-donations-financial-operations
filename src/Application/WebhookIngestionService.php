@@ -38,6 +38,10 @@ final class WebhookIngestionService
             throw new InvariantViolation('Verified webhook provider identity mismatch.');
         }
 
+        $mapped = $this->mapper->mapTrusted($evidence);
+        $intent = $this->repository->get('intents', $evidence->paymentIntentId());
+        $traceId = 'trace.'.substr(hash('sha256', $providerCode.'|'.$evidence->providerEventId()), 0, 40);
+
         $duplicates = $this->repository->find('provider_events', [
             'provider' => $providerCode,
             'provider_event_id' => $evidence->providerEventId(),
@@ -46,16 +50,18 @@ final class WebhookIngestionService
             throw new InvariantViolation('Provider event identity is not unique.');
         }
         if ($duplicates !== []) {
-            $this->assertDuplicateParity($duplicates[0], $evidence);
-            return [
-                'status' => 'duplicate_acknowledged',
-                'provider_event_id' => $evidence->providerEventId(),
-            ];
+            $existing = $duplicates[0];
+            $this->assertDuplicateParity($existing, $evidence);
+            $recoverableMissingIntent = ($existing['status'] ?? null) === 'quarantined_missing_intent'
+                && ($existing['processed_at'] ?? null) === null
+                && $intent !== null;
+            if (!$recoverableMissingIntent) {
+                return [
+                    'status' => 'duplicate_acknowledged',
+                    'provider_event_id' => $evidence->providerEventId(),
+                ];
+            }
         }
-
-        $mapped = $this->mapper->mapTrusted($evidence);
-        $intent = $this->repository->get('intents', $evidence->paymentIntentId());
-        $traceId = 'trace.'.substr(hash('sha256', $providerCode.'|'.$evidence->providerEventId()), 0, 40);
 
         if ($intent === null) {
             $this->recordEvent($evidence, $mapped, 'quarantined_missing_intent', $traceId, null);
@@ -217,6 +223,30 @@ final class WebhookIngestionService
         string $traceId,
         ?string $intentId
     ): void {
+        $existing = $this->repository->get('provider_events', $evidence->providerEventId());
+        if ($existing !== null) {
+            $this->assertDuplicateParity($existing, $evidence);
+            if (($existing['status'] ?? null) !== 'quarantined_missing_intent'
+                || ($existing['processed_at'] ?? null) !== null
+            ) {
+                throw new InvariantViolation('Existing provider event is not eligible for quarantine recovery.');
+            }
+            $updated = $this->repository->updateWhere('provider_events', [
+                'provider' => $evidence->providerCode(),
+                'provider_event_id' => $evidence->providerEventId(),
+                'status' => 'quarantined_missing_intent',
+            ], [
+                'mapped_state' => $mapped->value,
+                'status' => $status,
+                'intent_id' => $intentId,
+                'trace_id' => $traceId,
+            ]);
+            if ($updated !== 1) {
+                throw new InvariantViolation('Quarantined provider event could not be recovered exactly once.');
+            }
+            return;
+        }
+
         $this->repository->insert('provider_events', $evidence->providerEventId(), [
             'provider' => $evidence->providerCode(),
             'provider_event_id' => $evidence->providerEventId(),
