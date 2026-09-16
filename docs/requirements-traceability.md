@@ -1,10 +1,10 @@
-# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.1
+# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.2
 
 This matrix is the current **source-code traceability** for the two governing documents and the current Future40 amendment:
 
 1. `SSH-PMP-2026-v3.0` — Sabri Social Homeopathy Platform Definitive Master Plan v3.0;
 2. `CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0`;
-3. `CF03-FUTURE40-2026-09-08` — CF-03 Future Expansion Pack 40 Amendment, software target `1.4.0-rc.1`, active schema `4.0.0`.
+3. `CF03-FUTURE40-2026-09-08` — CF-03 Future Expansion Pack 40 Amendment, current hardened software carrier `1.4.0-rc.2`, active schema `4.0.1`.
 
 It does **not** claim provider, legal, PCI, staging, Live or operational acceptance. Where a requirement contains an external acceptance test, the source contract is implemented but the external acceptance gate remains pending.
 
@@ -38,7 +38,7 @@ It does **not** claim provider, legal, PCI, staging, Live or operational accepta
 | CF03-FR-026 Chargeback/dispute | `ChargebackCase`, `RiskOperationsService`, settlement/reconciliation hooks and evidence lifecycle | Implemented | Provider dispute lifecycle/notification acceptance pending |
 | CF03-FR-027 Donation receipt/refund | One-time receipt snapshot, private identity, lawful refund ledger/outbox, recurring unavailable | Implemented | Legal/accounting receipt review pending |
 | CF03-FR-028 Fraud/manual review | `FraudReviewCase`, `RiskOperationsService`; bounded signals/holds/reasoned manual path | Implemented | Approved risk policy/manual-review staging acceptance pending |
-| CF03-FR-029 Separation of duties | `SeparationOfDutiesPolicy`, granular WordPress finance capabilities, reviewer/executor/approver distinctions | Implemented | Quarterly-access-review operational process pending |
+| CF03-FR-029 Separation of duties | `SeparationOfDutiesPolicy`, granular WordPress finance capabilities, reviewer/executor/approver distinctions; Administrator baseline no longer receives toxic specialist capability combinations | Implemented | Quarterly-access-review operational process pending |
 | CF03-FR-030 Financial minimization | Provider-safe donor clone, sensitive-header stripping, bounded public projections, prohibited-credential scans | Implemented | Independent privacy/security review pending |
 | CF03-FR-031 Secure finance export | `SecureExportJob`, `SecureExportService`, manifest/hash/limits/audit/time-bound contracts | Implemented contract | Encrypted artifact store + delivery/staging acceptance pending |
 | CF03-FR-032 Close and lock | `FinancePeriod`, settlement/reconciliation close controls and later adjustment model | Implemented | Finance close/reopen drill pending |
@@ -73,4 +73,4 @@ The following are not active CF-03 capabilities and must not be revived without 
 - Clinic/Marketplace platform commission above 0%;
 - wallet/escrow/custody/payout/split-payment flows.
 
-Schema `4.0.0` removes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from the active canonical schema. Existing legacy physical tables are not treated as current truth and require bounded retention/reconciliation before eventual approved retirement.
+Schema `4.0.1` removes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from the active canonical schema. Existing legacy physical tables are not treated as current truth and require bounded retention/reconciliation before eventual approved retirement.
