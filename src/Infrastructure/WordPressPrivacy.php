@@ -9,6 +9,8 @@ use Throwable;
 
 final class WordPressPrivacy
 {
+    private const ERASURE_ACKNOWLEDGMENT_BATCH = 100;
+
     /** @param array<string,string> $exporters @return array<string,array<string,mixed>> */
     public static function exporters(array $exporters): array
     {
@@ -107,15 +109,21 @@ final class WordPressPrivacy
             }
         }
 
+        $done = true;
         try {
             $repo = WordPressFinancialRepository::fromWordPress();
             $actor = 'user:'.(int)$user->ID;
-            $acknowledgments = $repo->find('donor_acknowledgments', ['donor_ref' => $actor], 500);
+            // Always consume the first bounded page of records that are still active.
+            // Because each successful mutation removes a row from this result set,
+            // the next WordPress eraser invocation safely continues without offset skips.
+            $acknowledgments = $repo->page(
+                'donor_acknowledgments',
+                ['donor_ref' => $actor, 'state' => 'active'],
+                self::ERASURE_ACKNOWLEDGMENT_BATCH,
+                0
+            );
             foreach ($acknowledgments as $record) {
-                if (($record['state'] ?? null) !== 'active') {
-                    continue;
-                }
-                $repo->updateWhere(
+                $updated = $repo->updateWhere(
                     'donor_acknowledgments',
                     ['acknowledgment_id' => $record['acknowledgment_id'], 'state' => 'active'],
                     [
@@ -124,10 +132,15 @@ final class WordPressPrivacy
                         'revoked_at' => new \DateTimeImmutable('now'),
                     ]
                 );
+                if ($updated !== 1) {
+                    throw new \RuntimeException('Public donor acknowledgment changed during privacy erasure.');
+                }
                 $removed = true;
             }
+            $done = count($acknowledgments) < self::ERASURE_ACKNOWLEDGMENT_BATCH;
         } catch (Throwable) {
             $messages[] = 'Optional public donor acknowledgment could not be revalidated during this erasure request; contact financial support for manual completion.';
+            $done = true;
         }
 
         $messages[] = 'Financial ledgers, receipts, settlements, audit evidence and legally required accounting records are retained under the applicable retention policy; optional prompt state and public acknowledgment are removed or revoked.';
@@ -135,7 +148,7 @@ final class WordPressPrivacy
             'items_removed' => $removed,
             'items_retained' => true,
             'messages' => $messages,
-            'done' => true,
+            'done' => $done,
         ];
     }
 
