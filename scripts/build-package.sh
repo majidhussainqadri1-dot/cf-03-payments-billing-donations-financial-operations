@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLUGIN_DIR="cf-03-payments-billing-donations-financial-operations"
-VERSION="1.4.0-rc.1"
+VERSION="1.4.0-rc.2"
 BUILD_DIR="${ROOT_DIR}/build"
 STAGE_DIR="${BUILD_DIR}/${PLUGIN_DIR}"
 ZIP_PATH="${BUILD_DIR}/${PLUGIN_DIR}-${VERSION}.zip"
