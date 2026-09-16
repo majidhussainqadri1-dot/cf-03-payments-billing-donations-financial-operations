@@ -61,7 +61,9 @@ final class DailyReconciliationService
                 throw new InvariantViolation('Provider settlement feed returned a non-record value.');
             }
             $batch = $this->batch($provider->providerId(), $row, $fromDate, $toDate);
-            if ($this->repository->get('settlements', $batch->batchId()) !== null) {
+            $existing = $this->existingBatch($batch);
+            if ($existing !== null) {
+                $this->assertDuplicateParity($existing, $batch);
                 $duplicates++;
                 continue;
             }
@@ -133,6 +135,47 @@ final class DailyReconciliationService
         );
     }
 
+    /** @return array<string,mixed>|null */
+    private function existingBatch(SettlementBatch $batch): ?array
+    {
+        $matches = $this->repository->find('settlements', [
+            'provider' => $batch->providerCode(),
+            'batch_id' => $batch->batchId(),
+        ], 2);
+        if (count($matches) > 1) {
+            throw new InvariantViolation('Duplicate canonical settlement evidence exists for one provider batch.');
+        }
+        return $matches[0] ?? null;
+    }
+
+    /** @param array<string,mixed> $existing */
+    private function assertDuplicateParity(array $existing, SettlementBatch $batch): void
+    {
+        $expected = [
+            'provider' => $batch->providerCode(),
+            'batch_id' => $batch->batchId(),
+            'gross_minor' => $batch->gross()->minorUnits(),
+            'fee_minor' => $batch->fees()->minorUnits(),
+            'refund_minor' => $batch->refunds()->minorUnits(),
+            'net_minor' => $batch->net()->minorUnits(),
+            'currency' => $batch->gross()->currency(),
+            'source_hash' => $batch->sourceSha256(),
+        ];
+        foreach ($expected as $field => $value) {
+            $actual = $existing[$field] ?? null;
+            if (is_int($value)) {
+                $actual = is_numeric($actual) ? (int)$actual : $actual;
+            }
+            if ($actual !== $value) {
+                throw new InvariantViolation('Provider reused a settlement batch identifier with conflicting immutable evidence.');
+            }
+        }
+        $storedSettledAt = self::dateValue($existing['settled_at'] ?? null);
+        if ($storedSettledAt === null || $storedSettledAt->getTimestamp() !== $batch->settledAt()->getTimestamp()) {
+            throw new InvariantViolation('Provider reused a settlement batch identifier with conflicting settlement time.');
+        }
+    }
+
     /** @return list<array{reference:string,type:string,amount_minor:int,currency:string}> */
     private function internalLines(SettlementBatch $batch): array
     {
@@ -191,6 +234,21 @@ final class DailyReconciliationService
             || (new DateTimeImmutable($value))->format('Y-m-d') !== $value
         ) {
             throw new InvalidArgumentException('Daily reconciliation date is invalid.');
+        }
+    }
+
+    private static function dateValue(mixed $value): ?DateTimeImmutable
+    {
+        if ($value instanceof DateTimeImmutable) {
+            return $value;
+        }
+        if (!is_string($value) || $value === '') {
+            return null;
+        }
+        try {
+            return new DateTimeImmutable($value);
+        } catch (\Throwable) {
+            return null;
         }
     }
 }
