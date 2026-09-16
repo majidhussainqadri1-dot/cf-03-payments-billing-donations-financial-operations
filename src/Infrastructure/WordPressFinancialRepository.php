@@ -228,7 +228,8 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         }
         [$table, $idField] = $this->spec($collection);
         [$where, $values] = $this->where($table, $criteria);
-        $sql = "SELECT * FROM {$table}{$where} ORDER BY {$idField} DESC LIMIT ".(int)$limit;
+        $orderBy = $this->findOrderBy($collection, $criteria, $idField);
+        $sql = "SELECT * FROM {$table}{$where} ORDER BY {$orderBy} LIMIT ".(int)$limit;
         if ($values !== []) {
             $prepared = $this->wpdb->prepare($sql, ...$values);
             if (!is_string($prepared) || $prepared === '') {
@@ -326,6 +327,24 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         return [$this->prefix.$spec['table'], $spec['id']];
     }
 
+    /** @param array<string,mixed> $criteria */
+    private function findOrderBy(string $collection, array $criteria, string $idField): string
+    {
+        if ($collection === 'outbox') {
+            $state = $criteria['state'] ?? null;
+            if ($state === 'processing') {
+                return 'leased_until ASC, event_id ASC';
+            }
+            if ($state === 'pending' || $state === 'retry') {
+                return 'available_at ASC, event_id ASC';
+            }
+        }
+        if ($collection === 'idempotency' && ($criteria['state'] ?? null) === 'pending') {
+            return 'expires_at ASC, idempotency_key ASC';
+        }
+        return $idField.' DESC';
+    }
+
     /** @return list<string> */
     private function columns(string $table): array
     {
@@ -419,21 +438,31 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         $values = [];
         foreach ($criteria as $column => $value) {
             if (!is_string($column) || !in_array($column, $columns, true)) {
-                throw new InvalidArgumentException('Unknown financial query field.');
+                throw new InvalidArgumentException('Unknown financial query field: '.(string)$column.'.');
             }
             if ($value === null) {
                 $clauses[] = $column.' IS NULL';
                 continue;
             }
-            $clauses[] = $column.' = %s';
-            $values[] = $this->normalizeValue($column, $value);
+            if (is_bool($value)) {
+                $value = $value ? 1 : 0;
+            } elseif ($value instanceof DateTimeInterface) {
+                $value = $value->format('Y-m-d H:i:s.u');
+            } elseif ($value instanceof BackedEnum) {
+                $value = $value->value;
+            }
+            if (!is_string($value) && !is_int($value)) {
+                throw new InvalidArgumentException('Financial query criteria support scalar canonical values only.');
+            }
+            $clauses[] = $column.' = '.(is_int($value) ? '%d' : '%s');
+            $values[] = $value;
         }
         return [' WHERE '.implode(' AND ', $clauses), $values];
     }
 
     private static function assertIdentifier(string $id): void
     {
-        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $id) !== 1) {
+        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:@|+-]{1,190}$/', $id) !== 1) {
             throw new InvalidArgumentException('Financial record identifier is invalid.');
         }
     }
