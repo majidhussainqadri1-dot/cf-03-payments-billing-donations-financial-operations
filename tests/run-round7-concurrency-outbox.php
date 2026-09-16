@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 require_once __DIR__.'/bootstrap.php';
 
+use Sabri\CF03\Application\IncidentPathGuard;
 use Sabri\CF03\Application\OutboxDispatcher;
 use Sabri\CF03\Application\OutboxTransport;
 use Sabri\CF03\Application\ProviderRegistry;
 use Sabri\CF03\Application\RefundWorkflowService;
 use Sabri\CF03\Application\RuntimeConfiguration;
+use Sabri\CF03\Contracts\IncidentStateStore;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
 use Sabri\CF03\Support\InvariantViolation;
@@ -17,6 +19,14 @@ final class Round7Transport implements OutboxTransport
 {
     /** @var list<string> */ public array $events=[];
     public function publish(string $eventId,string $eventType,array $payload):void{$this->events[]=$eventId;}
+}
+
+final class Round7IncidentStore implements IncidentStateStore
+{
+    /** @param array<string,mixed> $state */
+    public function __construct(private array $state) {}
+    public function get(): array { return $this->state; }
+    public function save(array $state): void { $this->state=$state; }
 }
 
 $tests=[];
@@ -63,6 +73,30 @@ $tests['expired processing outbox lease is recovered and delivered']=static func
     same7(['event:round7:expired'],$transport->events);
     same7('delivered',$repo->get('outbox','event:round7:expired')['state']);
     same7('processing',$repo->get('outbox','event:round7:active')['state']);
+};
+
+$tests['incident path guard fails closed on malformed or disabled state']=static function():void{
+    expectInvariant7(static fn()=>(new IncidentPathGuard(new Round7IncidentStore([])))->assertAvailable('checkout'));
+    expectInvariant7(static fn()=>(new IncidentPathGuard(new Round7IncidentStore([
+        'state'=>'normal','checkout_enabled'=>true,'refunds_enabled'=>false,'webhooks_enabled'=>true,
+    ])))->assertAvailable('refunds'));
+    (new IncidentPathGuard(new Round7IncidentStore([
+        'state'=>'normal','checkout_enabled'=>true,'refunds_enabled'=>true,'webhooks_enabled'=>true,
+    ])))->assertAvailable('checkout');
+};
+
+$tests['wordpress operational queues are ordered by recovery deadlines']=static function():void{
+    $source=(string)file_get_contents(__DIR__.'/../src/Infrastructure/WordPressFinancialRepository.php');
+    foreach(['leased_until ASC, event_id ASC','available_at ASC, event_id ASC','expires_at ASC, idempotency_key ASC'] as $needle){
+        if(!str_contains($source,$needle)){throw new RuntimeException('Missing operational queue order: '.$needle);}
+    }
+};
+
+$tests['daily reconciliation verifies immutable duplicate batch parity before skip']=static function():void{
+    $source=(string)file_get_contents(__DIR__.'/../src/Application/DailyReconciliationService.php');
+    foreach(['assertDuplicateParity','source_hash','conflicting immutable evidence','conflicting settlement time'] as $needle){
+        if(!str_contains($source,$needle)){throw new RuntimeException('Missing settlement duplicate parity control: '.$needle);}
+    }
 };
 
 $failures=0;
