@@ -41,6 +41,7 @@ use Sabri\CF03\Domain\DonationServiceState;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\SettlementBatch;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
+use Sabri\CF03\Infrastructure\WordPressRequestGuard;
 use Sabri\CF03\Infrastructure\WordPressSensitiveActionGuard;
 use Sabri\CF03\Support\InvariantViolation;
 
@@ -50,6 +51,18 @@ final class TestIncidentStore9 implements IncidentStateStore
     public function __construct(private array $state) {}
     public function get(): array { return $this->state; }
     public function save(array $state): void { $this->state = $state; }
+}
+
+final class TestRestRequest9
+{
+    public function __construct(
+        private readonly string $route,
+        private readonly string $method,
+        private readonly string $body = ''
+    ) {}
+    public function get_route(): string { return $this->route; }
+    public function get_method(): string { return $this->method; }
+    public function get_body(): string { return $this->body; }
 }
 
 $tests = [];
@@ -169,6 +182,48 @@ $tests['privileged route guard requires recent authentication and rejects toxic 
         'sabri_execute_refunds' => true,
     ];
     assertSame9(false, WordPressSensitiveActionGuard::can('sabri_review_refunds', 'refund_review'), 'toxic capability pair');
+};
+
+$tests['request guard step-up protects legacy privileged refund and diagnostics routes'] = static function (): void {
+    $GLOBALS['cf03_test_user_id'] = 101;
+    $GLOBALS['cf03_test_caps'] = ['sabri_review_refunds' => true];
+    $GLOBALS['cf03_test_recent_auth'] = false;
+    $denied = WordPressRequestGuard::guard(
+        null,
+        null,
+        new TestRestRequest9('/sabri-finance/v1/admin/refunds/refund.100', 'POST', '{}')
+    );
+    assertSame9(403, is_array($denied) ? ($denied['status'] ?? null) : null, 'refund recent-auth denial');
+
+    $GLOBALS['cf03_test_recent_auth'] = true;
+    $allowed = WordPressRequestGuard::guard(
+        null,
+        null,
+        new TestRestRequest9('/sabri-finance/v1/admin/refunds/refund.100', 'POST', '{}')
+    );
+    assertSame9(null, $allowed, 'refund recent-auth approval');
+
+    $GLOBALS['cf03_test_caps'] = ['sabri_manage_finance' => true];
+    $GLOBALS['cf03_test_recent_auth'] = false;
+    $healthDenied = WordPressRequestGuard::guard(
+        null,
+        null,
+        new TestRestRequest9('/sabri-finance/v1/admin/health', 'GET')
+    );
+    assertSame9(403, is_array($healthDenied) ? ($healthDenied['status'] ?? null) : null, 'admin health recent-auth denial');
+};
+
+$tests['financial dashboard and cross-owner documents require audit step-up'] = static function (): void {
+    $dashboard = file_get_contents(dirname(__DIR__).'/src/Infrastructure/WordPressFinancialDashboardApi.php');
+    $documents = file_get_contents(dirname(__DIR__).'/src/Infrastructure/WordPressFinancialDocumentApi.php');
+    if (!is_string($dashboard) || !is_string($documents)) {
+        throw new RuntimeException('Financial endpoint source unavailable.');
+    }
+    assertTrue9(str_contains($dashboard, 'WordPressSensitiveActionGuard::can'), 'dashboard must use step-up guard');
+    assertTrue9(str_contains($dashboard, 'finance_dashboard_read'), 'dashboard step-up purpose missing');
+    assertTrue9(str_contains($documents, "'sabri_view_finance_audit'"), 'document override requires audit capability');
+    assertTrue9(str_contains($documents, 'financial_document_override'), 'document override step-up purpose missing');
+    assertSame9(false, str_contains($documents, "current_user_can('sabri_manage_finance')"), 'broad finance capability must not override document ownership');
 };
 
 $tests['admin source removes requester spoof and client internal reconciliation inputs'] = static function (): void {
