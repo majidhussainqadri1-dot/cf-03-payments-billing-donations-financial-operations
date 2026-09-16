@@ -64,7 +64,7 @@ final class WordPressPublicUi
             .'<p>'.esc_html($message).'</p>'
             .'<p id="sabri-cf03-donation-assurance" class="sabri-cf03-assurance">'.esc_html($assurance).'</p>'
             .$availability
-            .'<form class="sabri-cf03-donation-form" aria-describedby="sabri-cf03-donation-assurance" novalidate>'
+            .'<form class="sabri-cf03-donation-form" aria-describedby="sabri-cf03-donation-assurance" aria-busy="false" novalidate>'
             .'<fieldset class="sabri-cf03-amounts"'.($collectionEnabled ? '' : ' disabled').'><legend>'
             .esc_html__('Choose a suggested amount or enter a custom amount; nothing is preselected.', 'sabri-cf03-finance').'</legend>'
             .$options.'</fieldset>'
@@ -89,11 +89,11 @@ final class WordPressPublicUi
             return '<section class="sabri-cf03-card" dir="auto"><h2>'.esc_html__('Donation History and Receipts', 'sabri-cf03-finance').'</h2><p>'
                 .esc_html__('Please sign in to view your private one-time donations, receipts and refund status.', 'sabri-cf03-finance').'</p></section>';
         }
-        return '<section class="sabri-cf03-card sabri-cf03-billing" dir="auto"><h2>'
+        return '<section class="sabri-cf03-card sabri-cf03-billing" dir="auto" aria-labelledby="sabri-cf03-billing-title"><h2 id="sabri-cf03-billing-title">'
             .'<ion-icon name="receipt-outline" aria-hidden="true"></ion-icon> '.esc_html__('Donation History and Receipts', 'sabri-cf03-finance').'</h2>'
-            .'<button type="button" data-sabri-cf03-load-billing><ion-icon name="refresh-outline" aria-hidden="true"></ion-icon> '
+            .'<button type="button" data-sabri-cf03-load-billing aria-controls="sabri-cf03-billing-results"><ion-icon name="refresh-outline" aria-hidden="true"></ion-icon> '
             .esc_html__('Load my records', 'sabri-cf03-finance').'</button>'
-            .'<div class="sabri-cf03-billing-results" role="region" aria-live="polite" aria-atomic="false"></div></section>';
+            .'<div id="sabri-cf03-billing-results" class="sabri-cf03-billing-results" role="region" aria-labelledby="sabri-cf03-billing-title" aria-live="polite" aria-atomic="false" aria-busy="false"></div></section>';
     }
 
     public static function transparency(): string
