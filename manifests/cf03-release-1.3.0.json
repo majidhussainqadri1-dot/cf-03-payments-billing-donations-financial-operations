@@ -4,8 +4,10 @@
   "schema": "4.0.0",
   "historical_base_schema": "2.0.0",
   "active_canonical_table_count": 27,
-  "status": "new-governing-plans-source-candidate-runtime-fail-closed",
-  "governing_plans": [
+  "status": "historical-superseded-source-candidate",
+  "superseded_by": "1.4.0-rc.2",
+  "superseded_schema_by": "4.0.1",
+  "historical_governing_plans": [
     "SSH-PMP-2026-v3.0",
     "CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0"
   ],
@@ -50,6 +52,7 @@
     "global_mutation_body_guard": true,
     "donation_no_access_event": true
   },
+  "active_runtime": false,
   "live_collection_enabled": false,
   "live_delivery_enabled": false,
   "external_gates_pending": [
@@ -62,5 +65,6 @@
     "browser-mobile-rtl-accessibility-performance",
     "backup-restore-rollback-drill",
     "founder-live-approval"
-  ]
+  ],
+  "note": "Historical evidence only. Current source carrier is 1.4.0-rc.2 with schema 4.0.1; this manifest must never be used as current release identity."
 }
