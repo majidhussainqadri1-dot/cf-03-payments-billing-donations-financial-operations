@@ -44,6 +44,14 @@ use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
 use Sabri\CF03\Infrastructure\WordPressSensitiveActionGuard;
 use Sabri\CF03\Support\InvariantViolation;
 
+final class TestIncidentStore9 implements IncidentStateStore
+{
+    /** @param array<string,mixed> $state */
+    public function __construct(private array $state) {}
+    public function get(): array { return $this->state; }
+    public function save(array $state): void { $this->state = $state; }
+}
+
 $tests = [];
 
 $tests['period reopen uses persisted authenticated requester and two distinct actors'] = static function (): void {
@@ -83,8 +91,7 @@ $tests['incident recovery proposal is persisted and cannot be approved by reques
     $repo = new MemoryFinancialRepository();
     $audit = new FinancialAuditService($repo);
     $declaredAt = new DateTimeImmutable('2026-09-16T04:00:00+00:00');
-    $state = normalIncident9();
-    $state = array_replace($state, [
+    $state = array_replace(normalIncident9(), [
         'state' => 'contained',
         'incident_id' => 'incident.900',
         'severity' => 2,
@@ -231,14 +238,6 @@ function normalIncident9(): array
         'declared_at' => null, 'declared_by' => null, 'recovered_at' => null, 'recovered_by' => null,
         'resolution_evidence_ref' => null, 'record_version' => 1,
     ];
-}
-
-final class TestIncidentStore9 implements IncidentStateStore
-{
-    /** @param array<string,mixed> $state */
-    public function __construct(private array $state) {}
-    public function get(): array { return $this->state; }
-    public function save(array $state): void { $this->state = $state; }
 }
 
 function expectInvariant9(callable $operation): void
