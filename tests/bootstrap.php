@@ -40,5 +40,38 @@ if (in_array($cf03Script, CF03_HISTORICAL_TEST_SUITES, true)) {
     exit(0);
 }
 
-require_once dirname(__DIR__) . '/src/Autoloader.php';
-\Sabri\CF03\Autoloader::register(dirname(__DIR__) . '/src');
+$cf03Executable = array_map('basename', glob(__DIR__.'/run*.php') ?: []);
+sort($cf03Executable);
+$cf03Classified = array_values(array_unique(array_merge(CF03_ACTIVE_TEST_SUITES, CF03_HISTORICAL_TEST_SUITES)));
+sort($cf03Classified);
+if ($cf03Executable !== $cf03Classified) {
+    throw new RuntimeException('CF-03 executable test inventory contains an unclassified or missing suite.');
+}
+
+$cf03Root = dirname(__DIR__);
+$cf03Composer = json_decode((string)file_get_contents($cf03Root.'/composer.json'), true, 512, JSON_THROW_ON_ERROR);
+$cf03Commands = $cf03Composer['scripts']['test'] ?? [];
+if (!is_array($cf03Commands)) {
+    throw new RuntimeException('CF-03 Composer current acceptance script is invalid.');
+}
+$cf03CommandText = implode("\n", array_map('strval', $cf03Commands));
+foreach (CF03_ACTIVE_TEST_SUITES as $cf03Suite) {
+    if (!str_contains($cf03CommandText, 'php tests/'.$cf03Suite)) {
+        throw new RuntimeException('CF-03 Composer acceptance omits active suite '.$cf03Suite.'.');
+    }
+}
+foreach (CF03_HISTORICAL_TEST_SUITES as $cf03Suite) {
+    if (str_contains($cf03CommandText, 'php tests/'.$cf03Suite)) {
+        throw new RuntimeException('CF-03 Composer acceptance executes historical suite '.$cf03Suite.'.');
+    }
+}
+
+$cf03Workflow = (string)file_get_contents($cf03Root.'/.github/workflows/ci.yml');
+foreach (CF03_HISTORICAL_TEST_SUITES as $cf03Suite) {
+    if (str_contains($cf03Workflow, 'php tests/'.$cf03Suite)) {
+        throw new RuntimeException('CF-03 GitHub CI executes historical suite '.$cf03Suite.'.');
+    }
+}
+
+require_once $cf03Root . '/src/Autoloader.php';
+\Sabri\CF03\Autoloader::register($cf03Root . '/src');
