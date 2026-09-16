@@ -7,8 +7,16 @@
   "autoload": {"psr-4": {"Sabri\\CF03\\": "src/"}},
   "scripts": {
     "test": [
+      "php tests/run.php",
       "php tests/run-new-governing-plans.php",
       "php tests/run-new-governing-plans-adversarial.php",
+      "php tests/run-webhook-quarantine-recovery.php",
+      "php tests/run-donation-velocity-guard.php",
+      "php tests/run-round5-schema-retention.php",
+      "php tests/run-round6-privacy-secure-export.php",
+      "php tests/run-round7-concurrency-outbox.php",
+      "php tests/run-round8-runtime-delivery-gates.php",
+      "php tests/run-round9-governance-security.php",
       "php tests/run-future-expansion-40.php"
     ],
     "test:historical": [
