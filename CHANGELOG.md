@@ -7,7 +7,11 @@
 - Tightened WordPress role provisioning so the default Administrator receives only the non-specialist finance baseline instead of toxic reviewer/executor/import/close/audit combinations; specialist duties require explicit separately authorized role assignment and recent-auth assurance.
 - Made donation checkout velocity evidence scans complete across bounded pagination and fail closed when the actor-specific audit window cannot be proven safe.
 - Advanced the active schema identity to `4.0.1` so the retention action claim/evidence columns introduced during hardening have a new immutable migration/checksum identity rather than silently changing `4.0.0`.
-- Aligned plugin header/constants, manifests, Future40 carrier target, traceability, QA documentation and deterministic package naming with source candidate `1.4.0-rc.2` / schema `4.0.1`.
+- Aligned plugin header/constants, manifests, Future40 carrier target, traceability, security/architecture/migration documentation, QA documentation and deterministic package naming with source candidate `1.4.0-rc.2` / schema `4.0.1`.
+- Quarantined superseded executable test suites as historical provenance and added a machine-checked current-vs-historical test inventory so old monthly/recurring/schema-3.x assertions cannot masquerade as current acceptance truth.
+- Marked the former August Founder donation decision and Integrated/Harmonization v2.x plans explicitly historical/superseded, while preserving their audit provenance and preventing them from overriding the current one-time/seven-day governing plans.
+- Hardened incident-path fail-closed behavior, provider settlement duplicate-parity verification and operational queue ordering by lease/availability deadlines.
+- Improved public financial UI accessibility with named dynamic regions, exposed asynchronous busy states and correct custom-amount control styling.
 - Deterministic package target is `cf-03-payments-billing-donations-financial-operations-1.4.0-rc.2.zip`.
 - This release record is repository-source/automated-QA evidence only; it does not claim Staging acceptance, Live deployment, provider enablement or operational readiness.
 
