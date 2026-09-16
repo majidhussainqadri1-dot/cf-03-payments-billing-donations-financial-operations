@@ -9,9 +9,12 @@ use InvalidArgumentException;
 use JsonException;
 use Sabri\CF03\Contracts\QueryableFinancialRepository;
 use Sabri\CF03\Contracts\SecureArtifactStore;
+use Sabri\CF03\Domain\AuditEnvelope;
+use Sabri\CF03\Domain\AuditOutcome;
 use Sabri\CF03\Domain\FinancialDownloadGrant;
 use Sabri\CF03\Domain\SecureExportJob;
 use Sabri\CF03\Support\InvariantViolation;
+use Throwable;
 
 final class SecureExportService
 {
@@ -60,11 +63,24 @@ final class SecureExportService
             if (($existing['requester_ref'] ?? null) === $requesterReference
                 && ($existing['specification_hash'] ?? null) === $specificationHash
             ) {
+                $this->auditEvent('finance_export_requested', $requesterReference, $jobId, $requestedAt, [
+                    'specification_hash' => $specificationHash,
+                    'maximum_rows' => $maximumRows,
+                    'reused' => true,
+                ]);
                 return self::safe($existing) + ['reused' => true];
             }
             throw new InvariantViolation('Finance export identifier already exists with different scope.');
         }
-        $this->repository->insert('exports', $jobId, $record);
+
+        $this->repository->transaction(function () use ($jobId, $record, $requesterReference, $requestedAt, $specificationHash, $maximumRows): void {
+            $this->repository->insert('exports', $jobId, $record);
+            $this->auditEvent('finance_export_requested', $requesterReference, $jobId, $requestedAt, [
+                'specification_hash' => $specificationHash,
+                'maximum_rows' => $maximumRows,
+                'reused' => false,
+            ]);
+        });
         return self::safe($record) + ['reused' => false];
     }
 
@@ -77,7 +93,7 @@ final class SecureExportService
         }
         $job = $this->hydrate($record);
         $job->start($expectedVersion);
-        $running = $this->repository->compareAndSwap('exports', $jobId, $expectedVersion, static function (array $current) use ($now): array {
+        $this->repository->compareAndSwap('exports', $jobId, $expectedVersion, static function (array $current) use ($now): array {
             if (($current['state'] ?? null) !== 'queued') {
                 throw new InvariantViolation('Only queued finance exports may start.');
             }
@@ -86,6 +102,7 @@ final class SecureExportService
             return $current;
         });
 
+        $stored = null;
         try {
             $specification = (array)$record['specification_json'];
             $csv = $this->buildCsv($specification);
@@ -99,19 +116,40 @@ final class SecureExportService
                 throw new InvariantViolation('Secure artifact store returned inconsistent financial export evidence.');
             }
             $job->complete((string)$stored['sha256'], (string)$stored['object_ref'], $expectedVersion + 1);
-            $ready = $this->repository->compareAndSwap('exports', $jobId, $expectedVersion + 1, static function (array $current) use ($stored, $now): array {
-                if (($current['state'] ?? null) !== 'running') {
-                    throw new InvariantViolation('Finance export is not running.');
-                }
-                $current['state'] = 'ready';
-                $current['encrypted_object_ref'] = $stored['object_ref'];
-                $current['manifest_hash'] = $stored['sha256'];
-                $current['updated_at'] = $now;
-                return $current;
+            $ready = $this->repository->transaction(function () use ($jobId, $expectedVersion, $stored, $now, $operatorReference): array {
+                $ready = $this->repository->compareAndSwap('exports', $jobId, $expectedVersion + 1, static function (array $current) use ($stored, $now): array {
+                    if (($current['state'] ?? null) !== 'running') {
+                        throw new InvariantViolation('Finance export is not running.');
+                    }
+                    $current['state'] = 'ready';
+                    $current['encrypted_object_ref'] = $stored['object_ref'];
+                    $current['manifest_hash'] = $stored['sha256'];
+                    $current['updated_at'] = $now;
+                    return $current;
+                });
+                $this->auditEvent('finance_export_processed', $operatorReference, $jobId, $now, [
+                    'manifest_hash' => (string)$stored['sha256'],
+                    'size_bytes' => (int)$stored['size_bytes'],
+                ]);
+                return $ready;
             });
             return self::safe($ready) + ['size_bytes' => (int)$stored['size_bytes']];
-        } catch (\Throwable $error) {
-            $this->repository->updateWhere('exports', ['job_id' => $jobId, 'state' => 'running'], ['state' => 'failed', 'updated_at' => $now]);
+        } catch (Throwable $error) {
+            if (is_array($stored) && is_string($stored['object_ref'] ?? null) && $stored['object_ref'] !== '') {
+                try { $this->store->delete((string)$stored['object_ref']); } catch (Throwable) {}
+            }
+            $this->repository->updateWhere(
+                'exports',
+                ['job_id' => $jobId, 'state' => 'running'],
+                ['state' => 'failed', 'encrypted_object_ref' => null, 'updated_at' => $now]
+            );
+            try {
+                $this->auditEvent('finance_export_processing_failed', $operatorReference, $jobId, $now, [
+                    'error_class' => $error::class,
+                ], AuditOutcome::FAILED);
+            } catch (Throwable) {
+                // Preserve the primary processing failure. The failed state remains fail closed.
+            }
             throw $error;
         }
     }
@@ -138,11 +176,12 @@ final class SecureExportService
         if ($expires <= $now || $expires > $now->modify('+30 minutes')) {
             throw new InvariantViolation('Finance export download grant expiry is invalid.');
         }
-        return new FinancialDownloadGrant(
+
+        $grant = new FinancialDownloadGrant(
             'grant.export.'.substr(hash('sha256', $jobId.'|'.$requesterReference.'|'.$now->format(DATE_ATOM)), 0, 32),
             'finance_export',
             $jobId,
-            $financeOverride ? 'finance:authorized' : $requesterReference,
+            $requesterReference,
             'cf03-financial-export-'.preg_replace('/[^A-Za-z0-9._-]+/', '-', $jobId).'.csv',
             'text/csv',
             (string)$record['manifest_hash'],
@@ -151,6 +190,12 @@ final class SecureExportService
             true,
             (string)$record['encrypted_object_ref']
         );
+        $this->auditEvent('finance_export_granted', $requesterReference, $jobId, $now, [
+            'finance_override' => $financeOverride,
+            'expires_at' => $expires->format(DATE_ATOM),
+            'manifest_hash' => (string)$record['manifest_hash'],
+        ]);
+        return $grant;
     }
 
     /** @return array<string,mixed> */
@@ -163,16 +208,40 @@ final class SecureExportService
         if (!$financeOverride && (string)$record['requester_ref'] !== $requesterReference) {
             throw new InvariantViolation('Finance export does not belong to the requester.');
         }
-        if (is_string($record['encrypted_object_ref'] ?? null) && $record['encrypted_object_ref'] !== '') {
-            $this->store->delete((string)$record['encrypted_object_ref']);
+
+        $objectReference = is_string($record['encrypted_object_ref'] ?? null)
+            ? (string)$record['encrypted_object_ref']
+            : '';
+
+        if (($record['state'] ?? null) !== 'revoked') {
+            $record = $this->repository->compareAndSwap('exports', $jobId, $expectedVersion, static function (array $current) use ($now): array {
+                $current['state'] = 'revoked';
+                // Keep the object reference until physical deletion is confirmed. Grant logic
+                // rejects revoked state immediately, so this is safe and retryable.
+                $current['updated_at'] = $now;
+                return $current;
+            });
         }
-        $updated = $this->repository->compareAndSwap('exports', $jobId, $expectedVersion, static function (array $current) use ($now): array {
-            $current['state'] = 'revoked';
-            $current['encrypted_object_ref'] = null;
-            $current['updated_at'] = $now;
-            return $current;
-        });
-        return self::safe($updated);
+
+        if ($objectReference !== '') {
+            $this->store->delete($objectReference);
+            $cleared = $this->repository->updateWhere(
+                'exports',
+                ['job_id' => $jobId, 'state' => 'revoked', 'encrypted_object_ref' => $objectReference],
+                ['encrypted_object_ref' => null, 'updated_at' => $now]
+            );
+            if ($cleared !== 1) {
+                throw new InvariantViolation('Revoked finance export artifact deletion could not be durably acknowledged.');
+            }
+            $latest = $this->repository->get('exports', $jobId);
+            if ($latest !== null) { $record = $latest; }
+        }
+
+        $this->auditEvent('finance_export_revoked', $requesterReference, $jobId, $now, [
+            'finance_override' => $financeOverride,
+            'artifact_deleted' => $objectReference !== '',
+        ]);
+        return self::safe($record);
     }
 
     /** @param array<string,mixed> $specification */
@@ -337,6 +406,29 @@ final class SecureExportService
             'job_id', 'requester_ref', 'specification_hash', 'maximum_rows', 'state',
             'manifest_hash', 'expires_at', 'record_version', 'version', 'created_at', 'updated_at',
         ]));
+    }
+
+    /** @param array<string,mixed> $metadata */
+    private function auditEvent(
+        string $action,
+        string $actorReference,
+        string $jobId,
+        DateTimeImmutable $occurredAt,
+        array $metadata,
+        AuditOutcome $outcome = AuditOutcome::SUCCEEDED
+    ): void {
+        $this->audit->append(new AuditEnvelope(
+            'audit:export:'.substr(hash('sha256', $action.'|'.$jobId.'|'.$actorReference.'|'.$occurredAt->format(DATE_ATOM)), 0, 32),
+            $actorReference,
+            $action,
+            'finance_export',
+            $jobId,
+            'secure_finance_export',
+            $outcome,
+            $occurredAt,
+            'trace:export:'.substr(hash('sha256', $jobId), 0, 24),
+            $metadata
+        ));
     }
 
     private static function dateString(mixed $value): string
