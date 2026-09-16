@@ -16,7 +16,8 @@ final class DonationCheckoutService
     public function __construct(
         private readonly RuntimeConfiguration $configuration,
         private readonly DonationProviderRegistry $providers,
-        private readonly QueryableFinancialRepository $repository
+        private readonly QueryableFinancialRepository $repository,
+        private readonly ?DonationRequestVelocityGuard $velocityGuard = null
     ) {}
 
     /** @return array<string,mixed> */
@@ -41,6 +42,9 @@ final class DonationCheckoutService
         if ($existing !== null) {
             return $this->resumeClaim($existing, $requestHash, $draft, $providerCode);
         }
+
+        ($this->velocityGuard ?? new DonationRequestVelocityGuard($this->repository))
+            ->assertAllowed($draft->donorReference(), $draft->createdAt());
 
         $now = $draft->createdAt();
         $this->repository->insert('idempotency', $claimId, [
