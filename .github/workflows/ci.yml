@@ -38,6 +38,8 @@ jobs:
         run: php tests/run-round6-privacy-secure-export.php
       - name: Round 7 concurrency outbox regression
         run: php tests/run-round7-concurrency-outbox.php
+      - name: Round 8 runtime secure delivery regression
+        run: php tests/run-round8-runtime-delivery-gates.php
       - name: Future Expansion Pack 40 acceptance
         run: php tests/run-future-expansion-40.php
       - name: Validate manifests
@@ -86,6 +88,7 @@ jobs:
           grep -q 'finance_export_revoked' src/Application/SecureExportService.php
           grep -q 'expiredProcessingCandidates' src/Application/OutboxDispatcher.php
           grep -q 'Refund balance is a shared monetary invariant' src/Application/RefundWorkflowService.php
+          grep -q '\$this->assertFinancialMutationReady();' src/Application/RuntimeConfiguration.php
           grep -q 'SHOW INDEX FROM' src/Infrastructure/WordPressSchemaInstaller.php
           grep -q 'snapshot_hash char(64) NOT NULL' src/Persistence/TransparencySchema.php
           test -f manifests/cf03-release-1.4.0.json
@@ -97,6 +100,7 @@ jobs:
           test -f tests/run-round5-schema-retention.php
           test -f tests/run-round6-privacy-secure-export.php
           test -f tests/run-round7-concurrency-outbox.php
+          test -f tests/run-round8-runtime-delivery-gates.php
       - name: Future 40 constitutional assertions
         run: |
           grep -q "AMENDMENT_ID = 'CF03-FUTURE40-2026-09-08'" src/Application/FutureExpansionRegistry.php
