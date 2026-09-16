@@ -120,6 +120,12 @@ final class RuntimeConfiguration
 
     public function assertDownloadDeliveryReady(): void
     {
+        // Secure delivery is a sensitive financial operation. It must never become
+        // independently activatable from the broader CF-03 activation envelope.
+        // This keeps staged/production delivery bound to the same Founder, legal,
+        // security, rollback, cross-file and operational evidence as other finance
+        // operations, while still allowing sandbox/live states once those gates pass.
+        $this->assertFinancialMutationReady();
         if (!$this->downloadDeliveryEnabled
             || ($this->gates['secure_delivery'] ?? false) !== true
             || ($this->gates['file24_assurance'] ?? false) !== true
