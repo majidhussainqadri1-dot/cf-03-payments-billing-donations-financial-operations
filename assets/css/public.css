@@ -9,9 +9,10 @@
 .sabri-cf03-field{align-items:stretch;flex-direction:column}
 .sabri-cf03-assurance{padding:.75rem;border-inline-start:4px solid var(--sabri-green);background:#f3faf5}
 .sabri-cf03-card input,.sabri-cf03-card button{font:inherit;min-height:44px}
-.sabri-cf03-card input[type=number]{padding:.65rem;border:1px solid #66736a;border-radius:8px}
+.sabri-cf03-card input[name=custom_amount]{padding:.65rem;border:1px solid #66736a;border-radius:8px}
 .sabri-cf03-card button{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border:0;border-radius:10px;padding:.65rem 1rem;background:var(--sabri-green);color:#fff;font-weight:700;cursor:pointer}
-.sabri-cf03-card button:disabled{cursor:wait;opacity:.68}
+.sabri-cf03-card button:disabled{cursor:not-allowed;opacity:.68}
+.sabri-cf03-donation-form[data-submitting="1"] button:disabled{cursor:progress}
 .sabri-cf03-card button:focus-visible,.sabri-cf03-card a:focus-visible,.sabri-cf03-card input:focus-visible,.sabri-cf03-card fieldset:focus-within{outline:3px solid currentColor;outline-offset:3px}
 .sabri-cf03-status:not(:empty){padding:.75rem;border-inline-start:4px solid var(--sabri-green);background:#f3faf5}
 .sabri-cf03-record{border-block-start:1px solid #ddd;padding-block:.75rem}
