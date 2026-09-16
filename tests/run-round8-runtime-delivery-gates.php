@@ -82,6 +82,27 @@ $tests['live secure delivery additionally requires founder live approval']=stati
     $approved->assertDownloadDeliveryReady();
 };
 
+$tests['public billing region has an accessible name and async busy state']=static function():void{
+    $ui=(string)file_get_contents(__DIR__.'/../src/Infrastructure/WordPressPublicUi.php');
+    foreach(['aria-labelledby="sabri-cf03-billing-title"','aria-controls="sabri-cf03-billing-results"','aria-busy="false"'] as $needle){
+        if(!str_contains($ui,$needle)){throw new RuntimeException('Missing public accessibility contract: '.$needle);}
+    }
+    $js=(string)file_get_contents(__DIR__.'/../assets/js/public.js');
+    foreach(["setAttribute('aria-busy','true')","setAttribute('aria-busy','false')"] as $needle){
+        if(!str_contains($js,$needle)){throw new RuntimeException('Missing async accessibility state: '.$needle);}
+    }
+};
+
+$tests['custom amount input receives the intended visible field styling']=static function():void{
+    $css=(string)file_get_contents(__DIR__.'/../assets/css/public.css');
+    if(!str_contains($css,'input[name=custom_amount]')){
+        throw new RuntimeException('Custom amount text input is not targeted by the financial field style.');
+    }
+    if(str_contains($css,'input[type=number]')){
+        throw new RuntimeException('Stale number-input selector does not match the current text amount control.');
+    }
+};
+
 $failures=0;
 foreach($tests as$name=>$test){
     try{$test();fwrite(STDOUT,"PASS: {$name}\n");}
