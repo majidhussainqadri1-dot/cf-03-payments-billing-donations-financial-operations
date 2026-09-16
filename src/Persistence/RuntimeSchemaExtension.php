@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sabri\CF03\Persistence;
 
 use RuntimeException;
+use Sabri\CF03\Support\InvariantViolation;
 
 final class RuntimeSchemaExtension
 {
@@ -17,6 +18,20 @@ final class RuntimeSchemaExtension
         'usage_authorizations',
         'usage_facts',
     ];
+
+    public static function isRetiredCollection(string $collection): bool
+    {
+        return in_array($collection, self::RETIRED_TABLES, true);
+    }
+
+    public static function assertActiveCollection(string $collection): void
+    {
+        if (self::isRetiredCollection($collection)) {
+            throw new InvariantViolation(
+                'Retired financial collection is not addressable as active CF-03 v4 runtime truth: '.$collection.'.'
+            );
+        }
+    }
 
     /** @param array<string,string> $tables @return array<string,string> */
     public static function apply(array $tables): array
