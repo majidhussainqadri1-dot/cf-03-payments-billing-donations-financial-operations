@@ -2,8 +2,8 @@
 
 Canonical conditional financial owner for the **Sabri Social Homeopathy Platform**.
 
-> **Current source candidate:** `1.4.0-rc.1`  
-> **Active canonical schema:** `4.0.0` — 27 active canonical tables  
+> **Current source candidate:** `1.4.0-rc.2`  
+> **Active canonical schema:** `4.0.1` — 27 active canonical tables  
 > **Future Expansion Pack:** `CF03-FUTURE40-2026-09-08` — written-plan amendment `v1.1`, dated `2026-09-09`; 40 coded future capabilities, all fail closed by default  
 > **Runtime:** fail closed. Live collection and financial file delivery are not claimed.
 
@@ -33,13 +33,13 @@ Earlier CF-03 v2.0, recovered-directive, 30-day/monthly-donation, paid-AI and su
 
 ## Implemented current source scope
 
-The current source implements one-time donation intent/checkout, signed webhook settlement, immutable balanced ledger, receipts, refunds, disputes/chargebacks, settlements, reconciliation, financial transparency, privacy/export controls, fail-closed incident/runtime controls, deterministic packaging and active schema `4.0.0`.
+The current source implements one-time donation intent/checkout, signed webhook settlement, immutable balanced ledger, receipts, refunds, disputes/chargebacks, settlements, reconciliation, financial transparency, privacy/export controls, fail-closed incident/runtime controls, deterministic packaging and active schema `4.0.1`.
 
-The active schema intentionally excludes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from current runtime truth. Compatibility tombstones fail closed for stale recurring/subscription/paid-AI callers.
+The active schema intentionally excludes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from current runtime truth. Compatibility tombstones fail closed for stale recurring/subscription/paid-AI callers. Schema `4.0.1` gives the retention action claim/evidence fields introduced during hardening their own immutable migration identity instead of silently changing the earlier `4.0.0` checksum.
 
 ## Future Expansion Pack — 40 coded facilities
 
-Release `1.4.0-rc.1` implements the repository contracts for exactly **40** future capabilities under amendment `CF03-FUTURE40-2026-09-08` / written-plan amendment `v1.1` dated **2026-09-09**.
+Release `1.4.0-rc.2` carries the repository contracts for exactly **40** future capabilities under amendment `CF03-FUTURE40-2026-09-08` / written-plan amendment `v1.1` dated **2026-09-09**. The Future40 amendment itself was introduced in `1.4.0-rc.1`; `rc.2` is the hardened successor candidate.
 
 They are grouped as:
 
@@ -79,14 +79,12 @@ Source-code presence is not operational acceptance. Donation checkout remains un
 ## Current QA commands
 
 ```bash
-php tests/run-new-governing-plans.php
-php tests/run-new-governing-plans-adversarial.php
-php tests/run-future-expansion-40.php
+composer test
 find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
 bash scripts/build-package.sh
 ```
 
-Current acceptance requires all current-governing-plan suites, the Future Expansion Pack 40 suite, PHP syntax scan, JSON validation, credential-material scan and deterministic package parity on the same exact candidate HEAD.
+Current acceptance requires all current-governing-plan suites, webhook/velocity/schema/privacy/concurrency/runtime/governance regressions, the Future Expansion Pack 40 suite, PHP syntax scan, JSON validation, credential-material scan and deterministic package parity on the same exact candidate HEAD.
 
 ## External acceptance boundary
 
