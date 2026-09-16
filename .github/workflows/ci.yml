@@ -32,6 +32,8 @@ jobs:
         run: php tests/run-webhook-quarantine-recovery.php
       - name: Donation mutation velocity regression
         run: php tests/run-donation-velocity-guard.php
+      - name: Round 5 schema retention restore regression
+        run: php tests/run-round5-schema-retention.php
       - name: Future Expansion Pack 40 acceptance
         run: php tests/run-future-expansion-40.php
       - name: Validate manifests
@@ -70,6 +72,10 @@ jobs:
           ! grep -q 'monthly_consent' assets/js/public.js
           grep -q 'MAX_MUTATION_BYTES = 65536' src/Infrastructure/WordPressRequestGuard.php
           grep -q 'IMMUTABLE_COLLECTIONS' src/Infrastructure/WordPressFinancialRepository.php
+          grep -q 'assertActiveCollection' src/Infrastructure/WordPressFinancialRepository.php
+          grep -q 'ORDER BY {$idField} ASC' src/Infrastructure/WordPressFinancialRepository.php
+          grep -q 'recordMigrationEvidence' src/Plugin.php
+          grep -q 'action_state' src/Application/RetentionOperationsService.php
           grep -q 'SHOW INDEX FROM' src/Infrastructure/WordPressSchemaInstaller.php
           grep -q 'snapshot_hash char(64) NOT NULL' src/Persistence/TransparencySchema.php
           test -f manifests/cf03-release-1.4.0.json
@@ -78,6 +84,7 @@ jobs:
           test -f tests/run-future-expansion-40.php
           test -f tests/run-webhook-quarantine-recovery.php
           test -f tests/run-donation-velocity-guard.php
+          test -f tests/run-round5-schema-retention.php
       - name: Future 40 constitutional assertions
         run: |
           grep -q "AMENDMENT_ID = 'CF03-FUTURE40-2026-09-08'" src/Application/FutureExpansionRegistry.php
