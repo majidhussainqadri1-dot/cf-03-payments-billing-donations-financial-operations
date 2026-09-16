@@ -13,6 +13,8 @@
 - Active schema remains `4.0.0` / 27 canonical tables because this release adds future contracts and deterministic services without activating new persistent financial truth.
 - Added `manifests/cf03-future-expansion-40.json`, `manifests/cf03-release-1.4.0.json`, the written plan appendix and `tests/run-future-expansion-40.php`.
 - Deterministic package target changed to `cf-03-payments-billing-donations-financial-operations-1.4.0-rc.1.zip`.
+- Completed a ten-round repository hardening cycle on this same source candidate covering governing-plan traceability, out-of-order webhook recovery, donation mutation velocity, schema/restore/retention safety, privacy and secure exports, refund concurrency, outbox lease recovery, runtime secure-delivery gates, recent-auth/separation-of-duties controls and atomic incident-recovery handling.
+- The hardening cycle is repository-source/automated-QA evidence only: it does not claim Staging acceptance, Live deployment, provider enablement or operational readiness.
 
 ## 1.3.0-rc.1 — New Governing Plans: Free Core + One-Time Donation Reconciliation
 
