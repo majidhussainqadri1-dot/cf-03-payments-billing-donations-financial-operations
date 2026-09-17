@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0-rc.3 — Final Adversarial Identity and Manifest Hardening
+
+- Completed the tenth sequential review only after the full round had finished, then corrected all defects found in that round before final retest.
+- Advanced active schema identity to `4.0.2` because the generic repository addresses several collections through one canonical ID while older SQL enforced only provider/scope-composite uniqueness. Schema `4.0.2` now enforces globally unique single-column repository identifiers for customer references, provider events, settlement batches, settlement lines and idempotency claims.
+- Added an executable regression that reflects the repository collection registry against `CompleteSchema` and fails if any active `get(collection, id)` identity is not backed by a unique single-column database key.
+- Corrected Future40 machine-readable release truth by separating the immutable original amendment target/baseline from the current hardened carrier and active schema.
+- Aligned plugin header/constants, upgrade fallback identity, current manifests, traceability, Future40 registry, deterministic package naming and CI with source candidate `1.4.0-rc.3` / schema `4.0.2`.
+- No Future40 capability was activated; current free-core, one-time-donation-only, 0%-commission and donor/non-donor parity law is unchanged.
+- Deterministic package target is `cf-03-payments-billing-donations-financial-operations-1.4.0-rc.3.zip`.
+- This release record is repository-source/automated-QA evidence only; it does not claim Staging acceptance, Live deployment, provider enablement or operational readiness.
+
 ## 1.4.0-rc.2 — Ten-Round Hardening and Migration Identity
 
 - Carried forward the Future Expansion Pack 40 amendment without changing current financial law or activating any future capability.
