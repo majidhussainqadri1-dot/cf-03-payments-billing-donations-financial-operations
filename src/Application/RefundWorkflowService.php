@@ -63,40 +63,73 @@ final class RefundWorkflowService
         if (!in_array((string)($intent['state'] ?? ''), ['captured', 'settled'], true)) {
             throw new InvariantViolation('Payment is not in a refundable state.');
         }
-        $paid = new Money((int)$intent['amount_minor'], (string)$intent['currency']);
-        if ($amount->currency() !== $paid->currency()) {
-            throw new InvariantViolation('Refund currency does not match the payment.');
+        $intentVersion = (int)($intent['version'] ?? $intent['record_version'] ?? 0);
+        if ($intentVersion < 1) {
+            throw new InvariantViolation('Refundable payment version is missing.');
         }
 
-        $committed = $this->committedRefundAmount($intentId, $paid->currency());
-        if ($committed > $paid->minorUnits()) {
-            throw new InvariantViolation('Committed refunds already exceed the original payment.');
-        }
-        $remaining = $paid->minorUnits() - $committed;
-        if ($amount->minorUnits() > $remaining) {
-            throw new InvariantViolation('Refund exceeds the remaining payment balance.');
-        }
+        return $this->repository->transaction(function () use (
+            $refundId,
+            $intentId,
+            $requesterReference,
+            $amount,
+            $reasonCode,
+            $now,
+            $intentVersion
+        ): array {
+            // Serialize reservations through the canonical payment-intent version. Two
+            // concurrent refund IDs that observed the same balance cannot both reserve it:
+            // only one compare-and-swap can advance the intent version.
+            $lockedIntent = $this->repository->compareAndSwap(
+                'intents',
+                $intentId,
+                $intentVersion,
+                static function (array $current) use ($requesterReference, $amount): array {
+                    if ((string)($current['actor_ref'] ?? '') !== $requesterReference
+                        || !in_array((string)($current['state'] ?? ''), ['captured', 'settled'], true)
+                    ) {
+                        throw new InvariantViolation('Payment ceased to be refundable before balance reservation.');
+                    }
+                    if (($current['currency'] ?? null) !== $amount->currency()
+                        || (int)($current['amount_minor'] ?? 0) <= 0
+                    ) {
+                        throw new InvariantViolation('Refund terms do not match the canonical payment.');
+                    }
+                    return $current;
+                }
+            );
 
-        $record = [
-            'refund_id' => $refundId,
-            'intent_id' => $intentId,
-            'amount_minor' => $amount->minorUnits(),
-            'currency' => $amount->currency(),
-            'refundable_balance_minor' => $remaining,
-            'requester_ref' => $requesterReference,
-            'reviewer_ref' => null,
-            'executor_ref' => null,
-            'reason' => $reasonCode,
-            'decision_reason' => null,
-            'policy_version' => 'refund.current.v1',
-            'state' => 'requested',
-            'provider_ref' => null,
-            'record_version' => 1,
-            'requested_at' => $now,
-            'updated_at' => $now,
-        ];
-        $this->repository->insert('refunds', $refundId, $record);
-        return $this->safe($record) + ['reused' => false];
+            $paid = new Money((int)$lockedIntent['amount_minor'], (string)$lockedIntent['currency']);
+            $committed = $this->committedRefundAmount($intentId, $paid->currency());
+            if ($committed > $paid->minorUnits()) {
+                throw new InvariantViolation('Committed refunds already exceed the original payment.');
+            }
+            $remaining = $paid->minorUnits() - $committed;
+            if ($amount->minorUnits() > $remaining) {
+                throw new InvariantViolation('Refund exceeds the remaining payment balance.');
+            }
+
+            $record = [
+                'refund_id' => $refundId,
+                'intent_id' => $intentId,
+                'amount_minor' => $amount->minorUnits(),
+                'currency' => $amount->currency(),
+                'refundable_balance_minor' => $remaining,
+                'requester_ref' => $requesterReference,
+                'reviewer_ref' => null,
+                'executor_ref' => null,
+                'reason' => $reasonCode,
+                'decision_reason' => null,
+                'policy_version' => 'refund.current.v1',
+                'state' => 'requested',
+                'provider_ref' => null,
+                'record_version' => 1,
+                'requested_at' => $now,
+                'updated_at' => $now,
+            ];
+            $this->repository->insert('refunds', $refundId, $record);
+            return $this->safe($record) + ['reused' => false];
+        });
     }
 
     /** @return array<string,mixed> */
