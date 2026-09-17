@@ -7,6 +7,7 @@ require_once __DIR__.'/bootstrap.php';
 use Sabri\CF03\Application\CatalogDisclosureService;
 use Sabri\CF03\Application\FinancialAuditService;
 use Sabri\CF03\Application\ProviderRegistry;
+use Sabri\CF03\Application\ReconciliationEngine;
 use Sabri\CF03\Application\RefundWorkflowService;
 use Sabri\CF03\Application\RiskOperationsService;
 use Sabri\CF03\Application\RuntimeConfiguration;
@@ -16,6 +17,7 @@ use Sabri\CF03\Domain\FinancialProduct;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\PlatformFinancialPolicy;
 use Sabri\CF03\Domain\ProductKind;
+use Sabri\CF03\Domain\SettlementBatch;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
 use Sabri\CF03\Support\InvariantViolation;
 
@@ -128,6 +130,39 @@ $tests['R46 chargeback provider must match the canonical payment provider'] = st
     $service = new RiskOperationsService($repo, RuntimeConfiguration::preparing());
     reviewThrows(static fn () => $service->openChargeback($case, $opened), InvariantViolation::class);
     reviewSame(null, $repo->get('chargebacks', 'chargeback.001'));
+};
+
+$tests['R47 reconciliation rejects non-canonical financial line semantics'] = static function (): void {
+    $settledAt = new DateTimeImmutable('2026-09-17T00:00:00Z');
+    $batch = new SettlementBatch(
+        'batch.review47.001',
+        'provider.review47',
+        new Money(1000, 'USD'),
+        new Money(0, 'USD'),
+        new Money(0, 'USD'),
+        new Money(1000, 'USD'),
+        $settledAt,
+        str_repeat('a', 64),
+        [[
+            'reference' => 'payment.review47.001',
+            'type' => 'payment',
+            'amount_minor' => 1000,
+            'currency' => 'USD',
+        ]]
+    );
+    $engine = new ReconciliationEngine();
+    reviewThrows(static fn () => $engine->reconcile($batch, [[
+        'reference' => 'payment.review47.001',
+        'type' => 'payout',
+        'amount_minor' => 1000,
+        'currency' => 'USD',
+    ]]), InvalidArgumentException::class);
+    reviewThrows(static fn () => $engine->reconcile($batch, [[
+        'reference' => 'x',
+        'type' => 'payment',
+        'amount_minor' => 1000,
+        'currency' => 'USD',
+    ]]), InvalidArgumentException::class);
 };
 
 $failures = 0;
