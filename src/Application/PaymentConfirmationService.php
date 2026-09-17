@@ -41,10 +41,14 @@ final class PaymentConfirmationService
         if ($evidence->eventType() !== 'payment.settled') {
             throw new InvariantViolation('Payment settlement requires a normalized trusted payment.settled provider event.');
         }
+        // Hosted checkout expiry stops new user interaction, but an already-authorized
+        // provider payment can settle asynchronously. Keep this legacy confirmation
+        // path identical to WebhookIngestionService: reject pre-intent evidence and
+        // settlements more than 24 hours after hosted-intent expiry.
         if ($evidence->occurredAt() < $intent->createdAt()
-            || $evidence->occurredAt() >= $intent->expiresAt()
+            || $evidence->occurredAt() > $intent->expiresAt()->modify('+24 hours')
         ) {
-            throw new InvariantViolation('Provider settlement must occur within the payment-intent validity window.');
+            throw new InvariantViolation('Provider settlement is outside the trusted payment-intent settlement window.');
         }
         if ($at < $evidence->occurredAt()) {
             throw new InvariantViolation('Settlement recording time cannot precede the provider event occurrence time.');
