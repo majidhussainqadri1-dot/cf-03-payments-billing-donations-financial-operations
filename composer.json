@@ -17,6 +17,7 @@
       "php tests/run-round7-concurrency-outbox.php",
       "php tests/run-round8-runtime-delivery-gates.php",
       "php tests/run-round9-governance-security.php",
+      "php tests/run-round10-identity-manifest.php",
       "php tests/run-release-inventory.php",
       "php tests/run-future-expansion-40.php"
     ],
