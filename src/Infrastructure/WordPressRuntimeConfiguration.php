@@ -52,17 +52,18 @@ final class WordPressRuntimeConfiguration
             $activation = EvidenceBoundActivationGate::forWordPress()->evaluate();
             $gates['founder_change_control'] = ($gates['founder_change_control'] ?? false)
                 && $activation->approved();
-            // Receipt identity is not a self-asserted boolean. It is derived from
-            // validated legal-name/country configuration so checkout cannot open
-            // when CF-03 would be unable to issue the required immutable receipt.
-            $gates['receipt_identity'] = WordPressFinancialReceiptIdentity::isConfigured();
+            $receiptIdentity = WordPressFinancialReceiptIdentity::load();
+            // Receipt identity is derived from validated legal-name/country data;
+            // callers cannot turn the gate on with a bare boolean.
+            $gates['receipt_identity'] = true;
 
             return new RuntimeConfiguration(
                 $mode,
                 $provider,
                 $gates,
                 self::strictBoolean(get_option(self::OPTION_WEBHOOK, false)) === true,
-                self::strictBoolean(get_option(self::OPTION_DOWNLOAD, false)) === true
+                self::strictBoolean(get_option(self::OPTION_DOWNLOAD, false)) === true,
+                $receiptIdentity
             );
         } catch (Throwable) {
             return RuntimeConfiguration::preparing();
