@@ -36,44 +36,23 @@ final class RuntimeSchemaExtension
     /** @param array<string,string> $tables @return array<string,string> */
     public static function apply(array $tables): array
     {
-        // These tables are intentionally removed from the active canonical schema.
-        // Existing installations may retain physical legacy tables for bounded
-        // audit/reconciliation retention, but CF-03 v4 must not create or address
-        // them as active runtime truth.
         foreach (self::RETIRED_TABLES as $retired) {
             unset($tables[$retired]);
         }
 
         foreach ([
-            'customer_refs',
-            'provider_events',
-            'ledger_entries',
-            'reconciliation_exceptions',
-            'exports',
-            'settlements',
-            'settlement_lines',
-            'finance_periods',
-            'audit',
-            'adjustments',
-            'retention_ledger',
-            'transparency_snapshots',
-            'donations',
-            'intents',
-            'refunds',
-            'chargebacks',
-            'idempotency',
-            'outbox',
+            'customer_refs','provider_events','ledger_entries','reconciliation_exceptions','exports',
+            'settlements','settlement_lines','finance_periods','audit','adjustments','retention_ledger',
+            'transparency_snapshots','donations','intents','refunds','chargebacks','idempotency','outbox',
         ] as $required) {
             if (!isset($tables[$required])) {
                 throw new RuntimeException('CF-03 runtime schema extension is missing '.$required.'.');
             }
         }
 
-        // Generic repository get()/insert() APIs address these collections by one
-        // canonical identifier. Historical SQL allowed provider/scope-composite
-        // uniqueness only, which could make get(collection, id) ambiguous after a
-        // provider change or cross-scope reuse. v4.0.2 makes the repository identity
-        // contract explicit and fail-closed at the database boundary.
+        // Every active collection addressed by repository get(collection,id) must
+        // have a database-enforced unique single-column identity. Composite provider,
+        // scope, batch or record-type keys may remain as additional integrity keys.
         $tables['customer_refs'] = self::replaceOnce(
             $tables['customer_refs'],
             'UNIQUE KEY provider_customer(provider,provider_customer_ref)',
@@ -98,6 +77,11 @@ final class RuntimeSchemaExtension
             $tables['idempotency'],
             'UNIQUE KEY scope_key(scope,idempotency_key)',
             'UNIQUE KEY scope_key(scope,idempotency_key), UNIQUE KEY idempotency_key(idempotency_key)'
+        );
+        $tables['retention_ledger'] = self::replaceOnce(
+            $tables['retention_ledger'],
+            'UNIQUE KEY record_once(record_type,record_ref)',
+            'UNIQUE KEY record_once(record_type,record_ref), UNIQUE KEY record_ref(record_ref)'
         );
 
         $tables['ledger_entries'] = self::replaceOnce(
@@ -141,8 +125,6 @@ final class RuntimeSchemaExtension
             "legal_hold_ref varchar(191) NULL, action_state varchar(32) NOT NULL DEFAULT 'pending', action_evidence_ref varchar(191) NULL, actioned_at datetime(6) NULL"
         );
 
-        // Legacy recurring columns remain nullable/false in the donation table for
-        // backward-readable historical rows only. New code always writes false/null.
         return $tables;
     }
 
