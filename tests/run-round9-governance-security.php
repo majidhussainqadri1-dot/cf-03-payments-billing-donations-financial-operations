@@ -38,6 +38,7 @@ use Sabri\CF03\Application\RuntimeConfiguration;
 use Sabri\CF03\Application\SettlementOperationsService;
 use Sabri\CF03\Contracts\IncidentStateStore;
 use Sabri\CF03\Domain\DonationServiceState;
+use Sabri\CF03\Domain\FinancialReceiptIdentity;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\SettlementBatch;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
@@ -255,6 +256,7 @@ function fullRuntime9(): RuntimeConfiguration
     return new RuntimeConfiguration(DonationServiceState::SANDBOX, 'provider.test', [
         'founder_change_control' => true,
         'legal_tax_accounting' => true,
+        'receipt_identity' => true,
         'pci_scope' => true,
         'provider_selected' => true,
         'independent_security' => true,
@@ -266,7 +268,7 @@ function fullRuntime9(): RuntimeConfiguration
         'operations_ready' => true,
         'webhook_endpoint' => true,
         'secure_delivery' => true,
-    ], true, true);
+    ], true, true, new FinancialReceiptIdentity('Sabri Social Homeopathy Platform', 'PK'));
 }
 
 function settlement9(string $id, string $provider, string $reference, int $amount, DateTimeImmutable $at): SettlementBatch
