@@ -15,7 +15,6 @@ final class RuntimeConfiguration
     private const FINANCIAL_GATES = [
         'founder_change_control',
         'legal_tax_accounting',
-        'receipt_identity',
         'pci_scope',
         'provider_selected',
         'independent_security',
@@ -61,7 +60,7 @@ final class RuntimeConfiguration
 
     public function receiptIdentity(): FinancialReceiptIdentity
     {
-        if ($this->receiptIdentity === null) {
+        if (($this->gates['receipt_identity'] ?? false) !== true || $this->receiptIdentity === null) {
             throw new InvariantViolation('Validated financial receipt legal identity is unavailable.');
         }
         return $this->receiptIdentity;
@@ -72,12 +71,6 @@ final class RuntimeConfiguration
     {
         $missing = [];
         foreach (self::FINANCIAL_GATES as $gate) {
-            if ($gate === 'receipt_identity') {
-                if (($this->gates[$gate] ?? false) !== true || $this->receiptIdentity === null) {
-                    $missing[] = $gate;
-                }
-                continue;
-            }
             if (($this->gates[$gate] ?? false) !== true) {
                 $missing[] = $gate;
             }
@@ -97,6 +90,9 @@ final class RuntimeConfiguration
     public function missingDonationCollectionGates(): array
     {
         $missing = $this->missingFinancialGates();
+        if (($this->gates['receipt_identity'] ?? false) !== true || $this->receiptIdentity === null) {
+            $missing[] = 'receipt_identity';
+        }
         if (!$this->webhookEnabled) {
             $missing[] = 'webhook_enabled';
         }
@@ -125,7 +121,7 @@ final class RuntimeConfiguration
         $missing = $this->missingDonationCollectionGates();
         if ($missing !== []) {
             throw new InvariantViolation(
-                'CF-03 donation collection requires complete financial and webhook readiness: '.implode(', ', $missing).'.'
+                'CF-03 donation collection requires complete financial, receipt-identity and webhook readiness: '.implode(', ', $missing).'.'
             );
         }
     }
