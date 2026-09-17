@@ -2,7 +2,7 @@
 
 ## Current status
 
-CF-03 retains `Schema::VERSION = 2.0.0` as historical base provenance. The **active canonical schema is `4.0.1` with 27 canonical tables**. Runtime remains fail closed until external activation gates pass; repository-source presence alone does not activate collection.
+CF-03 retains `Schema::VERSION = 2.0.0` as historical base provenance. The **active canonical schema is `4.0.2` with 27 canonical tables**. Runtime remains fail closed until external activation gates pass; repository-source presence alone does not activate collection.
 
 ## Active schema law
 
@@ -25,11 +25,15 @@ The WordPress upgrade path remains fail closed. It acquires a bounded lock, reco
 
 Installer verification covers safe physical table identifiers, table presence, required columns, primary/secondary indexes, index ordering, uniqueness semantics and current migration invariants. Missing or malformed canonical structure blocks readiness.
 
-## Schema 4.0/4.0.1 migration law
+## Schema 4.0 / 4.0.1 / 4.0.2 migration law
 
 Schema 4.0 retires recurring-consent, paid-subscription and paid-AI-usage stores from the active canonical schema while preserving historical evidence non-destructively when required. Active product seeding is restricted to `donation.one_time`; legacy recurring/monthly products are retired rather than silently revived.
 
 Schema `4.0.1` advances the migration/checksum identity for the retention ledger action-claim/evidence fields (`action_state` and `action_evidence_ref`). This prevents changed persistent SQL from being represented by the already-issued `4.0.0` identity.
+
+Schema `4.0.2` aligns database uniqueness with the generic repository's single canonical identifier contract. The following repository-addressed identifiers now have explicit unique single-column database keys in addition to any useful provider/scope composite key: `provider_customer_ref`, `provider_event_id`, `batch_id`, `line_ref` and `idempotency_key`. This prevents a provider switch, settlement batch overlap, settlement-line overlap or scope reuse from making `get(collection, id)` ambiguous.
+
+An existing installation containing duplicate values that violate a new `4.0.2` single-ID unique constraint must **fail closed** during migration. The system must not silently discard, merge or choose between conflicting financial evidence. Such rows require an evidence-preserving reconciliation/migration decision before the schema can be accepted.
 
 ## Transparency migration
 
@@ -42,7 +46,7 @@ Transparency evidence remains aggregate, period/currency scoped and hash-bound. 
 - JSON is restricted to approved bounded metadata/snapshot fields.
 - Posted financial evidence is immutable; corrections use reversal/adjustment transactions.
 - Provider events/outbox facts are idempotent and replay-safe.
-- Canonical reads detect duplicate identities.
+- Canonical reads detect duplicate identities, while schema `4.0.2` prevents new ambiguous single-ID rows at the database boundary.
 - Nested transaction failures mark the outer transaction rollback-only.
 - Updates/deletes require non-empty schema-backed criteria.
 - Exports/privacy reads are bounded and paginated.
