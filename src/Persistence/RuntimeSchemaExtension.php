@@ -9,7 +9,7 @@ use Sabri\CF03\Support\InvariantViolation;
 
 final class RuntimeSchemaExtension
 {
-    public const VERSION = '4.0.1';
+    public const VERSION = '4.0.2';
 
     /** @var list<string> */
     public const RETIRED_TABLES = [
@@ -45,10 +45,13 @@ final class RuntimeSchemaExtension
         }
 
         foreach ([
+            'customer_refs',
+            'provider_events',
             'ledger_entries',
             'reconciliation_exceptions',
             'exports',
             'settlements',
+            'settlement_lines',
             'finance_periods',
             'audit',
             'adjustments',
@@ -58,12 +61,44 @@ final class RuntimeSchemaExtension
             'intents',
             'refunds',
             'chargebacks',
+            'idempotency',
             'outbox',
         ] as $required) {
             if (!isset($tables[$required])) {
                 throw new RuntimeException('CF-03 runtime schema extension is missing '.$required.'.');
             }
         }
+
+        // Generic repository get()/insert() APIs address these collections by one
+        // canonical identifier. Historical SQL allowed provider/scope-composite
+        // uniqueness only, which could make get(collection, id) ambiguous after a
+        // provider change or cross-scope reuse. v4.0.2 makes the repository identity
+        // contract explicit and fail-closed at the database boundary.
+        $tables['customer_refs'] = self::replaceOnce(
+            $tables['customer_refs'],
+            'UNIQUE KEY provider_customer(provider,provider_customer_ref)',
+            'UNIQUE KEY provider_customer(provider,provider_customer_ref), UNIQUE KEY provider_customer_ref(provider_customer_ref)'
+        );
+        $tables['provider_events'] = self::replaceOnce(
+            $tables['provider_events'],
+            'UNIQUE KEY provider_event(provider,provider_event_id)',
+            'UNIQUE KEY provider_event(provider,provider_event_id), UNIQUE KEY provider_event_id(provider_event_id)'
+        );
+        $tables['settlements'] = self::replaceOnce(
+            $tables['settlements'],
+            'UNIQUE KEY provider_batch(provider,batch_id)',
+            'UNIQUE KEY provider_batch(provider,batch_id), UNIQUE KEY batch_id(batch_id)'
+        );
+        $tables['settlement_lines'] = self::replaceOnce(
+            $tables['settlement_lines'],
+            'KEY line_ref(line_ref)',
+            'UNIQUE KEY line_ref(line_ref)'
+        );
+        $tables['idempotency'] = self::replaceOnce(
+            $tables['idempotency'],
+            'UNIQUE KEY scope_key(scope,idempotency_key)',
+            'UNIQUE KEY scope_key(scope,idempotency_key), UNIQUE KEY idempotency_key(idempotency_key)'
+        );
 
         $tables['ledger_entries'] = self::replaceOnce(
             $tables['ledger_entries'],
