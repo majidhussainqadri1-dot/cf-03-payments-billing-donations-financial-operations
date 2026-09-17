@@ -76,15 +76,16 @@ final class ReconciliationEngine
                 || ! is_string($line['type'])
                 || ! is_int($line['amount_minor'])
                 || ! is_string($line['currency'])
+                || preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $line['reference']) !== 1
+                || ! in_array($line['type'], ['payment', 'fee', 'refund'], true)
                 || $line['amount_minor'] < 0
-                || preg_match('/^[A-Z]{3}$/', strtoupper($line['currency'])) !== 1
+                || preg_match('/^[A-Z]{3}$/', $line['currency']) !== 1
             ) {
                 throw new InvalidArgumentException('Invalid ' . $source . ' reconciliation line.');
             }
             if (isset($indexed[$line['reference']])) {
                 throw new InvalidArgumentException('Duplicate ' . $source . ' reconciliation reference.');
             }
-            $line['currency'] = strtoupper($line['currency']);
             $indexed[$line['reference']] = $line;
         }
         return $indexed;
