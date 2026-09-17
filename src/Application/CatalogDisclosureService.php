@@ -33,7 +33,14 @@ final class CatalogDisclosureService
             'kind' => ProductKind::DONATION->value,
             'lifecycle_state' => 'active',
         ], 50) as $record) {
-            if (($record['product_id'] ?? null) !== self::ONE_TIME_DONATION_PRODUCT) { continue; }
+            if (($record['product_id'] ?? null) !== self::ONE_TIME_DONATION_PRODUCT
+                || ($record['kind'] ?? null) !== ProductKind::DONATION->value
+                || ($record['billing_type'] ?? null) !== BillingType::VOLUNTARY->value
+                || ($record['entitlement_mapping'] ?? null) !== null
+                || ($record['policy_version'] ?? null) !== PlatformFinancialPolicy::DECISION_ID
+            ) {
+                continue;
+            }
             $donations[] = [
                 'product_id' => self::ONE_TIME_DONATION_PRODUCT,
                 'donation_type' => 'one_time',
@@ -120,9 +127,14 @@ final class CatalogDisclosureService
         ];
         $existing = $this->repository->get('products', $product->productId());
         if ($existing !== null) {
-            if (($existing['lifecycle_state'] ?? null) === 'active'
-                && ($existing['policy_version'] ?? null) === PlatformFinancialPolicy::DECISION_ID
-                && ($existing['billing_type'] ?? null) === BillingType::VOLUNTARY->value
+            if (($existing['product_id'] ?? null) === $record['product_id']
+                && ($existing['kind'] ?? null) === $record['kind']
+                && ($existing['billing_type'] ?? null) === $record['billing_type']
+                && ($existing['owner'] ?? null) === $record['owner']
+                && ($existing['entitlement_mapping'] ?? null) === null
+                && ($existing['lifecycle_state'] ?? null) === 'active'
+                && ($existing['policy_version'] ?? null) === $record['policy_version']
+                && ($existing['approval_ref'] ?? null) === $record['approval_ref']
             ) {
                 return $existing + ['reused' => true];
             }
