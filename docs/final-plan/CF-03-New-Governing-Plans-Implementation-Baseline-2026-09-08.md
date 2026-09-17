@@ -1,7 +1,7 @@
 # CF-03 New Governing Plans — Implementation Baseline
 
-**Current hardened source candidate:** `1.4.0-rc.2`  
-**Active schema:** `4.0.1`  
+**Current hardened source candidate:** `1.4.0-rc.3`  
+**Active schema:** `4.0.2`  
 **Original baseline date:** 2026-09-08  
 **Current written-plan amendment:** `v1.1`, dated 2026-09-09, amendment ID `CF03-FUTURE40-2026-09-08`  
 **Status:** repository source implementation baseline; runtime collection remains fail closed.
@@ -53,14 +53,14 @@ The former active recurring/subscription model is not merely hidden in UI. Activ
 
 ### Active schema
 
-`RuntimeSchemaExtension::VERSION = 4.0.1` and the active canonical schema excludes:
+`RuntimeSchemaExtension::VERSION = 4.0.2` and the active canonical schema excludes:
 
 - `recurring_consents`;
 - `subscriptions`;
 - `usage_authorizations`;
 - `usage_facts`.
 
-Schema `4.0.1` gives the retention action claim/evidence columns their own migration/checksum identity. Existing installations may physically retain legacy tables during bounded migration/audit retention. Their presence does not make them active truth and no current route/service may create a new recurring mandate or paid-AI/subscription state.
+Schema `4.0.1` gave the retention action claim/evidence columns their own migration/checksum identity. Schema `4.0.2` additionally enforces the single canonical identifiers used by the generic repository for customer references, provider events, settlement batches, settlement lines and idempotency claims. Existing installations may physically retain legacy retired tables during bounded migration/audit retention. Their presence does not make them active truth and no current route/service may create a new recurring mandate or paid-AI/subscription state. If pre-existing rows conflict with a new `4.0.2` unique identity constraint, upgrade must fail closed for explicit reconciliation rather than silently alter financial evidence.
 
 ### Provider/webhook and accounting safety
 
