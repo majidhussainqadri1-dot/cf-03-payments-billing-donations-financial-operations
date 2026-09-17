@@ -190,8 +190,6 @@ $tests['won zero-fee chargeback reaches ledger-adjusted state without empty ledg
         $now,
         $deadline
     ), $now);
-    // The WordPress repository persists datetimes as SQL strings. Normalize the
-    // in-memory fixture to that persistence representation before exercising hydration.
     $repo->updateWhere('chargebacks', ['case_id' => 'case.won.zero'], [
         'created_at' => $now->format(DATE_ATOM),
         'response_deadline' => $deadline->format(DATE_ATOM),
@@ -202,7 +200,8 @@ $tests['won zero-fee chargeback reaches ledger-adjusted state without empty ledg
     $risk->recordChargebackOutcome('case.won.zero', true, Money::zero('USD'), $now->modify('+3 hours'), 3);
     $result = $risk->adjustChargebackLedger('case.won.zero', 'user:risk.operator', $now->modify('+4 hours'), 4);
     assertSame12('ledger_adjusted', $result['state'] ?? null, 'won chargeback state');
-    assertSame12(null, $result['transaction_id'] ?? 'missing', 'zero-impact chargeback ledger transaction');
+    assertTrue12(array_key_exists('transaction_id', $result), 'zero-impact chargeback response must explicitly carry transaction_id');
+    assertSame12(null, $result['transaction_id'], 'zero-impact chargeback ledger transaction');
     assertSame12(0, count($repo->all('ledger_transactions')), 'empty ledger transaction must not be created');
 };
 
