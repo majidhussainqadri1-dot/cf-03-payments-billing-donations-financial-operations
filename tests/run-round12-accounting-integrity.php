@@ -252,8 +252,8 @@ $tests['legacy confirmation and active webhook chronology share twenty-four-hour
     ]);
     $service = new PaymentConfirmationService(
         static fn (callable $work) => $work(),
-        static fn (LedgerTransaction $transaction): null => null,
-        static fn ($event): null => null
+        static fn (LedgerTransaction $transaction) => null,
+        static fn ($event) => null
     );
     $service->confirmSettled($intent, $evidence, $ledger, 1, $occurred, 'event.financial.confirm.async');
     assertSame12(PaymentIntentState::SETTLED, $intent->state(), 'async settlement state');
