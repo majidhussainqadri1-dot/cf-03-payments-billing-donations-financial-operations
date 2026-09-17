@@ -11,6 +11,7 @@ use Sabri\CF03\Application\RuntimeConfiguration;
 use Sabri\CF03\Application\WebhookIngestionService;
 use Sabri\CF03\Contracts\PaymentProvider;
 use Sabri\CF03\Domain\DonationServiceState;
+use Sabri\CF03\Domain\FinancialReceiptIdentity;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\ProviderEvidence;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
@@ -50,13 +51,21 @@ $evidence = new ProviderEvidence(
 
 $gates = [];
 foreach ([
-    'founder_change_control', 'legal_tax_accounting', 'pci_scope', 'provider_selected',
+    'founder_change_control', 'legal_tax_accounting', 'receipt_identity', 'pci_scope', 'provider_selected',
     'independent_security', 'staging_acceptance', 'rollback_evidence', 'file00_contract',
     'file20_file25_contract', 'file24_assurance', 'operations_ready', 'webhook_endpoint',
 ] as $gate) {
     $gates[$gate] = true;
 }
-$config = new RuntimeConfiguration(DonationServiceState::SANDBOX, 'provider.test', $gates, true, false);
+$receiptIdentity = new FinancialReceiptIdentity('Sabri Social Homeopathy Platform', 'PK');
+$config = new RuntimeConfiguration(
+    DonationServiceState::SANDBOX,
+    'provider.test',
+    $gates,
+    true,
+    false,
+    $receiptIdentity
+);
 $repo = new MemoryFinancialRepository();
 $service = new WebhookIngestionService($config, new ProviderRegistry([new QuarantineRecoveryProvider($evidence)]), $repo);
 
@@ -109,13 +118,20 @@ assertSameValue('settled', $repo->get('donations', $donationId)['state']);
 assertSameValue('processed', $repo->get('provider_events', $eventId)['status']);
 assertSameValue(2, count($repo->all('ledger_entries')));
 assertSameValue(1, count($repo->all('invoices')));
+$invoice = $repo->all('invoices')[0];
+assertSameValue('Sabri Social Homeopathy Platform', $invoice['snapshot_json']['seller_legal_name'] ?? null);
+assertSameValue('PK', $invoice['snapshot_json']['seller_country'] ?? null);
+assertSameValue(
+    hash('sha256', json_encode($invoice['snapshot_json'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)),
+    $invoice['snapshot_hash']
+);
 
 $third = $service->ingest('provider.test', $rawBody, [], $now->getTimestamp());
 assertSameValue('duplicate_acknowledged', $third['status']);
 assertSameValue(2, count($repo->all('ledger_entries')));
 assertSameValue(1, count($repo->all('invoices')));
 
-fwrite(STDOUT, "PASS: quarantined missing-intent webhook safely recovers exactly once\n");
+fwrite(STDOUT, "PASS: quarantined missing-intent webhook safely recovers exactly once with immutable receipt identity\n");
 
 function assertSameValue(mixed $expected, mixed $actual): void
 {
