@@ -11,6 +11,7 @@ final class WordPressPrivacy
 {
     /** @var list<string> */
     public const EXPORT_GROUPS = ['receipts', 'donations', 'subscriptions', 'refunds', 'exports'];
+    private const ERASURE_PAGE_SIZE = 100;
 
     /** @param array<string,string> $exporters @return array<string,array<string,mixed>> */
     public static function exporters(array $exporters): array
@@ -93,6 +94,9 @@ final class WordPressPrivacy
         if ($user === null) {
             return ['items_removed' => false, 'items_retained' => false, 'messages' => [], 'done' => true];
         }
+        if ($page < 1) {
+            $page = 1;
+        }
 
         $removed = false;
         $messages = [];
@@ -110,15 +114,22 @@ final class WordPressPrivacy
             }
         }
 
+        $acknowledgmentCount = 0;
         try {
             $repo = WordPressFinancialRepository::fromWordPress();
             $actor = 'user:'.(int)$user->ID;
-            $acknowledgments = $repo->find('donor_acknowledgments', ['donor_ref' => $actor], 500);
+            $acknowledgments = $repo->page(
+                'donor_acknowledgments',
+                ['donor_ref' => $actor],
+                self::ERASURE_PAGE_SIZE,
+                ($page - 1) * self::ERASURE_PAGE_SIZE
+            );
+            $acknowledgmentCount = count($acknowledgments);
             foreach ($acknowledgments as $record) {
                 if (($record['state'] ?? null) !== 'active') {
                     continue;
                 }
-                $repo->updateWhere(
+                $updated = $repo->updateWhere(
                     'donor_acknowledgments',
                     ['acknowledgment_id' => $record['acknowledgment_id'], 'state' => 'active'],
                     [
@@ -127,10 +138,14 @@ final class WordPressPrivacy
                         'revoked_at' => new \DateTimeImmutable('now'),
                     ]
                 );
+                if ($updated !== 1) {
+                    throw new \RuntimeException('Donor acknowledgment changed during privacy erasure.');
+                }
                 $removed = true;
             }
         } catch (Throwable) {
             $messages[] = 'Optional public donor acknowledgment could not be revalidated during this erasure request; contact financial support for manual completion.';
+            $acknowledgmentCount = 0;
         }
 
         $messages[] = 'Financial ledgers, receipts, settlements, audit evidence and legally required accounting records are retained under the applicable retention policy; optional prompt state and public acknowledgment are removed or revoked.';
@@ -138,7 +153,7 @@ final class WordPressPrivacy
             'items_removed' => $removed,
             'items_retained' => true,
             'messages' => $messages,
-            'done' => true,
+            'done' => $acknowledgmentCount < self::ERASURE_PAGE_SIZE,
         ];
     }
 
