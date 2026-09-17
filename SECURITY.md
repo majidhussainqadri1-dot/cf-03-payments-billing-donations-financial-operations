@@ -6,7 +6,7 @@ Report suspected vulnerabilities privately to the repository owner. Never place 
 
 ## Current status
 
-CF-03 `1.4.0-rc.2` is the current repository-source candidate, with active canonical schema `4.0.1` and the fail-closed Future Expansion Pack 40 amendment `CF03-FUTURE40-2026-09-08`. It does **not** contain proof of an approved Live provider, Live credentials, deployed schema parity, enabled collection configuration or production activation. Real collection remains fail closed until separately evidenced.
+CF-03 `1.4.0-rc.3` is the current repository-source candidate, with active canonical schema `4.0.2` and the fail-closed Future Expansion Pack 40 amendment `CF03-FUTURE40-2026-09-08`. It does **not** contain proof of an approved Live provider, Live credentials, deployed schema parity, enabled collection configuration or production activation. Real collection remains fail closed until separately evidenced.
 
 Current governing law is `SSH-PMP-2026-v3.0` plus the CF-03 Conditional Complete Master Plan 2026 v1.0 and current approved repository amendments, including the written-plan amendment v1.1 / `CF03-FUTURE40-2026-09-08`. Core platform services, structured education and Sabri Classical Homeopathy AI remain free; Clinic/Marketplace platform commission is 0%; public donation is voluntary one-time only; recurring donation and automatic repeat charge are unavailable; donation creates no access, entitlement, ranking, verification, visibility, publishing, moderation, support, clinic, marketplace, education, AI or clinical advantage.
 
@@ -26,7 +26,7 @@ Current governing law is `SSH-PMP-2026-v3.0` plus the CF-03 Conditional Complete
 - Idempotency header and body values must match where both are supplied; actor/scope/request identity remains stable across retries.
 - Provider session creation is durably checkpointed before canonical local financial records are committed.
 - Nested financial transaction failures make the outer transaction rollback-only.
-- Canonical financial reads fail closed on duplicate identities.
+- Canonical financial reads fail closed on duplicate identities; schema `4.0.2` additionally enforces unique single-column database identities for repository-addressed customer references, provider events, settlement batches, settlement lines and idempotency claims.
 - Posted ledger/audit evidence is immutable; corrections use balanced reversals or controlled adjustments.
 - Transparency JSON is accepted/delivered only after source-hash and snapshot-hash verification.
 - File 00 remains the entitlement authority; CF-03 never grants or revokes platform access.
