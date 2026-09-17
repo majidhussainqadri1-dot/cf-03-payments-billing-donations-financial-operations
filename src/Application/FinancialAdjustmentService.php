@@ -26,6 +26,8 @@ final class FinancialAdjustmentService
         'expense.financial_adjustment',
         'equity.founder_adjustment',
     ];
+    private const LEDGER_SCAN_PAGE_SIZE = 200;
+    private const MAX_LEDGER_ENTRIES_PER_TRANSACTION = 1000;
 
     public function __construct(
         private readonly QueryableFinancialRepository $repository,
@@ -50,6 +52,7 @@ final class FinancialAdjustmentService
         if ($this->repository->get('ledger_transactions', $sourceTransactionId) === null) {
             throw new InvariantViolation('Financial adjustment source transaction was not found.');
         }
+        $this->assertSourceLedgerCurrency($sourceTransactionId, $amount->currency());
 
         $adjustment = new FinancialAdjustment(
             $adjustmentId,
@@ -65,11 +68,15 @@ final class FinancialAdjustmentService
             if (($existing['source_transaction_id'] ?? null) === $sourceTransactionId
                 && (int)($existing['amount_minor'] ?? -1) === $amount->minorUnits()
                 && ($existing['currency'] ?? null) === $amount->currency()
+                && ($existing['debit_account'] ?? null) === $debitAccount
+                && ($existing['credit_account'] ?? null) === $creditAccount
+                && ($existing['reason_code'] ?? null) === $reasonCode
                 && ($existing['evidence_hash'] ?? null) === $evidenceSha256
+                && ($existing['requester_ref'] ?? null) === $requesterReference
             ) {
                 return self::safe($existing) + ['reused' => true];
             }
-            throw new InvariantViolation('Financial adjustment identifier already exists with different evidence.');
+            throw new InvariantViolation('Financial adjustment identifier already exists with different immutable terms or evidence.');
         }
 
         $record = [
@@ -89,7 +96,26 @@ final class FinancialAdjustmentService
             'requested_at' => $requestedAt,
             'executed_at' => null,
         ];
-        $this->repository->insert('adjustments', $adjustmentId, $record);
+
+        $this->repository->transaction(function () use ($record, $adjustment, $requestedAt): void {
+            $this->repository->insert('adjustments', $adjustment->adjustmentId(), $record);
+            $this->audit->append(new AuditEnvelope(
+                'audit:adjustment-request:'.substr(hash('sha256', $adjustment->adjustmentId().'|'.$requestedAt->format(DATE_ATOM)), 0, 32),
+                $adjustment->requesterReference(),
+                'adjustment_requested',
+                'financial_adjustment',
+                $adjustment->adjustmentId(),
+                'financial_correction_control',
+                AuditOutcome::SUCCEEDED,
+                $requestedAt,
+                'trace:adjustment:'.substr(hash('sha256', $adjustment->adjustmentId()), 0, 24),
+                [
+                    'source_transaction_id' => $adjustment->sourceTransactionId(),
+                    'evidence_sha256' => $adjustment->evidenceSha256(),
+                    'reason_code' => $adjustment->reasonCode(),
+                ]
+            ));
+        });
         return self::safe($record) + ['version' => 1, 'reused' => false];
     }
 
@@ -107,29 +133,38 @@ final class FinancialAdjustmentService
             ? $adjustment->approve($reviewerReference, $expectedVersion)
             : $adjustment->reject($reviewerReference, $expectedVersion);
 
-        $updated = $this->repository->compareAndSwap(
-            'adjustments',
+        return $this->repository->transaction(function () use (
             $adjustmentId,
             $expectedVersion,
-            static function (array $current) use ($adjustment): array {
-                $current['state'] = $adjustment->state();
-                $current['approver_ref'] = $adjustment->approverReference();
-                return $current;
-            }
-        );
-        $this->audit->append(new AuditEnvelope(
-            'audit:adjustment-decision:'.substr(hash('sha256', $adjustmentId.'|'.$decidedAt->format(DATE_ATOM)), 0, 32),
+            $adjustment,
             $reviewerReference,
-            $approve ? 'adjustment_approved' : 'adjustment_rejected',
-            'financial_adjustment',
-            $adjustmentId,
-            'financial_correction_control',
-            AuditOutcome::SUCCEEDED,
-            $decidedAt,
-            'trace:adjustment:'.substr(hash('sha256', $adjustmentId), 0, 24),
-            ['evidence_sha256' => $adjustment->evidenceSha256(), 'reason_code' => $adjustment->reasonCode()]
-        ));
-        return self::safe($updated);
+            $approve,
+            $decidedAt
+        ): array {
+            $updated = $this->repository->compareAndSwap(
+                'adjustments',
+                $adjustmentId,
+                $expectedVersion,
+                static function (array $current) use ($adjustment): array {
+                    $current['state'] = $adjustment->state();
+                    $current['approver_ref'] = $adjustment->approverReference();
+                    return $current;
+                }
+            );
+            $this->audit->append(new AuditEnvelope(
+                'audit:adjustment-decision:'.substr(hash('sha256', $adjustmentId.'|'.$decidedAt->format(DATE_ATOM)), 0, 32),
+                $reviewerReference,
+                $approve ? 'adjustment_approved' : 'adjustment_rejected',
+                'financial_adjustment',
+                $adjustmentId,
+                'financial_correction_control',
+                AuditOutcome::SUCCEEDED,
+                $decidedAt,
+                'trace:adjustment:'.substr(hash('sha256', $adjustmentId), 0, 24),
+                ['evidence_sha256' => $adjustment->evidenceSha256(), 'reason_code' => $adjustment->reasonCode()]
+            ));
+            return self::safe($updated);
+        });
     }
 
     /** @return array<string,mixed> */
@@ -151,6 +186,7 @@ final class FinancialAdjustmentService
         if ($source === null) {
             throw new InvariantViolation('Financial adjustment source transaction disappeared.');
         }
+        $this->assertSourceLedgerCurrency($adjustment->sourceTransactionId(), $adjustment->amount()->currency());
 
         $sourcePeriod = (string)($source['period_id'] ?? '');
         $targetPeriod = $sourcePeriod;
@@ -216,24 +252,23 @@ final class FinancialAdjustmentService
                 }
             );
             $this->outbox($adjustment, $transactionId, $traceId, $executedAt);
+            $this->audit->append(new AuditEnvelope(
+                'audit:adjustment-execution:'.substr(hash('sha256', $adjustment->adjustmentId().'|'.$executedAt->format(DATE_ATOM)), 0, 32),
+                $executorReference,
+                'adjustment_executed',
+                'financial_adjustment',
+                $adjustment->adjustmentId(),
+                'immutable_ledger_correction',
+                AuditOutcome::SUCCEEDED,
+                $executedAt,
+                $traceId,
+                [
+                    'source_transaction_id' => $adjustment->sourceTransactionId(),
+                    'transaction_id' => $transactionId,
+                    'evidence_sha256' => $adjustment->evidenceSha256(),
+                ]
+            ));
         });
-
-        $this->audit->append(new AuditEnvelope(
-            'audit:adjustment-execution:'.substr(hash('sha256', $adjustmentId.'|'.$executedAt->format(DATE_ATOM)), 0, 32),
-            $executorReference,
-            'adjustment_executed',
-            'financial_adjustment',
-            $adjustmentId,
-            'immutable_ledger_correction',
-            AuditOutcome::SUCCEEDED,
-            $executedAt,
-            $traceId,
-            [
-                'source_transaction_id' => $adjustment->sourceTransactionId(),
-                'transaction_id' => $transactionId,
-                'evidence_sha256' => $adjustment->evidenceSha256(),
-            ]
-        ));
 
         $updated = $this->repository->get('adjustments', $adjustmentId);
         if ($updated === null) {
@@ -272,6 +307,50 @@ final class FinancialAdjustmentService
             is_string($record['executor_ref'] ?? null) ? $record['executor_ref'] : null,
             (int)$record['version']
         );
+    }
+
+    private function assertSourceLedgerCurrency(string $transactionId, string $expectedCurrency): void
+    {
+        $totals = [];
+        $offset = 0;
+        $entryCount = 0;
+        do {
+            $page = $this->repository->page(
+                'ledger_entries',
+                ['transaction_id' => $transactionId],
+                self::LEDGER_SCAN_PAGE_SIZE,
+                $offset
+            );
+            foreach ($page as $entry) {
+                $direction = (string)($entry['direction'] ?? '');
+                $currency = (string)($entry['currency'] ?? '');
+                $amount = (int)($entry['amount_minor'] ?? 0);
+                if (!in_array($direction, ['debit', 'credit'], true)
+                    || preg_match('/^[A-Z]{3}$/', $currency) !== 1
+                    || $amount <= 0
+                ) {
+                    throw new InvariantViolation('Financial adjustment source ledger contains invalid entry evidence.');
+                }
+                $totals[$currency] ??= ['debit' => 0, 'credit' => 0];
+                if ($amount > PHP_INT_MAX - $totals[$currency][$direction]) {
+                    throw new InvariantViolation('Financial adjustment source ledger totals overflow.');
+                }
+                $totals[$currency][$direction] += $amount;
+                $entryCount++;
+            }
+            $offset += count($page);
+            if ($offset > self::MAX_LEDGER_ENTRIES_PER_TRANSACTION) {
+                throw new InvariantViolation('Financial adjustment source ledger exceeds the safe automatic verification bound.');
+            }
+        } while (count($page) === self::LEDGER_SCAN_PAGE_SIZE);
+
+        if ($entryCount < 2 || count($totals) !== 1 || !isset($totals[$expectedCurrency])) {
+            throw new InvariantViolation('Financial adjustment currency does not match one canonical source-ledger currency.');
+        }
+        $total = $totals[$expectedCurrency];
+        if ($total['debit'] !== $total['credit']) {
+            throw new InvariantViolation('Financial adjustment source ledger is not balanced.');
+        }
     }
 
     private function entry(
