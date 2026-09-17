@@ -72,9 +72,6 @@ final class WebhookIngestionService
             ];
         }
 
-        // A signed provider event can never revive the superseded recurring,
-        // subscription or paid-core models. Legacy intents are preserved as evidence
-        // but are quarantined for manual/provider reconciliation without money-state mutation.
         if (($intent['product_id'] ?? null) !== 'donation.one_time') {
             $this->recordEvent(
                 $evidence,
@@ -335,7 +332,7 @@ final class WebhookIngestionService
         ]);
 
         $invoiceId = 'invoice.'.substr(hash('sha256', $intentId), 0, 40);
-        $snapshot = [
+        $snapshot = $this->configuration->receiptIdentity()->toSnapshot() + [
             'kind' => 'donation_receipt',
             'donation_type' => 'one_time',
             'recurring' => false,
