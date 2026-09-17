@@ -77,6 +77,9 @@ final class RiskOperationsService
         if ($intent === null || !in_array((string)$intent['state'], ['captured','settled','disputed'], true)) {
             throw new InvariantViolation('Chargeback requires a captured, settled or disputed canonical payment intent.');
         }
+        if (($intent['provider'] ?? null) !== $case->providerCode()) {
+            throw new InvariantViolation('Chargeback provider does not match the canonical payment provider.');
+        }
         if ((string)$intent['currency'] !== $case->disputedAmount()->currency()
             || (int)$intent['amount_minor'] < $case->disputedAmount()->minorUnits()
         ) {
