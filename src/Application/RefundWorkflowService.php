@@ -17,6 +17,8 @@ final class RefundWorkflowService
     private const BALANCE_COMMITTING_STATES = [
         'requested', 'approved', 'provider_pending', 'uncertain', 'succeeded', 'closed',
     ];
+    private const REFUND_SCAN_PAGE_SIZE = 200;
+    private const MAX_REFUNDS_PER_INTENT = 10000;
 
     public function __construct(
         private readonly QueryableFinancialRepository $repository,
@@ -93,8 +95,6 @@ final class RefundWorkflowService
                 }
             );
 
-            // A racing request may have committed while this request waited for the
-            // intent fence. Exact duplicate IDs remain idempotent after the fence.
             $racedExisting = $this->repository->get('refunds', $refundId);
             if ($racedExisting !== null) {
                 if (($racedExisting['intent_id'] ?? null) === $intentId
@@ -114,7 +114,7 @@ final class RefundWorkflowService
             }
 
             $committed = 0;
-            foreach ($this->repository->find('refunds', ['intent_id' => $intentId], 500) as $prior) {
+            foreach ($this->refundsForIntent($intentId) as $prior) {
                 if (!in_array((string)($prior['state'] ?? ''), self::BALANCE_COMMITTING_STATES, true)) {
                     continue;
                 }
@@ -285,7 +285,6 @@ final class RefundWorkflowService
                     'updated_at' => $now,
                 ]);
             } catch (Throwable) {
-                // Preserve the original provider/confirmation failure; reconciliation must inspect the durable checkpoint.
             }
             throw $error;
         }
@@ -309,6 +308,29 @@ final class RefundWorkflowService
             }
         );
         return $this->safe($updated);
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function refundsForIntent(string $intentId): array
+    {
+        $rows = [];
+        $offset = 0;
+        do {
+            $page = $this->repository->page(
+                'refunds',
+                ['intent_id' => $intentId],
+                self::REFUND_SCAN_PAGE_SIZE,
+                $offset
+            );
+            foreach ($page as $record) {
+                $rows[] = $record;
+            }
+            $offset += count($page);
+            if ($offset > self::MAX_REFUNDS_PER_INTENT) {
+                throw new InvariantViolation('Refund history exceeds the safe automatic balance-reconciliation bound.');
+            }
+        } while (count($page) === self::REFUND_SCAN_PAGE_SIZE);
+        return $rows;
     }
 
     /** @param array<string,mixed> $record @return array<string,mixed> */
