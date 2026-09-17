@@ -5,8 +5,8 @@
   "historical_base_schema": "2.0.0",
   "active_canonical_table_count": 27,
   "status": "historical-superseded-source-candidate",
-  "superseded_by": "1.4.0-rc.2",
-  "superseded_schema_by": "4.0.1",
+  "superseded_by": "1.4.0-rc.3",
+  "superseded_schema_by": "4.0.2",
   "historical_governing_plans": [
     "SSH-PMP-2026-v3.0",
     "CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0"
@@ -66,5 +66,5 @@
     "backup-restore-rollback-drill",
     "founder-live-approval"
   ],
-  "note": "Historical evidence only. Current source carrier is 1.4.0-rc.2 with schema 4.0.1; this manifest must never be used as current release identity."
+  "note": "Historical evidence only. Current source carrier is 1.4.0-rc.3 with schema 4.0.2; this manifest must never be used as current release identity."
 }
