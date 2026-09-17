@@ -36,13 +36,13 @@ It does not own identity/entitlement (File 00), global shell/download manager (F
 
 ## Persistence architecture
 
-`Schema::VERSION = 2.0.0` is historical provenance. The **active canonical schema is `4.0.1` with 27 canonical tables**. `RuntimeSchemaExtension::RETIRED_TABLES` removes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from active canonical truth. Schema `4.0.1` gives the retention action claim/evidence columns their own migration/checksum identity rather than silently altering `4.0.0`. Historical physical tables on an upgraded installation may remain only for bounded retention/audit/migration evidence; active code does not create or revive them.
+`Schema::VERSION = 2.0.0` is historical provenance. The **active canonical schema is `4.0.2` with 27 canonical tables**. `RuntimeSchemaExtension::RETIRED_TABLES` removes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from active canonical truth. Schema `4.0.1` gave the retention action claim/evidence columns their own migration/checksum identity rather than silently altering `4.0.0`. Schema `4.0.2` additionally makes the generic repository's single-ID addressing contract database-enforced for customer references, provider events, settlement batches, settlement lines and idempotency claims, preventing provider/scope-composite rows from making `get(collection, id)` ambiguous. Historical physical tables on an upgraded installation may remain only for bounded retention/audit/migration evidence; active code does not create or revive them.
 
-Activation/upgrade verification includes safe table prefixes, required tables/columns/indexes/uniqueness, migration evidence, transparency source integrity and fail-closed handling of malformed or stale state.
+Activation/upgrade verification includes safe table prefixes, required tables/columns/indexes/uniqueness, migration evidence, transparency source integrity and fail-closed handling of malformed or stale state. If legacy data violates a new unique identity constraint, migration must fail closed for explicit reconciliation rather than silently choose or delete evidence.
 
 ## Transaction and idempotency model
 
-The durable WordPress repository enforces bounded canonical collections, rejects floats and unknown fields, detects duplicate canonical identifiers and marks nested failures rollback-only. Updates and deletes require non-empty schema-backed predicates.
+The durable WordPress repository enforces bounded canonical collections, rejects floats and unknown fields, detects duplicate canonical identifiers and marks nested failures rollback-only. Updates and deletes require non-empty schema-backed predicates. Every active single-ID repository lookup is backed by a unique single-column database key under schema `4.0.2`.
 
 One-time donation checkout uses a local actor/scope-bound idempotency claim. After a hosted provider creates a session, the durable checkpoint precedes local financial completion. Retry/resume must verify provider/session/request parity; public responses do not expose provider internals.
 
@@ -60,7 +60,7 @@ Published transparency is aggregate-only and hash-bound. Donor identities, priva
 
 ## Packaging and QA
 
-Current acceptance includes PHP syntax scanning, current governing-plan functional/adversarial suites, Future40 acceptance, manifest validation, credential-material scanning, constitutional source assertions and deterministic package/source parity across supported PHP versions. Historical/superseded test suites are explicitly quarantined from current acceptance truth.
+Current acceptance includes PHP syntax scanning, current governing-plan functional/adversarial suites, Future40 acceptance, Round-10 canonical-identity/manifest regression, manifest validation, credential-material scanning, constitutional source assertions and deterministic package/source parity across supported PHP versions. Historical/superseded test suites are explicitly quarantined from current acceptance truth.
 
 ## External boundary
 
