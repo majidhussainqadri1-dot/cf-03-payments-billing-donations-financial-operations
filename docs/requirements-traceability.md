@@ -1,10 +1,10 @@
-# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.2
+# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.3
 
 This matrix is the current **source-code traceability** for the two governing documents and the current Future40 amendment:
 
 1. `SSH-PMP-2026-v3.0` — Sabri Social Homeopathy Platform Definitive Master Plan v3.0;
 2. `CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0`;
-3. `CF03-FUTURE40-2026-09-08` — CF-03 Future Expansion Pack 40 Amendment, current hardened software carrier `1.4.0-rc.2`, active schema `4.0.1`.
+3. `CF03-FUTURE40-2026-09-08` — CF-03 Future Expansion Pack 40 Amendment, current hardened software carrier `1.4.0-rc.3`, active schema `4.0.2`.
 
 It does **not** claim provider, legal, PCI, staging, Live or operational acceptance. Where a requirement contains an external acceptance test, the source contract is implemented but the external acceptance gate remains pending.
 
@@ -23,7 +23,7 @@ It does **not** claim provider, legal, PCI, staging, Live or operational accepta
 | CF03-FR-011 Provider abstraction/exit | `PaymentProvider`, `DonationPaymentProvider`, `ProviderRegistry`, health/readiness gates | Implemented contract | Shadow provider switch/exit/rollback drill pending |
 | CF03-FR-012 Immutable balanced ledger | `LedgerTransaction`, `LedgerEntry`, `LedgerJournal`, immutable repository collections, reversal model | Implemented | Restore/reconciliation acceptance pending |
 | CF03-FR-013 Invoice/receipt | `Invoice`, `FinancialDocumentService`, immutable snapshot/hash, owner-scoped download contract | Implemented | Legal invoice fields + rendered HTML/PDF/staging acceptance pending |
-| CF03-FR-014 Provider settlement | `SettlementBatch`, `SettlementOperationsService`, import/source hashes and matching | Implemented | Real settlement file/sandbox/bank adapter acceptance pending |
+| CF03-FR-014 Provider settlement | `SettlementBatch`, `SettlementOperationsService`, import/source hashes and matching; schema `4.0.2` enforces globally unambiguous canonical IDs for repository-addressed provider/settlement/idempotency records | Implemented | Real settlement file/sandbox/bank adapter acceptance pending |
 | CF03-FR-015 Daily reconciliation | `DailyReconciliationService`, `ReconciliationEngine`, WordPress scheduler/exception records | Implemented | Fault-injection and operational daily-close drill pending |
 | CF03-FR-016 Financial adjustment | `FinancialAdjustment`, `FinancialAdjustmentService`, new ledger transaction/reason/evidence/dual-control model | Implemented | Role/threshold staging acceptance pending |
 | CF03-FR-017 Currency/rounding | `Money` integer minor units, currency-aware balance logic; no floating-point financial truth | Implemented invariant | Additional jurisdiction/tax/FX acceptance only if activated |
@@ -58,7 +58,7 @@ The authoritative Future40 requirement-to-code/test mapping is additionally main
 - `manifests/cf03-future-expansion-40.json`;
 - `tests/run-future-expansion-40.php`.
 
-All 40 entries remain fail closed by default. `FX-38` and `FX-39` are conditional Change-Control capabilities; their distinct approval gates remain mandatory and code presence is not activation evidence.
+All 40 entries remain fail closed by default. `FX-38` and `FX-39` are conditional Change-Control capabilities; their distinct approval gates remain mandatory and code presence is not activation evidence. The Future40 manifest now separates its original `1.4.0-rc.1` / `4.0.0` amendment baseline from the current hardened carrier `1.4.0-rc.3` / `4.0.2`.
 
 ## New-plan supersession lock
 
@@ -73,4 +73,4 @@ The following are not active CF-03 capabilities and must not be revived without 
 - Clinic/Marketplace platform commission above 0%;
 - wallet/escrow/custody/payout/split-payment flows.
 
-Schema `4.0.1` removes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from the active canonical schema. Existing legacy physical tables are not treated as current truth and require bounded retention/reconciliation before eventual approved retirement.
+Schema `4.0.2` removes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from the active canonical schema and additionally locks the single canonical repository identifiers used by `customer_refs`, `provider_events`, `settlements`, `settlement_lines` and `idempotency`. Existing legacy physical tables are not treated as current truth and require bounded retention/reconciliation before eventual approved retirement.
