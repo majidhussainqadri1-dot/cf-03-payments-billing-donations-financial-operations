@@ -1,8 +1,8 @@
 {
   "module": "CF-03",
-  "software_version": "1.4.0-rc.2",
+  "software_version": "1.4.0-rc.3",
   "historical_base_schema_version": "2.0.0",
-  "active_schema_version": "4.0.1",
+  "active_schema_version": "4.0.2",
   "status": "new-governing-plans-plus-future40-source-candidate-runtime-fail-closed",
   "governing_sources": [
     "SSH-PMP-2026-v3.0",
@@ -13,9 +13,10 @@
   "contracts": {
     "free_core": {"single_free_tier":true,"structured_education_free":true,"sabri_ai_core_free":true,"paid_core_checkout":false},
     "donation_checkout": {"one_time_only":true,"explicit_one_time_consent":true,"recurring_available":false,"automatic_repeat_charge":false,"live_enabled":false},
-    "active_schema": {"version":"4.0.1","canonical_tables":27,"retired_active_tables":["recurring_consents","subscriptions","usage_authorizations","usage_facts"]},
+    "active_schema": {"version":"4.0.2","canonical_tables":27,"retired_active_tables":["recurring_consents","subscriptions","usage_authorizations","usage_facts"]},
     "public_transparency": {"aggregate_only":true,"fabricated_values":false,"donor_identity_public":false},
     "privacy": {"public_runtime_details_redacted":true,"webhook_sensitive_headers_stripped":true,"mandatory_financial_retention":true},
+    "canonical_repository_identity": {"globally_unique_single_id_fields":true,"schema_enforced":true,"collections":["customer_refs","provider_events","settlements","settlement_lines","idempotency"]},
     "future_expansion_40": {
       "version":"1.0",
       "amendment_id":"CF03-FUTURE40-2026-09-08",
