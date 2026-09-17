@@ -17,6 +17,9 @@ use Sabri\CF03\Support\InvariantViolation;
 
 final class WebhookIngestionService
 {
+    private const REFUND_SCAN_PAGE_SIZE = 200;
+    private const MAX_REFUNDS_PER_INTENT = 10000;
+
     public function __construct(
         private readonly RuntimeConfiguration $configuration,
         private readonly ProviderRegistry $providers,
@@ -402,7 +405,7 @@ final class WebhookIngestionService
         $amount = $evidence->amount();
         $originalAmount = (int)$intent['amount_minor'];
 
-        $refunds = $this->repository->find('refunds', ['intent_id' => $intentId], 500);
+        $refunds = $this->refundsForIntent($intentId);
         $alreadyRefunded = 0;
         $matchingOpen = [];
         foreach ($refunds as $refund) {
@@ -535,6 +538,29 @@ final class WebhookIngestionService
             'no_access_event' => true,
             'occurred_at' => $evidence->occurredAt()->format(DATE_ATOM),
         ], $now);
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function refundsForIntent(string $intentId): array
+    {
+        $rows = [];
+        $offset = 0;
+        do {
+            $page = $this->repository->page(
+                'refunds',
+                ['intent_id' => $intentId],
+                self::REFUND_SCAN_PAGE_SIZE,
+                $offset
+            );
+            foreach ($page as $record) {
+                $rows[] = $record;
+            }
+            $offset += count($page);
+            if ($offset > self::MAX_REFUNDS_PER_INTENT) {
+                throw new InvariantViolation('Refund history exceeds the safe automatic provider-reconciliation bound.');
+            }
+        } while (count($page) === self::REFUND_SCAN_PAGE_SIZE);
+        return $rows;
     }
 
     /** @param array<string,mixed> $intent */
