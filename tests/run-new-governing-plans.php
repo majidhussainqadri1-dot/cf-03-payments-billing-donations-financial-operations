@@ -123,7 +123,7 @@ $tests['legacy recurring consent cannot be created'] = static function () use ($
 };
 
 $tests['schema v4 removes retired active tables'] = static function (): void {
-    same('4.0.1', CompleteSchema::VERSION);
+    same('4.0.2', CompleteSchema::VERSION);
     same('2.0.0', CompleteSchema::BASE_VERSION);
     $tables = CompleteSchema::tables('wp_');
     same(27, count($tables));
@@ -186,16 +186,18 @@ $tests['active manifests match release and written-plan amendment identity'] = s
     $release = json_decode((string)file_get_contents($root.'/manifests/cf03-release-1.4.0.json'), true, 512, JSON_THROW_ON_ERROR);
     $future = json_decode((string)file_get_contents($root.'/manifests/cf03-future-expansion-40.json'), true, 512, JSON_THROW_ON_ERROR);
     $appeal = json_decode((string)file_get_contents($root.'/manifests/donation-appeal-contract.json'), true, 512, JSON_THROW_ON_ERROR);
-    same('1.4.0-rc.2', $contracts['software_version']);
-    same('4.0.1', $contracts['active_schema_version']);
-    same('1.4.0-rc.2', $release['software_version']);
-    same('4.0.1', $release['schema_version']);
+    same('1.4.0-rc.3', $contracts['software_version']);
+    same('4.0.2', $contracts['active_schema_version']);
+    same('1.4.0-rc.3', $release['software_version']);
+    same('4.0.2', $release['schema_version']);
     same('v1.0', $release['base_plan_version']);
     same('v1.1', $release['written_plan_amendment_version']);
     same('2026-09-09', $release['written_plan_amendment_date']);
     same('CF03-FUTURE40-2026-09-08', $release['amendment_id']);
     same(40, $future['feature_count']);
     same('fail_closed_by_default', $future['activation']);
+    same('1.4.0-rc.3', $future['current_hardened_carrier']);
+    same('4.0.2', $future['active_schema_version']);
     same(7, $appeal['frequency']['minimum_days_between_appeals']);
     same(false, $appeal['recurring_available']);
 };
