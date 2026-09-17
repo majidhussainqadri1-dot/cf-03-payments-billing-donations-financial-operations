@@ -6,6 +6,7 @@ namespace Sabri\CF03\Application;
 
 use InvalidArgumentException;
 use Sabri\CF03\Domain\DonationServiceState;
+use Sabri\CF03\Domain\FinancialReceiptIdentity;
 use Sabri\CF03\Support\InvariantViolation;
 
 final class RuntimeConfiguration
@@ -32,7 +33,8 @@ final class RuntimeConfiguration
         private readonly string $providerCode,
         private readonly array $gates,
         private readonly bool $webhookEnabled = false,
-        private readonly bool $downloadDeliveryEnabled = false
+        private readonly bool $downloadDeliveryEnabled = false,
+        private readonly ?FinancialReceiptIdentity $receiptIdentity = null
     ) {
         if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/', $providerCode) !== 1) {
             throw new InvalidArgumentException('Runtime provider code is invalid.');
@@ -57,11 +59,25 @@ final class RuntimeConfiguration
     public function webhookEnabled(): bool { return $this->webhookEnabled; }
     public function downloadDeliveryEnabled(): bool { return $this->downloadDeliveryEnabled; }
 
+    public function receiptIdentity(): FinancialReceiptIdentity
+    {
+        if ($this->receiptIdentity === null) {
+            throw new InvariantViolation('Validated financial receipt legal identity is unavailable.');
+        }
+        return $this->receiptIdentity;
+    }
+
     /** @return list<string> */
     public function missingFinancialGates(): array
     {
         $missing = [];
         foreach (self::FINANCIAL_GATES as $gate) {
+            if ($gate === 'receipt_identity') {
+                if (($this->gates[$gate] ?? false) !== true || $this->receiptIdentity === null) {
+                    $missing[] = $gate;
+                }
+                continue;
+            }
             if (($this->gates[$gate] ?? false) !== true) {
                 $missing[] = $gate;
             }
@@ -141,6 +157,7 @@ final class RuntimeConfiguration
             'missing_donation_collection_gates' => $this->missingDonationCollectionGates(),
             'webhook_enabled' => $this->webhookEnabled,
             'download_delivery_enabled' => $this->downloadDeliveryEnabled,
+            'receipt_identity_configured' => $this->receiptIdentity !== null,
         ];
     }
 }
