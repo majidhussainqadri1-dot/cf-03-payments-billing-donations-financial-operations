@@ -18,12 +18,11 @@ final class PlatformFinancialPolicy
     /** @deprecated Kept only for source compatibility; the governing rule is seven days, not monthly. */
     public const MONTHLY_PROMPT_MINIMUM_DAYS = self::APPEAL_MINIMUM_DAYS;
     public const GOVERNING_MASTER_PLAN = 'SSH-PMP-2026-v3.0';
-    public const GOVERNING_CF03_PLAN = 'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0';
+    public const GOVERNING_CF03_PLAN = 'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.1-Future40-Amended-2026-09-09';
 
     /** @return list<Money> */
     public function suggestedDonationAmounts(): array
     {
-        // Suggestions are optional conveniences only. No amount is ever preselected.
         return [new Money(1000, 'USD'), new Money(1400, 'USD'), new Money(5000, 'USD')];
     }
 
@@ -49,25 +48,16 @@ final class PlatformFinancialPolicy
     public function prohibitedUses(): array
     {
         return [
-            'general_unrelated_charity',
-            'unrelated_grants',
-            'political_or_election_activity',
-            'unrelated_business_investment',
-            'personal_luxury',
-            'donor_ranking_or_privilege',
-            'paid_core_access',
-            'paid_ai_access',
-            'paid_education_access',
-            'recurring_donation_mandate',
+            'general_unrelated_charity', 'unrelated_grants', 'political_or_election_activity',
+            'unrelated_business_investment', 'personal_luxury', 'donor_ranking_or_privilege',
+            'paid_core_access', 'paid_ai_access', 'paid_education_access', 'recurring_donation_mandate',
         ];
     }
 
     public function assertCollectibleProduct(FinancialProduct $product): void
     {
         if ($product->kind() !== ProductKind::DONATION) {
-            throw new InvariantViolation(
-                'Paid membership, education, AI and other core-platform access are prohibited under '.self::GOVERNING_CF03_PLAN.'.'
-            );
+            throw new InvariantViolation('Paid membership, education, AI and other core-platform access are prohibited under '.self::GOVERNING_CF03_PLAN.'.');
         }
     }
 
@@ -92,10 +82,7 @@ final class PlatformFinancialPolicy
         }
     }
 
-    public function assertApprovedExpenseCategory(string $category): void
-    {
-        DonationExpenseCategory::assertAllowed($category);
-    }
+    public function assertApprovedExpenseCategory(string $category): void { DonationExpenseCategory::assertAllowed($category); }
 
     /** @return array<string,string> */
     public function publicDisclosure(): array
