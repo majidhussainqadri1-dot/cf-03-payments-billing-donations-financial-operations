@@ -32,9 +32,10 @@ $now = new DateTimeImmutable('2026-09-08T04:30:00+05:00');
 $tests['only two new plans govern current candidate'] = static function (): void {
     same([
         'SSH-PMP-2026-v3.0',
-        'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0',
+        'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.1-Future40-Amended-2026-09-09',
     ], GoverningPlanRegistry::governingPlans());
     same('CF03-2026-v1.0', PlatformFinancialPolicy::DECISION_ID);
+    same(GoverningPlanRegistry::CF03_CONDITIONAL_MASTER_PLAN, PlatformFinancialPolicy::GOVERNING_CF03_PLAN);
 };
 
 $tests['single free tier and zero commission are constitutional'] = static function (): void {
@@ -74,9 +75,7 @@ $tests['appeal copy is seven-day one-time no-preselection'] = static function ()
     same(true, $contract['explicit_one_time_consent_required']);
     same(null, $contract['preselected_amount']);
     same(7, $contract['frequency']['minimum_days_between_appeals']);
-    foreach ($contract['amounts'] as $amount) {
-        same(false, $amount['preselected'] ?? false);
-    }
+    foreach ($contract['amounts'] as $amount) { same(false, $amount['preselected'] ?? false); }
 };
 
 $tests['prompt remains blocked until seven days pass'] = static function () use ($now): void {
@@ -97,15 +96,8 @@ $tests['dismissal and completed donation both use seven-day silence'] = static f
 };
 
 $tests['recurring donation input is rejected at intent boundary'] = static function () use ($now): void {
-    throws(static fn () => new DonationIntentDraft(
-        'intent:one-time:1', 'user:42', new Money(1000, 'USD'), true, true,
-        DonationServiceState::SANDBOX, 'idem-one-time-donation-0001', $now
-    ), InvariantViolation::class);
-
-    $draft = new DonationIntentDraft(
-        'intent:one-time:2', 'user:42', new Money(1400, 'USD'), false, false,
-        DonationServiceState::SANDBOX, 'idem-one-time-donation-0002', $now
-    );
+    throws(static fn () => new DonationIntentDraft('intent:one-time:1', 'user:42', new Money(1000, 'USD'), true, true, DonationServiceState::SANDBOX, 'idem-one-time-donation-0001', $now), InvariantViolation::class);
+    $draft = new DonationIntentDraft('intent:one-time:2', 'user:42', new Money(1400, 'USD'), false, false, DonationServiceState::SANDBOX, 'idem-one-time-donation-0002', $now);
     $payload = $draft->toSafePayload();
     same('one_time', $payload['donation_type']);
     same(false, $payload['recurring']);
@@ -113,10 +105,7 @@ $tests['recurring donation input is rejected at intent boundary'] = static funct
 };
 
 $tests['legacy recurring consent cannot be created'] = static function () use ($now): void {
-    throws(static fn () => new RecurringConsent(
-        'consent:legacy:1', 'user:42', 'donation.monthly', new Money(1000, 'USD'),
-        'month', $now->modify('+1 month'), str_repeat('a', 64), '/billing/donations', $now, true
-    ), InvariantViolation::class);
+    throws(static fn () => new RecurringConsent('consent:legacy:1', 'user:42', 'donation.monthly', new Money(1000, 'USD'), 'month', $now->modify('+1 month'), str_repeat('a', 64), '/billing/donations', $now, true), InvariantViolation::class);
 };
 
 $tests['schema v4 removes retired active tables'] = static function (): void {
@@ -124,26 +113,12 @@ $tests['schema v4 removes retired active tables'] = static function (): void {
     same('2.0.0', CompleteSchema::BASE_VERSION);
     $tables = CompleteSchema::tables('wp_');
     same(27, count($tables));
-    foreach (RuntimeSchemaExtension::RETIRED_TABLES as $retired) {
-        same(false, array_key_exists($retired, $tables));
-    }
+    foreach (RuntimeSchemaExtension::RETIRED_TABLES as $retired) { same(false, array_key_exists($retired, $tables)); }
 };
 
 $tests['catalog seeder activates one-time and retires legacy monthly product'] = static function () use ($now): void {
     $repo = new MemoryFinancialRepository();
-    $repo->insert('products', 'donation.monthly', [
-        'product_id' => 'donation.monthly',
-        'kind' => ProductKind::DONATION->value,
-        'billing_type' => BillingType::VOLUNTARY->value,
-        'owner' => 'CF-03',
-        'entitlement_mapping' => null,
-        'lifecycle_state' => 'active',
-        'policy_version' => 'legacy',
-        'approval_ref' => 'legacy',
-        'record_version' => 1,
-        'created_at' => $now,
-        'updated_at' => $now,
-    ]);
+    $repo->insert('products', 'donation.monthly', ['product_id'=>'donation.monthly','kind'=>ProductKind::DONATION->value,'billing_type'=>BillingType::VOLUNTARY->value,'owner'=>'CF-03','entitlement_mapping'=>null,'lifecycle_state'=>'active','policy_version'=>'legacy','approval_ref'=>'legacy','record_version'=>1,'created_at'=>$now,'updated_at'=>$now]);
     same(['donation.one_time'], (new DonationCatalogSeeder())->seed($repo, $now));
     same('active', $repo->get('products', 'donation.one_time')['lifecycle_state']);
     same('retired', $repo->get('products', 'donation.monthly')['lifecycle_state']);
@@ -151,16 +126,8 @@ $tests['catalog seeder activates one-time and retires legacy monthly product'] =
 
 $tests['billing projection omits subscriptions and legacy recurring donation rows'] = static function () use ($now): void {
     $repo = new MemoryFinancialRepository();
-    $repo->insert('donations', 'donation.one', [
-        'donation_id' => 'donation.one', 'donor_ref' => 'user:42', 'amount_minor' => 1000,
-        'currency' => 'USD', 'purpose_code' => 'support', 'recurring' => false,
-        'receipt_ref' => null, 'state' => 'settled', 'created_at' => $now, 'updated_at' => $now,
-    ]);
-    $repo->insert('donations', 'donation.legacy', [
-        'donation_id' => 'donation.legacy', 'donor_ref' => 'user:42', 'amount_minor' => 1000,
-        'currency' => 'USD', 'purpose_code' => 'support', 'recurring' => true,
-        'receipt_ref' => null, 'state' => 'settled', 'created_at' => $now, 'updated_at' => $now,
-    ]);
+    $repo->insert('donations', 'donation.one', ['donation_id'=>'donation.one','donor_ref'=>'user:42','amount_minor'=>1000,'currency'=>'USD','purpose_code'=>'support','recurring'=>false,'receipt_ref'=>null,'state'=>'settled','created_at'=>$now,'updated_at'=>$now]);
+    $repo->insert('donations', 'donation.legacy', ['donation_id'=>'donation.legacy','donor_ref'=>'user:42','amount_minor'=>1000,'currency'=>'USD','purpose_code'=>'support','recurring'=>true,'receipt_ref'=>null,'state'=>'settled','created_at'=>$now,'updated_at'=>$now]);
     $result = (new BillingQueryService($repo))->forActor('user:42');
     same(false, array_key_exists('subscriptions', $result) && $result['subscriptions'] !== []);
     same(false, $result['recurring_available']);
@@ -193,6 +160,7 @@ $tests['active manifests match release identity'] = static function (): void {
     $appeal = json_decode((string)file_get_contents($root.'/manifests/donation-appeal-contract.json'), true, 512, JSON_THROW_ON_ERROR);
     same('1.4.0-rc.1', $contracts['software_version']);
     same('4.0.0', $contracts['active_schema_version']);
+    same(GoverningPlanRegistry::CF03_CONDITIONAL_MASTER_PLAN, $contracts['governing_sources'][1]);
     same('1.4.0-rc.1', $release['software_version']);
     same(40, $future['feature_count']);
     same('fail_closed_by_default', $future['activation']);
@@ -202,36 +170,13 @@ $tests['active manifests match release identity'] = static function (): void {
 
 $failures = 0;
 foreach ($tests as $name => $test) {
-    try {
-        $test();
-        fwrite(STDOUT, "PASS: {$name}\n");
-    } catch (Throwable $error) {
-        $failures++;
-        fwrite(STDERR, "FAIL: {$name}: {$error->getMessage()}\n");
-    }
+    try { $test(); fwrite(STDOUT, "PASS: {$name}\n"); }
+    catch (Throwable $error) { $failures++; fwrite(STDERR, "FAIL: {$name}: {$error->getMessage()}\n"); }
 }
 fwrite(STDOUT, sprintf("%d tests, %d failures\n", count($tests), $failures));
 exit($failures === 0 ? 0 : 1);
 
-function context(int $seconds): DonationPromptContext
-{
-    return new DonationPromptContext('pageview:newplan:1', 'normal', $seconds, false, false, false, false);
-}
-
-function same(mixed $expected, mixed $actual): void
-{
-    if ($expected !== $actual) {
-        throw new RuntimeException(var_export($expected, true).' !== '.var_export($actual, true));
-    }
-}
-
+function context(int $seconds): DonationPromptContext { return new DonationPromptContext('pageview:newplan:1', 'normal', $seconds, false, false, false, false); }
+function same(mixed $expected, mixed $actual): void { if ($expected !== $actual) { throw new RuntimeException(var_export($expected, true).' !== '.var_export($actual, true)); } }
 /** @param class-string<Throwable> $class */
-function throws(callable $callback, string $class): void
-{
-    try { $callback(); }
-    catch (Throwable $error) {
-        if ($error instanceof $class) { return; }
-        throw new RuntimeException('Expected '.$class.', got '.$error::class.': '.$error->getMessage());
-    }
-    throw new RuntimeException('Expected '.$class);
-}
+function throws(callable $callback, string $class): void { try { $callback(); } catch (Throwable $error) { if ($error instanceof $class) { return; } throw new RuntimeException('Expected '.$class.', got '.$error::class.': '.$error->getMessage()); } throw new RuntimeException('Expected '.$class); }
