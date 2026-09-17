@@ -6,8 +6,14 @@ require_once __DIR__.'/bootstrap.php';
 
 use Sabri\CF03\Application\CatalogDisclosureService;
 use Sabri\CF03\Application\FinancialAuditService;
+use Sabri\CF03\Application\ProviderRegistry;
+use Sabri\CF03\Application\RefundWorkflowService;
+use Sabri\CF03\Application\RiskOperationsService;
+use Sabri\CF03\Application\RuntimeConfiguration;
 use Sabri\CF03\Domain\BillingType;
+use Sabri\CF03\Domain\ChargebackCase;
 use Sabri\CF03\Domain\FinancialProduct;
+use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\PlatformFinancialPolicy;
 use Sabri\CF03\Domain\ProductKind;
 use Sabri\CF03\Infrastructure\MemoryFinancialRepository;
@@ -67,6 +73,61 @@ $tests['R44 conflicting existing donation definition cannot be silently reused']
         'actor.activator',
         $now
     ), InvariantViolation::class);
+};
+
+$tests['R46 refund reservations advance the intent concurrency version and roll back failed over-reservation'] = static function (): void {
+    $repo = new MemoryFinancialRepository();
+    $now = new DateTimeImmutable('2026-09-17T00:00:00Z');
+    $repo->insert('intents', 'intent.refund.001', [
+        'intent_id' => 'intent.refund.001',
+        'actor_ref' => 'user.refund.001',
+        'product_id' => 'donation.one_time',
+        'amount_minor' => 1000,
+        'currency' => 'USD',
+        'provider' => 'provider.test',
+        'provider_ref' => 'payment.provider.001',
+        'state' => 'settled',
+        'record_version' => 3,
+    ]);
+    $service = new RefundWorkflowService($repo, new ProviderRegistry(), RuntimeConfiguration::preparing());
+    $service->request('refund.001', 'intent.refund.001', 'user.refund.001', new Money(600, 'USD'), 'requested_by_donor', $now);
+    reviewSame(4, $repo->get('intents', 'intent.refund.001')['version']);
+    $service->request('refund.002', 'intent.refund.001', 'user.refund.001', new Money(400, 'USD'), 'requested_by_donor', $now);
+    reviewSame(5, $repo->get('intents', 'intent.refund.001')['version']);
+    reviewThrows(static fn () => $service->request(
+        'refund.003', 'intent.refund.001', 'user.refund.001', new Money(1, 'USD'), 'requested_by_donor', $now
+    ), InvariantViolation::class);
+    reviewSame(5, $repo->get('intents', 'intent.refund.001')['version']);
+    reviewSame(null, $repo->get('refunds', 'refund.003'));
+};
+
+$tests['R46 chargeback provider must match the canonical payment provider'] = static function (): void {
+    $repo = new MemoryFinancialRepository();
+    $opened = new DateTimeImmutable('2026-09-17T00:00:00Z');
+    $repo->insert('intents', 'intent.chargeback.001', [
+        'intent_id' => 'intent.chargeback.001',
+        'actor_ref' => 'user.chargeback.001',
+        'product_id' => 'donation.one_time',
+        'amount_minor' => 5000,
+        'currency' => 'USD',
+        'provider' => 'provider.correct',
+        'provider_ref' => 'payment.correct.001',
+        'state' => 'settled',
+        'record_version' => 2,
+    ]);
+    $case = new ChargebackCase(
+        'chargeback.001',
+        'provider.wrong',
+        'provider-case.001',
+        'intent.chargeback.001',
+        new Money(2000, 'USD'),
+        'fraud_claim',
+        $opened,
+        $opened->modify('+30 days')
+    );
+    $service = new RiskOperationsService($repo, RuntimeConfiguration::preparing());
+    reviewThrows(static fn () => $service->openChargeback($case, $opened), InvariantViolation::class);
+    reviewSame(null, $repo->get('chargebacks', 'chargeback.001'));
 };
 
 $failures = 0;
