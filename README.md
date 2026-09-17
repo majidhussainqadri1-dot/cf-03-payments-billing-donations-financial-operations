@@ -2,8 +2,8 @@
 
 Canonical conditional financial owner for the **Sabri Social Homeopathy Platform**.
 
-> **Current source candidate:** `1.4.0-rc.2`  
-> **Active canonical schema:** `4.0.1` — 27 active canonical tables  
+> **Current source candidate:** `1.4.0-rc.3`  
+> **Active canonical schema:** `4.0.2` — 27 active canonical tables  
 > **Future Expansion Pack:** `CF03-FUTURE40-2026-09-08` — written-plan amendment `v1.1`, dated `2026-09-09`; 40 coded future capabilities, all fail closed by default  
 > **Runtime:** fail closed. Live collection and financial file delivery are not claimed.
 
@@ -33,17 +33,17 @@ Earlier CF-03 v2.0, recovered-directive, 30-day/monthly-donation, paid-AI and su
 
 ## Implemented current source scope
 
-The current source implements one-time donation intent/checkout, signed webhook settlement, immutable balanced ledger, receipts, refunds, disputes/chargebacks, settlements, reconciliation, financial transparency, privacy/export controls, fail-closed incident/runtime controls, deterministic packaging and active schema `4.0.1`.
+The current source implements one-time donation intent/checkout, signed webhook settlement, immutable balanced ledger, receipts, refunds, disputes/chargebacks, settlements, reconciliation, financial transparency, privacy/export controls, fail-closed incident/runtime controls, deterministic packaging and active schema `4.0.2`.
 
-The active schema intentionally excludes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from current runtime truth. Compatibility tombstones fail closed for stale recurring/subscription/paid-AI callers. Schema `4.0.1` gives the retention action claim/evidence fields introduced during hardening their own immutable migration identity instead of silently changing the earlier `4.0.0` checksum.
+The active schema intentionally excludes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from current runtime truth. Compatibility tombstones fail closed for stale recurring/subscription/paid-AI callers. Schema `4.0.1` gave the retention action claim/evidence fields their own immutable migration identity; schema `4.0.2` additionally enforces the single canonical identifiers used by the generic repository for customer references, provider events, settlement batches, settlement lines and idempotency claims so provider/scope composite rows cannot make `get(collection, id)` ambiguous.
 
 ## Future Expansion Pack — 40 coded facilities
 
-Release `1.4.0-rc.2` carries the repository contracts for exactly **40** future capabilities under amendment `CF03-FUTURE40-2026-09-08` / written-plan amendment `v1.1` dated **2026-09-09**. The Future40 amendment itself was introduced in `1.4.0-rc.1`; `rc.2` is the hardened successor candidate.
+Release `1.4.0-rc.3` carries the repository contracts for exactly **40** future capabilities under amendment `CF03-FUTURE40-2026-09-08` / written-plan amendment `v1.1` dated **2026-09-09**. The Future40 amendment itself was introduced in `1.4.0-rc.1`; `rc.3` is the current hardened successor candidate.
 
 They are grouped as:
 
-- **FX-01—FX-08 Donation Experience:** purpose funds, reminder preferences including Never Remind Me, privacy controls, receipt vault, receipt authenticity, transparency dashboard, use-of-funds reporting and multi-currency readiness.
+- **FX-01—FX-08 Donation Experience:** purpose funds, reminder preferences including Never Remind Me, privacy controls, receipt vault, receipt authenticity, transparency dashboard, use-of-funds reporting and multi-currency readiness contracts.
 - **FX-09—FX-20 Provider/Operations Intelligence:** provider selection, health, failover, webhook forensics, uncertainty resolution, reconciliation queue/confidence, close checklist, dual approval, refund preview/SLA and chargeback evidence.
 - **FX-21—FX-30 Governance/Privacy:** financial privacy center, user/accountant exports, immutable audit evidence, configuration history, policy simulation, sandbox, deployment readiness, kill switches and restore verification.
 - **FX-31—FX-40 Integration/Compliance/Sustainability:** privacy-preserving analytics, accessibility-first UX, CF-02 support bridge, notification preferences, internal finance events, jurisdiction registry, tax/legal disclosure, conditional Sharia classification, conditional waqf/grant sustainability and Founder Financial Command Center.
@@ -84,7 +84,7 @@ find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
 bash scripts/build-package.sh
 ```
 
-Current acceptance requires all current-governing-plan suites, webhook/velocity/schema/privacy/concurrency/runtime/governance regressions, the Future Expansion Pack 40 suite, PHP syntax scan, JSON validation, credential-material scan and deterministic package parity on the same exact candidate HEAD.
+Current acceptance requires all current-governing-plan suites, webhook/velocity/schema/privacy/concurrency/runtime/governance regressions, the Future Expansion Pack 40 suite, the round-10 identity/manifest regression, PHP syntax scan, JSON validation, credential-material scan and deterministic package parity on the same exact candidate HEAD.
 
 ## External acceptance boundary
 
