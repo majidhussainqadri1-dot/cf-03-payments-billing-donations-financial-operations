@@ -179,6 +179,7 @@ $tests['won zero-fee chargeback reaches ledger-adjusted state without empty ledg
     $now = new DateTimeImmutable('2026-09-17T13:00:00+00:00');
     insertIntent12($repo, 'intent.chargeback.won', 100, 'user:601', 'settled', $now);
     $risk = new RiskOperationsService($repo, fullRuntime12());
+    $deadline = $now->modify('+30 days');
     $risk->openChargeback(new ChargebackCase(
         'case.won.zero',
         'provider.test',
@@ -187,8 +188,15 @@ $tests['won zero-fee chargeback reaches ledger-adjusted state without empty ledg
         new Money(100, 'USD'),
         'fraudulent',
         $now,
-        $now->modify('+30 days')
+        $deadline
     ), $now);
+    // The WordPress repository persists datetimes as SQL strings. Normalize the
+    // in-memory fixture to that persistence representation before exercising hydration.
+    $repo->updateWhere('chargebacks', ['case_id' => 'case.won.zero'], [
+        'created_at' => $now->format(DATE_ATOM),
+        'response_deadline' => $deadline->format(DATE_ATOM),
+        'updated_at' => $now->format(DATE_ATOM),
+    ]);
     $risk->submitChargebackEvidence('case.won.zero', str_repeat('a', 64), $now->modify('+1 hour'), 1);
     $risk->acceptChargebackEvidence('case.won.zero', $now->modify('+2 hours'), 2);
     $risk->recordChargebackOutcome('case.won.zero', true, Money::zero('USD'), $now->modify('+3 hours'), 3);
