@@ -57,7 +57,7 @@ final class WordPressPrivacy
                         'value' => 'Financial records could not be read safely during this export request.',
                     ]],
                 ]],
-                'done' => true,
+                'done' => false,
             ];
         }
 
@@ -139,8 +139,8 @@ final class WordPressPrivacy
             }
             $done = count($acknowledgments) < self::ERASURE_ACKNOWLEDGMENT_BATCH;
         } catch (Throwable) {
-            $messages[] = 'Optional public donor acknowledgment could not be revalidated during this erasure request; contact financial support for manual completion.';
-            $done = true;
+            $messages[] = 'Optional public donor acknowledgment could not be revalidated during this erasure request; the erasure remains incomplete and must be retried or completed by financial support.';
+            $done = false;
         }
 
         $messages[] = 'Financial ledgers, receipts, settlements, audit evidence and legally required accounting records are retained under the applicable retention policy; optional prompt state and public acknowledgment are removed or revoked.';
