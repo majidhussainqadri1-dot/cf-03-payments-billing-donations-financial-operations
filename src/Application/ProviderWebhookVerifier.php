@@ -127,7 +127,11 @@ final class ProviderWebhookVerifier
             $unique,
             $occurredAt
         );
-        $evidence->assertTrusted($this->replayWindowSeconds);
+        // Cryptographic verification must not consume or reject an exact provider
+        // retry before the canonical provider_events inbox can acknowledge/dedupe it.
+        // eventIdUnique remains attached as evidence for legacy consumers; durable
+        // webhook ingestion performs the authoritative exactly-once decision.
+        $evidence->assertAuthentic($this->replayWindowSeconds);
 
         return $evidence;
     }

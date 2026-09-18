@@ -41,7 +41,7 @@ final class WebhookIngestionService
             throw new InvariantViolation('Verified webhook provider identity mismatch.');
         }
 
-        $mapped = $this->mapper->mapTrusted($evidence);
+        $mapped = $this->mapper->mapAuthenticForIdempotentIngestion($evidence);
         $intent = $this->repository->get('intents', $evidence->paymentIntentId());
         $traceId = 'trace.'.substr(hash('sha256', $providerCode.'|'.$evidence->providerEventId()), 0, 40);
 

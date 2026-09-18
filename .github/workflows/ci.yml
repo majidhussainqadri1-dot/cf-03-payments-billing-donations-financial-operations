@@ -62,6 +62,8 @@ jobs:
         run: php tests/run-round19-backup-coverage.php
       - name: Round 20 final adversarial regression
         run: php tests/run-round20-final-adversarial.php
+      - name: Round 22 webhook authenticity and retry regression
+        run: php tests/run-round22-webhook-idempotent-authenticity.php
       - name: Release inventory acceptance
         run: php tests/run-release-inventory.php
       - name: Future Expansion Pack 40 acceptance
@@ -155,6 +157,7 @@ jobs:
           test -f tests/run-round18-settlement-close-integrity.php
           test -f tests/run-round19-backup-coverage.php
           test -f tests/run-round20-final-adversarial.php
+          test -f tests/run-round22-webhook-idempotent-authenticity.php
       - name: Future 40 constitutional assertions
         run: |
           grep -q "AMENDMENT_ID = 'CF03-FUTURE40-2026-09-08'" src/Application/FutureExpansionRegistry.php

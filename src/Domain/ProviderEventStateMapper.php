@@ -24,4 +24,17 @@ final class ProviderEventStateMapper
         $evidence->assertTrusted($replayWindowSeconds);
         return self::MAP[$evidence->eventType()] ?? PaymentIntentState::QUARANTINED;
     }
+
+    /**
+     * Webhook ingestion owns durable event-id dedupe in provider_events. Exact signed
+     * retries must therefore remain mappable even when an adapter reports the event
+     * ID as previously seen; signature/replay authenticity still remains mandatory.
+     */
+    public function mapAuthenticForIdempotentIngestion(
+        ProviderEvidence $evidence,
+        int $replayWindowSeconds = 300
+    ): PaymentIntentState {
+        $evidence->assertAuthentic($replayWindowSeconds);
+        return self::MAP[$evidence->eventType()] ?? PaymentIntentState::QUARANTINED;
+    }
 }
