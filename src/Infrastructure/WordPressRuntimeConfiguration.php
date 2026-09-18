@@ -12,11 +12,47 @@ use Throwable;
 
 final class WordPressRuntimeConfiguration
 {
+    /** @var list<string> */
+    private const BACKUP_OPTIONS = [
+        'sabri_cf03_version',
+        'sabri_cf03_schema_version',
+        'sabri_cf03_runtime_status',
+        'sabri_cf03_activation_record',
+        'sabri_cf03_financial_policy_decision',
+        'sabri_cf03_last_migration',
+        self::OPTION_MODE,
+        self::OPTION_PROVIDER,
+        self::OPTION_GATES,
+        self::OPTION_WEBHOOK,
+        self::OPTION_DOWNLOAD,
+        WordPressIncidentStateStore::OPTION,
+        WordPressFinancialReceiptIdentity::OPTION_SELLER_LEGAL_NAME,
+        WordPressFinancialReceiptIdentity::OPTION_SELLER_COUNTRY,
+        WordPressDailyReconciliation::OPTION_LAST_COMPLETED_DATE,
+    ];
     public const OPTION_MODE = 'sabri_cf03_runtime_mode';
     public const OPTION_PROVIDER = 'sabri_cf03_provider_id';
     public const OPTION_GATES = 'sabri_cf03_runtime_gates';
     public const OPTION_WEBHOOK = 'sabri_cf03_webhook_enabled';
     public const OPTION_DOWNLOAD = 'sabri_cf03_download_delivery_enabled';
+
+    /** @return array<string,mixed> */
+    public static function backupSnapshot(): array
+    {
+        if (!function_exists('get_option')) {
+            return [];
+        }
+        $snapshot = [];
+        foreach (self::BACKUP_OPTIONS as $option) {
+            $value = get_option($option, null);
+            if (is_object($value) || is_resource($value)) {
+                throw new \RuntimeException('CF-03 runtime configuration contains a non-portable backup value.');
+            }
+            $snapshot[$option] = $value;
+        }
+        ksort($snapshot, SORT_STRING);
+        return $snapshot;
+    }
 
     public static function load(): RuntimeConfiguration
     {

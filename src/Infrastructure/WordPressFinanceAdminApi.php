@@ -328,7 +328,7 @@ final class WordPressFinanceAdminApi
     private static function adjustments():FinancialAdjustmentService{$r=self::repo();return new FinancialAdjustmentService($r,WordPressRuntimeConfiguration::load(),new FinancialAuditService($r));}
     private static function incidents(?QueryableFinancialRepository $r=null):IncidentOperationsService{$r??=self::repo();return new IncidentOperationsService(new WordPressIncidentStateStore(),new FinancialAuditService($r),WordPressRuntimeConfiguration::load());}
     private static function controls():FinancialControlRequestService{$r=self::repo();$audit=new FinancialAuditService($r);$store=new WordPressIncidentStateStore();$incidents=new IncidentOperationsService($store,$audit,WordPressRuntimeConfiguration::load());return new FinancialControlRequestService($r,$audit,$store,$incidents);}
-    private static function integrityService():SystemIntegrityService{$r=self::repo();return new SystemIntegrityService($r,new FinancialAuditService($r));}
+    private static function integrityService():SystemIntegrityService{$r=self::repo();return new SystemIntegrityService($r,new FinancialAuditService($r),WordPressRuntimeConfiguration::backupSnapshot());}
     private static function cap(string $capability):bool{return function_exists('current_user_can')&&current_user_can($capability);}
     private static function actor():string{$id=function_exists('get_current_user_id')?(int)get_current_user_id():0;if($id<1){throw new InvariantViolation('Authenticated actor identity is unavailable.');}return 'user:'.$id;}
     private static function param(mixed $request,string $name):mixed{return is_object($request)&&method_exists($request,'get_param')?$request->get_param($name):null;}

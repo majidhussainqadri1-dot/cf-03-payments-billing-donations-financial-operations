@@ -25,9 +25,11 @@ final class SystemIntegrityService
         return $collections;
     }
 
+    /** @param array<string,mixed> $configurationSnapshot */
     public function __construct(
         private readonly QueryableFinancialRepository $repository,
-        private readonly FinancialAuditService $audit
+        private readonly FinancialAuditService $audit,
+        private readonly array $configurationSnapshot = []
     ) {}
 
     /** @return array<string,array{count:int,hash:string}> */
@@ -35,7 +37,7 @@ final class SystemIntegrityService
     {
         $datasets = [];
         foreach (self::criticalCollections() as $collection) {
-            $records = $this->repository->all($collection);
+            $records = $this->paged($collection, []);
             usort($records, static fn (array $left, array $right): int => strcmp(
                 self::recordIdentity($left),
                 self::recordIdentity($right)
@@ -43,6 +45,12 @@ final class SystemIntegrityService
             $datasets[$collection] = [
                 'count' => count($records),
                 'hash' => hash('sha256', self::canonicalJson($records)),
+            ];
+        }
+        if ($this->configurationSnapshot !== []) {
+            $datasets['runtime_configuration'] = [
+                'count' => count($this->configurationSnapshot),
+                'hash' => hash('sha256', self::canonicalJson($this->configurationSnapshot)),
             ];
         }
         return (new BackupManifest($datasets))->components();

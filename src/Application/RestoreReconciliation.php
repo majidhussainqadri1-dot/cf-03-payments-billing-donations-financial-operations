@@ -35,6 +35,20 @@ final class RestoreReconciliation
             }
         }
 
+        if (!isset($expected['provider_events'], $restored['provider_events'])
+            || $expected['provider_events']['count'] !== count($providerEventIds)
+            || $restored['provider_events']['count'] !== count($postedProviderEventIds)
+        ) {
+            throw new InvariantViolation('Provider-authoritative restore evidence count does not match the backed-up/restored provider-event dataset.');
+        }
+        foreach (array_merge($providerEventIds, $postedProviderEventIds) as $eventId) {
+            if (!is_string($eventId)
+                || preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $eventId) !== 1
+            ) {
+                throw new InvalidArgumentException('Restore provider-event identifier is invalid.');
+            }
+        }
+
         $providerCounts = array_count_values($providerEventIds);
         $duplicateAuthoritative = array_keys(array_filter($providerCounts, static fn (int $count): bool => $count > 1));
         if ($duplicateAuthoritative !== []) {
