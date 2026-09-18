@@ -38,7 +38,7 @@ round34Export($repo,'export.round34.ok',$now->modify('-1 minute'),'vault://finan
 $service=new SecureExportService($repo,$store,RuntimeConfiguration::preparing(),new FinancialAuditService($repo));
 $result=$service->expire('export.round34.ok',1,$now);
 $final=$repo->get('exports','export.round34.ok');
-if(($result['state']??null)!=='expired'||($final['encrypted_object_ref']??'x')!==null||$store->deleted!==['vault://finance/round34-ok']){
+if(($result['state']??null)!=='expired'||(!array_key_exists('encrypted_object_ref',$final) || $final['encrypted_object_ref']!==null)||$store->deleted!==['vault://finance/round34-ok']){
     throw new RuntimeException('Expired finance export must delete the encrypted artifact and clear its durable reference.');
 }
 if(count($repo->all('audit'))!==1){throw new RuntimeException('Export expiry must create one immutable audit event.');}
@@ -54,7 +54,7 @@ if(($after['state']??null)!=='expired'||($after['encrypted_object_ref']??null)!=
     throw new RuntimeException('Expiry must fail closed while retaining artifact reference for cleanup retry.');
 }
 $service2->expire('export.round34.retry',(int)$after['version'],$now->modify('+1 minute'));
-if(($repo2->get('exports','export.round34.retry')['encrypted_object_ref']??'x')!==null||count($repo2->all('audit'))!==1){
+if((!array_key_exists('encrypted_object_ref',$repo2->get('exports','export.round34.retry')) || $repo2->get('exports','export.round34.retry')['encrypted_object_ref']!==null)||count($repo2->all('audit'))!==1){
     throw new RuntimeException('Expiry cleanup retry must clear artifact without duplicating expiry audit evidence.');
 }
 
