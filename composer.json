@@ -47,6 +47,7 @@
       "php tests/run-round34-export-expiry.php",
       "php tests/run-round35-transparency-migration.php",
       "php tests/run-round36-rtl-localization.php",
+      "php tests/run-round37-release-identity.php",
       "php tests/run-release-inventory.php",
       "php tests/run-future-expansion-40.php"
     ],

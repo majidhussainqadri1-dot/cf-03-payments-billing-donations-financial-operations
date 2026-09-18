@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0-rc.5 — Fourth-Cycle Runtime, Integrity and RTL Hardening Carrier
+
+- Assigns a fresh immutable carrier identity after post-rc.4 source changes; rc.4 remains historical evidence and is not reused for different source bytes.
+- Carries queue-starvation, shared refund/chargeback exposure, temporary-export expiry, transparency-migration integrity and deterministic Urdu RTL/LTR hardening from the fourth sequential review cycle.
+- Keeps active canonical schema `4.0.2`; these changes do not alter canonical schema SQL.
+- Keeps Future40 origin `1.4.0-rc.1` / schema baseline `4.0.0` immutable; only the current hardened carrier advances to `1.4.0-rc.5`.
+- Current financial law remains one free core tier, voluntary one-time donation only, 0% Clinic/Marketplace commission and donor/non-donor parity.
+- Deterministic package target is `cf-03-payments-billing-donations-financial-operations-1.4.0-rc.5.zip`.
+- Repository/source and automated-QA evidence only; no Staging, Live or operational activation claim.
+
 ## 1.4.0-rc.4 — Post-Identity Hardening and Public-Disclosure Carrier
 
 - Assigns a new immutable software carrier identity to all source changes made after `1.4.0-rc.3`; the prior rc.3 artifact identity is preserved as historical evidence rather than silently reused for different source bytes.

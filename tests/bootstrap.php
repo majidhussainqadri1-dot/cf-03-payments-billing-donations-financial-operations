@@ -37,6 +37,7 @@ const CF03_ACTIVE_TEST_SUITES = [
     'run-round34-export-expiry.php',
     'run-round35-transparency-migration.php',
     'run-round36-rtl-localization.php',
+    'run-round37-release-identity.php',
     'run-release-inventory.php',
     'run-future-expansion-40.php',
 ];

@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once __DIR__.'/bootstrap.php';
 
 $root=dirname(__DIR__);
-$current='1.4.0-rc.4';
+$current='1.4.0-rc.5';
 $security=(string)file_get_contents($root.'/SECURITY.md');
 if(!str_contains($security,"CF-03 `{$current}` is the current repository-source candidate")){
     throw new RuntimeException('Security policy does not identify the exact current source carrier.');

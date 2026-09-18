@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once __DIR__.'/bootstrap.php';
 
 $root=dirname(__DIR__);
-$current='1.4.0-rc.4';
+$current='1.4.0-rc.5';
 $schema='4.0.2';
 $checks=[
     'cf-03-payments-billing-donations-financial-operations.php'=>["Version: {$current}","SABRI_CF03_VERSION', '{$current}'","SABRI_CF03_SCHEMA_VERSION', '{$schema}'"],
@@ -30,4 +30,4 @@ $future=json_decode((string)file_get_contents($root.'/manifests/cf03-future-expa
 if(($future['software_target']??null)!=='1.4.0-rc.1'||($future['original_schema_baseline']??null)!=='4.0.0'){
     throw new RuntimeException('Future40 amendment origin must remain immutable while carrier advances.');
 }
-fwrite(STDOUT,"PASS: post-rc.3 source bytes have a distinct rc.4 carrier identity across active release surfaces\n");
+fwrite(STDOUT,"PASS: post-rc.4 source bytes have a distinct rc.4 carrier identity across active release surfaces\n");
