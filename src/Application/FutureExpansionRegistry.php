@@ -11,7 +11,7 @@ final class FutureExpansionRegistry
 {
     public const VERSION = '1.0';
     public const AMENDMENT_ID = 'CF03-FUTURE40-2026-09-08';
-    public const SOFTWARE_TARGET = '1.4.0-rc.3';
+    public const SOFTWARE_TARGET = '1.4.0-rc.4';
 
     /**
      * These are coded future capabilities, not proof of staging, Live or operational activation.

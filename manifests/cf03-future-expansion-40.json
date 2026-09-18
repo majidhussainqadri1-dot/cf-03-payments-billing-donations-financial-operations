@@ -3,7 +3,7 @@
   "amendment_id": "CF03-FUTURE40-2026-09-08",
   "software_target": "1.4.0-rc.1",
   "original_schema_baseline": "4.0.0",
-  "current_hardened_carrier": "1.4.0-rc.3",
+  "current_hardened_carrier": "1.4.0-rc.4",
   "active_schema_version": "4.0.2",
   "feature_count": 40,
   "activation": "fail_closed_by_default",
