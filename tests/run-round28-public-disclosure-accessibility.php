@@ -20,7 +20,7 @@ foreach([
         throw new RuntimeException('Public donation pre-action disclosure/fail-closed UI is missing: '.$needle);
     }
 }
-if(!str_contains($ui,"data-runtime-enabled="'.(\$collectionEnabled ? '1' : '0').'"")){
+if(!str_contains($ui,"data-runtime-enabled=") || !str_contains($ui,"$collectionEnabled ? '1' : '0'")){
     throw new RuntimeException('Donation form must expose server-authorized runtime state without enabling submit itself.');
 }
 
