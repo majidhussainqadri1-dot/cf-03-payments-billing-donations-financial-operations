@@ -7,16 +7,21 @@ namespace Sabri\CF03\Application;
 use DateTimeInterface;
 use JsonException;
 use Sabri\CF03\Contracts\QueryableFinancialRepository;
+use Sabri\CF03\Persistence\CompleteSchema;
 use Sabri\CF03\Support\InvariantViolation;
 
 final class SystemIntegrityService
 {
-    /** @var list<string> */
-    private const CRITICAL_COLLECTIONS = [
-        'intents','provider_events','ledger_transactions','ledger_entries','invoices','refunds',
-        'chargebacks','donations','settlements','settlement_lines','reconciliation_exceptions',
-        'finance_periods','expenses','transparency_snapshots','audit','outbox','retention_ledger','migrations',
-    ];
+    /** @return list<string> */
+    private static function criticalCollections(): array
+    {
+        // Backup truth must track every active canonical table. A hand-maintained
+        // subset previously omitted idempotency, provider registry, adjustments,
+        // fraud reviews and other state needed for safe restore/replay.
+        $collections = array_keys(CompleteSchema::tables(''));
+        sort($collections, SORT_STRING);
+        return $collections;
+    }
 
     public function __construct(
         private readonly QueryableFinancialRepository $repository,
@@ -27,7 +32,7 @@ final class SystemIntegrityService
     public function buildBackupManifest(): array
     {
         $datasets = [];
-        foreach (self::CRITICAL_COLLECTIONS as $collection) {
+        foreach (self::criticalCollections() as $collection) {
             $records = $this->repository->all($collection);
             usort($records, static fn (array $left, array $right): int => strcmp(
                 self::recordIdentity($left),

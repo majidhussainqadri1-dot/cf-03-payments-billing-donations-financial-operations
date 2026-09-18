@@ -21,6 +21,7 @@ const CF03_ACTIVE_TEST_SUITES = [
     'run-round16-risk-audit-atomicity.php',
     'run-round17-retention-external-atomicity.php',
     'run-round18-settlement-close-integrity.php',
+    'run-round19-backup-coverage.php',
     'run-release-inventory.php',
     'run-future-expansion-40.php',
 ];
