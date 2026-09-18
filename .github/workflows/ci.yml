@@ -78,6 +78,8 @@ jobs:
         run: php tests/run-round28-public-disclosure-accessibility.php
       - name: Round 29 release identity regression
         run: php tests/run-round29-release-identity.php
+      - name: Round 30 final release sweep regression
+        run: php tests/run-round30-final-release-sweep.php
       - name: Release inventory acceptance
         run: php tests/run-release-inventory.php
       - name: Future Expansion Pack 40 acceptance
@@ -179,6 +181,7 @@ jobs:
           test -f tests/run-round27-migration-preflight.php
           test -f tests/run-round28-public-disclosure-accessibility.php
           test -f tests/run-round29-release-identity.php
+          test -f tests/run-round30-final-release-sweep.php
       - name: Future 40 constitutional assertions
         run: |
           grep -q "AMENDMENT_ID = 'CF03-FUTURE40-2026-09-08'" src/Application/FutureExpansionRegistry.php
