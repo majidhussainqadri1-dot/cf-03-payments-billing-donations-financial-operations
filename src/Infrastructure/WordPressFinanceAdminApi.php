@@ -245,6 +245,19 @@ final class WordPressFinanceAdminApi
     }
     public static function placeHold(mixed $request=null):mixed{return self::handle(static fn():array=>self::auditedRetention('retention_legal_hold_placed',(string)self::param($request,'id'),static fn(RetentionOperationsService $s):array=>$s->placeLegalHold((string)self::param($request,'id'),(string)self::param($request,'hold_reference'))));}
     public static function releaseHold(mixed $request=null):mixed{return self::handle(static fn():array=>self::auditedRetention('retention_legal_hold_released',(string)self::param($request,'id'),static fn(RetentionOperationsService $s):array=>$s->releaseLegalHold((string)self::param($request,'id'),(string)self::param($request,'hold_reference'))));}
+    public static function reconcileRetention(mixed $request=null):mixed
+    {
+        return self::handle(static fn():array=>self::auditedRetention(
+            'retention_action_reconciled',
+            (string)self::param($request,'id'),
+            static fn(RetentionOperationsService $s):array=>$s->reconcileUncertain(
+                (string)self::param($request,'id'),
+                (string)self::param($request,'evidence_reference'),
+                new DateTimeImmutable('now')
+            )
+        ));
+    }
+
     public static function executeRetention(mixed $request=null):mixed
     {
         return self::handle(static function()use($request):array{
@@ -276,19 +289,6 @@ final class WordPressFinanceAdminApi
             );
             return $result;
         });
-    }
-
-    public static function reconcileRetention(mixed $request=null):mixed
-    {
-        return self::handle(static fn():array=>self::auditedRetention(
-            'retention_action_reconciled',
-            (string)self::param($request,'id'),
-            static fn(RetentionOperationsService $s):array=>$s->reconcileUncertain(
-                (string)self::param($request,'id'),
-                (string)self::param($request,'evidence_reference'),
-                new DateTimeImmutable('now')
-            )
-        ));
     }
 
     public static function declareIncident(mixed $request=null):mixed{return self::handle(static fn():array=>self::incidents()->declare((string)self::param($request,'incident_id'),self::nonNegative(self::param($request,'severity')),(string)self::param($request,'reason_code'),self::actor(),new DateTimeImmutable('now'),self::boolean(self::param($request,'kill_checkout'),true),self::boolean(self::param($request,'kill_refunds'),true),self::boolean(self::param($request,'kill_webhooks'),true)));}
