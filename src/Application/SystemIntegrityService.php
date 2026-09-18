@@ -12,6 +12,8 @@ use Sabri\CF03\Support\InvariantViolation;
 
 final class SystemIntegrityService
 {
+    private const PAGE_SIZE = 500;
+    private const MAX_INTEGRITY_ROWS = 1000000;
     /** @return list<string> */
     private static function criticalCollections(): array
     {
@@ -74,21 +76,54 @@ final class SystemIntegrityService
     /** @return array<string,array{debit:int,credit:int,balanced:bool}> */
     public function ledgerBalance(): array
     {
+        $transactionIds = [];
+        foreach ($this->paged('ledger_transactions', []) as $transaction) {
+            $id = (string)($transaction['transaction_id'] ?? '');
+            if ($id === '' || isset($transactionIds[$id])) {
+                throw new InvariantViolation('Canonical ledger transaction identity is missing or duplicated.');
+            }
+            $transactionIds[$id] = true;
+        }
+
         $totals = [];
+        $transactionsWithEntries = [];
         $sources = [];
-        foreach ($this->repository->all('ledger_entries') as $entry) {
-            $source = (string)$entry['source_ref'];
-            if (isset($sources[$source])) {
-                throw new InvariantViolation('Duplicate immutable ledger source reference detected.');
+        foreach ($this->paged('ledger_entries', []) as $entry) {
+            $transactionId = (string)($entry['transaction_id'] ?? '');
+            if ($transactionId === '' || !isset($transactionIds[$transactionId])) {
+                throw new InvariantViolation('Ledger entry references a missing canonical transaction.');
+            }
+            $source = (string)($entry['source_ref'] ?? '');
+            if ($source === '' || isset($sources[$source])) {
+                throw new InvariantViolation('Duplicate or missing immutable ledger source reference detected.');
             }
             $sources[$source] = true;
-            $key = (string)$entry['transaction_id'].'|'.(string)$entry['currency'];
+            $currency = (string)($entry['currency'] ?? '');
+            if (preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
+                throw new InvariantViolation('Ledger entry currency is invalid.');
+            }
+            $key = $transactionId.'|'.$currency;
             $totals[$key] ??= ['debit' => 0, 'credit' => 0, 'balanced' => false];
-            $direction = (string)$entry['direction'];
+            $direction = (string)($entry['direction'] ?? '');
             if (!in_array($direction, ['debit', 'credit'], true)) {
                 throw new InvariantViolation('Ledger entry direction is invalid.');
             }
-            $totals[$key][$direction] += (int)$entry['amount_minor'];
+            $amount = $entry['amount_minor'] ?? null;
+            if (!is_int($amount) && !(is_string($amount) && preg_match('/^[1-9][0-9]*$/', $amount) === 1)) {
+                throw new InvariantViolation('Ledger entry amount is invalid.');
+            }
+            $amount = (int)$amount;
+            if ($amount <= 0 || $amount > PHP_INT_MAX - $totals[$key][$direction]) {
+                throw new InvariantViolation('Ledger entry amount is zero, negative or exceeds the supported integer range.');
+            }
+            $totals[$key][$direction] += $amount;
+            $transactionsWithEntries[$transactionId] = true;
+        }
+
+        foreach (array_keys($transactionIds) as $transactionId) {
+            if (!isset($transactionsWithEntries[$transactionId])) {
+                throw new InvariantViolation('Canonical ledger transaction has no immutable entries.');
+            }
         }
         foreach ($totals as &$total) {
             $total['balanced'] = $total['debit'] === $total['credit'];
@@ -105,8 +140,8 @@ final class SystemIntegrityService
     {
         $balances = $this->ledgerBalance();
         $auditValid = $this->audit->verifyChain();
-        $deadLetters = count($this->repository->find('outbox', ['state' => 'dead_letter'], 500));
-        $openExceptions = $this->repository->find('reconciliation_exceptions', ['state' => 'open'], 500);
+        $deadLetters = $this->countPaged('outbox', ['state' => 'dead_letter']);
+        $openExceptions = $this->paged('reconciliation_exceptions', ['state' => 'open']);
         $material = 0;
         foreach ($openExceptions as $exception) {
             if ((bool)$exception['material']) {
@@ -130,6 +165,38 @@ final class SystemIntegrityService
         if ($health['dead_letter_count'] > 0 || $health['open_material_exceptions'] > 0) {
             throw new InvariantViolation('Operational integrity gate is blocked by dead letters or material reconciliation exceptions.');
         }
+    }
+
+    /** @param array<string,mixed> $criteria @return list<array<string,mixed>> */
+    private function paged(string $collection, array $criteria): array
+    {
+        $rows = [];
+        $offset = 0;
+        do {
+            $page = $this->repository->page($collection, $criteria, self::PAGE_SIZE, $offset);
+            foreach ($page as $record) { $rows[] = $record; }
+            $offset += count($page);
+            if ($offset > self::MAX_INTEGRITY_ROWS) {
+                throw new InvariantViolation('Integrity scan exceeds the safe automatic row bound.');
+            }
+        } while (count($page) === self::PAGE_SIZE);
+        return $rows;
+    }
+
+    /** @param array<string,mixed> $criteria */
+    private function countPaged(string $collection, array $criteria): int
+    {
+        $count = 0;
+        $offset = 0;
+        do {
+            $page = $this->repository->page($collection, $criteria, self::PAGE_SIZE, $offset);
+            $count += count($page);
+            $offset += count($page);
+            if ($offset > self::MAX_INTEGRITY_ROWS) {
+                throw new InvariantViolation('Integrity count exceeds the safe automatic row bound.');
+            }
+        } while (count($page) === self::PAGE_SIZE);
+        return $count;
     }
 
     /** @param array<string,mixed> $record */

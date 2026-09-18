@@ -24,6 +24,7 @@ const CF03_ACTIVE_TEST_SUITES = [
     'run-round19-backup-coverage.php',
     'run-round20-final-adversarial.php',
     'run-round22-webhook-idempotent-authenticity.php',
+    'run-round23-ledger-integrity.php',
     'run-release-inventory.php',
     'run-future-expansion-40.php',
 ];
