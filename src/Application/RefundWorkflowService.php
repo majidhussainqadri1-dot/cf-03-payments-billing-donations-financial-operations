@@ -113,22 +113,10 @@ final class RefundWorkflowService
                 throw new InvariantViolation('Refund currency does not match the payment.');
             }
 
-            $committed = 0;
-            foreach ($this->refundsForIntent($intentId) as $prior) {
-                if (!in_array((string)($prior['state'] ?? ''), self::BALANCE_COMMITTING_STATES, true)) {
-                    continue;
-                }
-                if (($prior['currency'] ?? null) !== $paid->currency()) {
-                    throw new InvariantViolation('Existing refund records contain a conflicting currency.');
-                }
-                $priorAmount = (int)($prior['amount_minor'] ?? -1);
-                if ($priorAmount <= 0 || $priorAmount > PHP_INT_MAX - $committed) {
-                    throw new InvariantViolation('Existing refund balance evidence is invalid.');
-                }
-                $committed += $priorAmount;
-            }
+            $committed = (new PaymentExposureService($this->repository))
+                ->combinedExposure($intentId, $paid->currency());
             if ($committed > $paid->minorUnits()) {
-                throw new InvariantViolation('Committed refunds already exceed the original payment.');
+                throw new InvariantViolation('Committed refund/chargeback exposure already exceeds the original payment.');
             }
             $remaining = $paid->minorUnits() - $committed;
             if ($amount->minorUnits() > $remaining) {

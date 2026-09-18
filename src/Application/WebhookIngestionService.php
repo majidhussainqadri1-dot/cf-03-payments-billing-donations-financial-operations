@@ -427,8 +427,13 @@ final class WebhookIngestionService
         if (count($matchingOpen) > 1) {
             throw new InvariantViolation('Refund evidence matches multiple open refund requests and requires manual reconciliation.');
         }
-        if ($alreadyRefunded + $amount->minorUnits() > $originalAmount) {
-            throw new InvariantViolation('Cumulative provider refunds exceed the original payment.');
+        $chargebackExposure = (new PaymentExposureService($this->repository))
+            ->chargebackExposure($intentId, $amount->currency());
+        if ($alreadyRefunded > PHP_INT_MAX - $chargebackExposure
+            || $alreadyRefunded + $chargebackExposure > PHP_INT_MAX - $amount->minorUnits()
+            || $alreadyRefunded + $chargebackExposure + $amount->minorUnits() > $originalAmount
+        ) {
+            throw new InvariantViolation('Combined provider refund and chargeback exposure exceeds the original payment.');
         }
 
         $refundId = 'refund.external.'.substr(hash('sha256', $evidence->providerCode().'|'.$evidence->providerEventId()), 0, 32);

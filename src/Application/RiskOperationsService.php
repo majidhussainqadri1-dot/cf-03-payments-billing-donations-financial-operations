@@ -77,72 +77,88 @@ final class RiskOperationsService
     public function openChargeback(ChargebackCase $case, DateTimeImmutable $createdAt): array
     {
         $this->configuration->assertFinancialMutationReady();
-        $intent = $this->repository->get('intents', $case->paymentIntentId());
-        if ($intent === null || !in_array((string)($intent['state'] ?? ''), ['captured', 'settled', 'disputed'], true)) {
-            throw new InvariantViolation('Chargeback requires a captured, settled or disputed canonical payment intent.');
-        }
-        if ((string)($intent['provider'] ?? '') !== $case->providerCode()) {
-            throw new InvariantViolation('Chargeback provider does not match the canonical payment provider.');
-        }
-        if ((string)($intent['currency'] ?? '') !== $case->disputedAmount()->currency()
-            || (int)($intent['amount_minor'] ?? 0) < $case->disputedAmount()->minorUnits()
-        ) {
-            throw new InvariantViolation('Chargeback amount exceeds the canonical payment or changes currency.');
-        }
 
-        $providerMatches = $this->repository->find('chargebacks', [
-            'provider' => $case->providerCode(),
-            'provider_case_ref' => $case->providerCaseReference(),
-        ], 2);
-        if (count($providerMatches) > 1) {
-            throw new InvariantViolation('Provider chargeback case identity is not unique.');
-        }
-        if ($providerMatches !== []) {
-            $existing = $providerMatches[0];
-            if (($existing['case_id'] ?? null) === $case->caseId()
-                && ($existing['intent_id'] ?? null) === $case->paymentIntentId()
-                && (int)($existing['amount_minor'] ?? -1) === $case->disputedAmount()->minorUnits()
-                && ($existing['currency'] ?? null) === $case->disputedAmount()->currency()
-                && ($existing['reason_code'] ?? null) === $case->reasonCode()
+        return $this->repository->transaction(function () use ($case, $createdAt): array {
+            $intent = $this->repository->get('intents', $case->paymentIntentId());
+            if ($intent === null || !in_array((string)($intent['state'] ?? ''), ['captured', 'settled', 'disputed'], true)) {
+                throw new InvariantViolation('Chargeback requires a captured, settled or disputed canonical payment intent.');
+            }
+            if ((string)($intent['provider'] ?? '') !== $case->providerCode()) {
+                throw new InvariantViolation('Chargeback provider does not match the canonical payment provider.');
+            }
+            if ((string)($intent['currency'] ?? '') !== $case->disputedAmount()->currency()
+                || (int)($intent['amount_minor'] ?? 0) < $case->disputedAmount()->minorUnits()
             ) {
-                return $existing + ['reused' => true];
+                throw new InvariantViolation('Chargeback amount exceeds the canonical payment or changes currency.');
             }
-            throw new InvariantViolation('Provider chargeback case reference was reused with different canonical terms.');
-        }
 
-        $committed = 0;
-        foreach ($this->chargebacksForIntent($case->paymentIntentId()) as $prior) {
-            if (($prior['currency'] ?? null) !== $case->disputedAmount()->currency()) {
-                throw new InvariantViolation('Existing chargeback evidence changes the canonical payment currency.');
+            // Refund and chargeback reservations share one monetary ceiling. Fence both
+            // domains on the canonical intent version so concurrent reservations cannot
+            // independently consume the same remaining payment balance.
+            $intentVersion = (int)($intent['version'] ?? $intent['record_version'] ?? 0);
+            if ($intentVersion < 1) {
+                throw new InvariantViolation('Chargeback payment intent version is missing.');
             }
-            $priorAmount = (int)($prior['amount_minor'] ?? -1);
-            if ($priorAmount <= 0 || $priorAmount > PHP_INT_MAX - $committed) {
-                throw new InvariantViolation('Existing chargeback amount evidence is invalid.');
-            }
-            $committed += $priorAmount;
-        }
-        if ($case->disputedAmount()->minorUnits() > (int)$intent['amount_minor'] - $committed) {
-            throw new InvariantViolation('Cumulative chargeback amount exceeds the canonical payment amount.');
-        }
+            $this->repository->compareAndSwap(
+                'intents',
+                $case->paymentIntentId(),
+                $intentVersion,
+                static function (array $current) use ($case): array {
+                    if (!in_array((string)($current['state'] ?? ''), ['captured','settled','disputed'], true)
+                        || (string)($current['provider'] ?? '') !== $case->providerCode()
+                    ) {
+                        throw new InvariantViolation('Chargeback payment changed before exposure reservation.');
+                    }
+                    return $current;
+                }
+            );
 
-        $record = [
-            'case_id' => $case->caseId(),
-            'provider' => $case->providerCode(),
-            'provider_case_ref' => $case->providerCaseReference(),
-            'intent_id' => $case->paymentIntentId(),
-            'amount_minor' => $case->disputedAmount()->minorUnits(),
-            'currency' => $case->disputedAmount()->currency(),
-            'reason_code' => $case->reasonCode(),
-            'response_deadline' => $case->responseDeadline(),
-            'evidence_hash' => $case->evidenceSha256(),
-            'provider_fee_minor' => $case->providerFee()?->minorUnits(),
-            'state' => $case->state(),
-            'record_version' => $case->recordVersion(),
-            'created_at' => $createdAt,
-            'updated_at' => $createdAt,
-        ];
-        $this->repository->insert('chargebacks', $case->caseId(), $record);
-        return $record + ['reused' => false];
+            $providerMatches = $this->repository->find('chargebacks', [
+                'provider' => $case->providerCode(),
+                'provider_case_ref' => $case->providerCaseReference(),
+            ], 2);
+            if (count($providerMatches) > 1) {
+                throw new InvariantViolation('Provider chargeback case identity is not unique.');
+            }
+            if ($providerMatches !== []) {
+                $existing = $providerMatches[0];
+                if (($existing['case_id'] ?? null) === $case->caseId()
+                    && ($existing['intent_id'] ?? null) === $case->paymentIntentId()
+                    && (int)($existing['amount_minor'] ?? -1) === $case->disputedAmount()->minorUnits()
+                    && ($existing['currency'] ?? null) === $case->disputedAmount()->currency()
+                    && ($existing['reason_code'] ?? null) === $case->reasonCode()
+                ) {
+                    return $existing + ['reused' => true];
+                }
+                throw new InvariantViolation('Provider chargeback case reference was reused with different canonical terms.');
+            }
+
+            $committed = (new PaymentExposureService($this->repository))
+                ->combinedExposure($case->paymentIntentId(), $case->disputedAmount()->currency());
+            $paid = (int)$intent['amount_minor'];
+            if ($committed > $paid || $case->disputedAmount()->minorUnits() > $paid - $committed) {
+                throw new InvariantViolation('Combined refund/chargeback exposure exceeds the canonical payment amount.');
+            }
+
+            $record = [
+                'case_id' => $case->caseId(),
+                'provider' => $case->providerCode(),
+                'provider_case_ref' => $case->providerCaseReference(),
+                'intent_id' => $case->paymentIntentId(),
+                'amount_minor' => $case->disputedAmount()->minorUnits(),
+                'currency' => $case->disputedAmount()->currency(),
+                'reason_code' => $case->reasonCode(),
+                'response_deadline' => $case->responseDeadline(),
+                'evidence_hash' => $case->evidenceSha256(),
+                'provider_fee_minor' => $case->providerFee()?->minorUnits(),
+                'state' => $case->state(),
+                'record_version' => $case->recordVersion(),
+                'created_at' => $createdAt,
+                'updated_at' => $createdAt,
+            ];
+            $this->repository->insert('chargebacks', $case->caseId(), $record);
+            return $record + ['reused' => false];
+        });
     }
 
     /** @return array<string,mixed> */

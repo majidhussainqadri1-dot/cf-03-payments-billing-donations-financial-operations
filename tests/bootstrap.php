@@ -33,6 +33,7 @@ const CF03_ACTIVE_TEST_SUITES = [
     'run-round29-release-identity.php',
     'run-round30-final-release-sweep.php',
     'run-round32-queue-starvation.php',
+    'run-round33-payment-exposure.php',
     'run-release-inventory.php',
     'run-future-expansion-40.php',
 ];
