@@ -154,35 +154,87 @@ final class WordPressFinanceAdminApi
 
     public static function openFraud(mixed $request=null):mixed
     {
-        return self::handle(static function()use($request):array{$repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'review_id');$risk=new RiskOperationsService($repo,WordPressRuntimeConfiguration::load());$result=$risk->openFraudReview(new FraudReviewCase($id,(string)self::param($request,'subject_reference'),self::arrayValue(self::param($request,'signals'),'signals'),$at,self::date(self::param($request,'hold_until'))),$at);self::appendAudit(new FinancialAuditService($repo),'fraud_review_opened','fraud_review',$id,'fraud_manual_review',$actor,$at,['state'=>$result['state']??'open']);return $result;});
+        return self::handle(static function()use($request):array{
+            $repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'review_id');
+            $audit=new FinancialAuditService($repo);
+            return $repo->transaction(function()use($repo,$request,$at,$actor,$id,$audit):array{
+                $risk=new RiskOperationsService($repo,WordPressRuntimeConfiguration::load());
+                $result=$risk->openFraudReview(new FraudReviewCase($id,(string)self::param($request,'subject_reference'),self::arrayValue(self::param($request,'signals'),'signals'),$at,self::date(self::param($request,'hold_until'))),$at);
+                self::appendAudit($audit,'fraud_review_opened','fraud_review',$id,'fraud_manual_review',$actor,$at,['state'=>$result['state']??'open']);
+                return $result;
+            });
+        });
     }
     public static function decideFraud(mixed $request=null):mixed
     {
-        return self::handle(static function()use($request):array{$repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'id');$result=(new RiskOperationsService($repo,WordPressRuntimeConfiguration::load()))->decideFraudReview($id,self::boolean(self::param($request,'approved')),$actor,(string)self::param($request,'reason'),$at,self::positive(self::param($request,'expected_version')));self::appendAudit(new FinancialAuditService($repo),'fraud_review_decided','fraud_review',$id,'fraud_manual_review',$actor,$at,['state'=>$result['state']??'unknown']);return $result;});
+        return self::handle(static function()use($request):array{
+            $repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'id');$audit=new FinancialAuditService($repo);
+            return $repo->transaction(function()use($repo,$request,$at,$actor,$id,$audit):array{
+                $result=(new RiskOperationsService($repo,WordPressRuntimeConfiguration::load()))->decideFraudReview($id,self::boolean(self::param($request,'approved')),$actor,(string)self::param($request,'reason'),$at,self::positive(self::param($request,'expected_version')));
+                self::appendAudit($audit,'fraud_review_decided','fraud_review',$id,'fraud_manual_review',$actor,$at,['state'=>$result['state']??'unknown']);
+                return $result;
+            });
+        });
     }
     public static function appealFraud(mixed $request=null):mixed
     {
-        return self::handle(static function()use($request):array{$repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'id');$result=(new RiskOperationsService($repo,WordPressRuntimeConfiguration::load()))->appealFraudReview($id,$actor,(string)self::param($request,'reason'),$at,self::positive(self::param($request,'expected_version')));self::appendAudit(new FinancialAuditService($repo),'fraud_review_appealed','fraud_review',$id,'fraud_due_process',$actor,$at,['state'=>$result['state']??'appealed']);return $result;});
+        return self::handle(static function()use($request):array{
+            $repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'id');$audit=new FinancialAuditService($repo);
+            return $repo->transaction(function()use($repo,$request,$at,$actor,$id,$audit):array{
+                $result=(new RiskOperationsService($repo,WordPressRuntimeConfiguration::load()))->appealFraudReview($id,$actor,(string)self::param($request,'reason'),$at,self::positive(self::param($request,'expected_version')));
+                self::appendAudit($audit,'fraud_review_appealed','fraud_review',$id,'fraud_due_process',$actor,$at,['state'=>$result['state']??'appealed']);
+                return $result;
+            });
+        });
     }
     public static function closeFraud(mixed $request=null):mixed{return self::auditedRisk($request,'fraud_review_closed','fraud_review','closeFraudReview');}
 
     public static function openChargeback(mixed $request=null):mixed
     {
-        return self::handle(static function()use($request):array{$repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'case_id');$case=new ChargebackCase($id,(string)self::param($request,'provider'),(string)self::param($request,'provider_case_reference'),(string)self::param($request,'intent_id'),self::money($request),(string)self::param($request,'reason_code'),$at,self::date(self::param($request,'response_deadline')));$result=(new RiskOperationsService($repo,WordPressRuntimeConfiguration::load()))->openChargeback($case,$at);self::appendAudit(new FinancialAuditService($repo),'chargeback_opened','chargeback',$id,'provider_dispute',$actor,$at,['state'=>$result['state']??'notified']);return $result;});
+        return self::handle(static function()use($request):array{
+            $repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'case_id');$audit=new FinancialAuditService($repo);
+            return $repo->transaction(function()use($repo,$request,$at,$actor,$id,$audit):array{
+                $case=new ChargebackCase($id,(string)self::param($request,'provider'),(string)self::param($request,'provider_case_reference'),(string)self::param($request,'intent_id'),self::money($request),(string)self::param($request,'reason_code'),$at,self::date(self::param($request,'response_deadline')));
+                $result=(new RiskOperationsService($repo,WordPressRuntimeConfiguration::load()))->openChargeback($case,$at);
+                self::appendAudit($audit,'chargeback_opened','chargeback',$id,'provider_dispute',$actor,$at,['state'=>$result['state']??'notified']);
+                return $result;
+            });
+        });
     }
     public static function requireChargebackEvidence(mixed $request=null):mixed{return self::auditedRisk($request,'chargeback_evidence_required','chargeback','requireChargebackEvidence');}
     public static function submitChargebackEvidence(mixed $request=null):mixed
     {
-        return self::handle(static function()use($request):array{$repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'id');$result=(new RiskOperationsService($repo,WordPressRuntimeConfiguration::load()))->submitChargebackEvidence($id,(string)self::param($request,'evidence_sha256'),$at,self::positive(self::param($request,'expected_version')));self::appendAudit(new FinancialAuditService($repo),'chargeback_evidence_submitted','chargeback',$id,'provider_dispute',$actor,$at,['state'=>$result['state']??'submitted']);return $result;});
+        return self::handle(static function()use($request):array{
+            $repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'id');$audit=new FinancialAuditService($repo);
+            return $repo->transaction(function()use($repo,$request,$at,$actor,$id,$audit):array{
+                $result=(new RiskOperationsService($repo,WordPressRuntimeConfiguration::load()))->submitChargebackEvidence($id,(string)self::param($request,'evidence_sha256'),$at,self::positive(self::param($request,'expected_version')));
+                self::appendAudit($audit,'chargeback_evidence_submitted','chargeback',$id,'provider_dispute',$actor,$at,['state'=>$result['state']??'submitted']);
+                return $result;
+            });
+        });
     }
     public static function acceptChargebackEvidence(mixed $request=null):mixed{return self::auditedRisk($request,'chargeback_evidence_accepted','chargeback','acceptChargebackEvidence');}
     public static function chargebackOutcome(mixed $request=null):mixed
     {
-        return self::handle(static function()use($request):array{$repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'id');$result=(new RiskOperationsService($repo,WordPressRuntimeConfiguration::load()))->recordChargebackOutcome($id,self::boolean(self::param($request,'won')),new Money(self::nonNegative(self::param($request,'provider_fee_minor')),(string)self::param($request,'currency')),$at,self::positive(self::param($request,'expected_version')));self::appendAudit(new FinancialAuditService($repo),'chargeback_outcome_recorded','chargeback',$id,'provider_dispute',$actor,$at,['state'=>$result['state']??'unknown']);return $result;});
+        return self::handle(static function()use($request):array{
+            $repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'id');$audit=new FinancialAuditService($repo);
+            return $repo->transaction(function()use($repo,$request,$at,$actor,$id,$audit):array{
+                $result=(new RiskOperationsService($repo,WordPressRuntimeConfiguration::load()))->recordChargebackOutcome($id,self::boolean(self::param($request,'won')),new Money(self::nonNegative(self::param($request,'provider_fee_minor')),(string)self::param($request,'currency')),$at,self::positive(self::param($request,'expected_version')));
+                self::appendAudit($audit,'chargeback_outcome_recorded','chargeback',$id,'provider_dispute',$actor,$at,['state'=>$result['state']??'unknown']);
+                return $result;
+            });
+        });
     }
     public static function adjustChargeback(mixed $request=null):mixed
     {
-        return self::handle(static function()use($request):array{$repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'id');$result=(new RiskOperationsService($repo,WordPressRuntimeConfiguration::load()))->adjustChargebackLedger($id,$actor,$at,self::positive(self::param($request,'expected_version')));self::appendAudit(new FinancialAuditService($repo),'chargeback_ledger_adjusted','chargeback',$id,'immutable_ledger_correction',$actor,$at,['transaction_id'=>$result['transaction_id']??'']);return $result;});
+        return self::handle(static function()use($request):array{
+            $repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'id');$audit=new FinancialAuditService($repo);
+            return $repo->transaction(function()use($repo,$request,$at,$actor,$id,$audit):array{
+                $result=(new RiskOperationsService($repo,WordPressRuntimeConfiguration::load()))->adjustChargebackLedger($id,$actor,$at,self::positive(self::param($request,'expected_version')));
+                self::appendAudit($audit,'chargeback_ledger_adjusted','chargeback',$id,'immutable_ledger_correction',$actor,$at,['transaction_id'=>$result['transaction_id']??'']);
+                return $result;
+            });
+        });
     }
     public static function closeChargeback(mixed $request=null):mixed{return self::auditedRisk($request,'chargeback_closed','chargeback','closeChargeback');}
 
@@ -202,7 +254,15 @@ final class WordPressFinanceAdminApi
 
     private static function auditedRisk(mixed $request,string $action,string $objectType,string $method):mixed
     {
-        return self::handle(static function()use($request,$action,$objectType,$method):array{$repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'id');$version=self::positive(self::param($request,'expected_version'));$risk=new RiskOperationsService($repo,WordPressRuntimeConfiguration::load());$result=$risk->{$method}($id,$at,$version);self::appendAudit(new FinancialAuditService($repo),$action,$objectType,$id,'provider_dispute',$actor,$at,['state'=>$result['state']??'unknown']);return $result;});
+        return self::handle(static function()use($request,$action,$objectType,$method):array{
+            $repo=self::repo();$at=new DateTimeImmutable('now');$actor=self::actor();$id=(string)self::param($request,'id');$version=self::positive(self::param($request,'expected_version'));$audit=new FinancialAuditService($repo);
+            return $repo->transaction(function()use($repo,$at,$actor,$id,$version,$action,$objectType,$method,$audit):array{
+                $risk=new RiskOperationsService($repo,WordPressRuntimeConfiguration::load());
+                $result=$risk->{$method}($id,$at,$version);
+                self::appendAudit($audit,$action,$objectType,$id,'provider_dispute',$actor,$at,['state'=>$result['state']??'unknown']);
+                return $result;
+            });
+        });
     }
 
     private static function auditedRetention(string $action,string $id,callable $operation):array

@@ -52,6 +52,8 @@ jobs:
         run: php tests/run-round14-export-revocation.php
       - name: Round 15 privacy completion truth regression
         run: php tests/run-round15-privacy-completion.php
+      - name: Round 16 risk audit atomicity regression
+        run: php tests/run-round16-risk-audit-atomicity.php
       - name: Release inventory acceptance
         run: php tests/run-release-inventory.php
       - name: Future Expansion Pack 40 acceptance
@@ -140,6 +142,7 @@ jobs:
           test -f tests/run-round13-audit-order.php
           test -f tests/run-round14-export-revocation.php
           test -f tests/run-round15-privacy-completion.php
+          test -f tests/run-round16-risk-audit-atomicity.php
       - name: Future 40 constitutional assertions
         run: |
           grep -q "AMENDMENT_ID = 'CF03-FUTURE40-2026-09-08'" src/Application/FutureExpansionRegistry.php

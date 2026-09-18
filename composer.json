@@ -28,6 +28,7 @@
       "php tests/run-round13-audit-order.php",
       "php tests/run-round14-export-revocation.php",
       "php tests/run-round15-privacy-completion.php",
+      "php tests/run-round16-risk-audit-atomicity.php",
       "php tests/run-release-inventory.php",
       "php tests/run-future-expansion-40.php"
     ],

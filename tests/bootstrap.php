@@ -18,6 +18,7 @@ const CF03_ACTIVE_TEST_SUITES = [
     'run-round13-audit-order.php',
     'run-round14-export-revocation.php',
     'run-round15-privacy-completion.php',
+    'run-round16-risk-audit-atomicity.php',
     'run-release-inventory.php',
     'run-future-expansion-40.php',
 ];
