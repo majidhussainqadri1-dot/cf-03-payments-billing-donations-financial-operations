@@ -187,7 +187,10 @@ final class DailyReconciliationService
             $record = match ($type) {
                 'payment' => $this->first('intents', ['provider_ref' => $reference, 'provider' => $batch->providerCode()]),
                 'refund' => $this->first('refunds', ['provider_ref' => $reference]),
-                'chargeback' => $this->first('chargebacks', ['provider_case_ref' => $reference]),
+                'chargeback' => $this->first('chargebacks', [
+                    'provider_case_ref' => $reference,
+                    'provider' => $batch->providerCode(),
+                ]),
                 'fee' => $this->first('expenses', ['approval_ref' => 'settlement:'.$batch->batchId()]),
                 default => null,
             };

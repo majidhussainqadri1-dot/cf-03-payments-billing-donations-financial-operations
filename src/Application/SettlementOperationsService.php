@@ -270,30 +270,33 @@ final class SettlementOperationsService
             'closed_at' => null,
             'record_version' => 1,
         ];
-        if ($existing === null) {
-            $this->repository->insert('finance_periods', $periodId, $record);
-            $updated = $record + ['version' => 1];
-        } else {
-            $updated = $this->repository->compareAndSwap(
-                'finance_periods',
-                $periodId,
-                (int)$existing['version'],
-                static fn (array $current): array => array_replace($current, $record)
-            );
-        }
 
-        $this->audit->append(new AuditEnvelope(
-            'audit:period-reviewed:'.substr(hash('sha256', $periodId.'|'.$reviewedAt->format(DATE_ATOM)), 0, 32),
-            $reviewerReference,
-            'finance_period_reviewed',
-            'finance_period',
-            $periodId,
-            'financial_close_control',
-            AuditOutcome::SUCCEEDED,
-            $reviewedAt,
-            'trace:period:'.substr(hash('sha256', $periodId), 0, 24),
-            ['period_id' => $periodId]
-        ));
+        $updated = $this->repository->transaction(function () use ($periodId, $record, $existing, $reviewerReference, $reviewedAt): array {
+            if ($existing === null) {
+                $this->repository->insert('finance_periods', $periodId, $record);
+                $updated = $record + ['version' => 1];
+            } else {
+                $updated = $this->repository->compareAndSwap(
+                    'finance_periods',
+                    $periodId,
+                    (int)$existing['version'],
+                    static fn (array $current): array => array_replace($current, $record)
+                );
+            }
+            $this->audit->append(new AuditEnvelope(
+                'audit:period-reviewed:'.substr(hash('sha256', $periodId.'|'.$reviewedAt->format(DATE_ATOM)), 0, 32),
+                $reviewerReference,
+                'finance_period_reviewed',
+                'finance_period',
+                $periodId,
+                'financial_close_control',
+                AuditOutcome::SUCCEEDED,
+                $reviewedAt,
+                'trace:period:'.substr(hash('sha256', $periodId), 0, 24),
+                ['period_id' => $periodId]
+            ));
+            return $updated;
+        });
         return $updated + ['reused' => false];
     }
 
@@ -324,29 +327,34 @@ final class SettlementOperationsService
             throw new InvariantViolation('Finance period requires an independently persisted review before close approval.');
         }
 
-        $updated = $this->repository->compareAndSwap(
-            'finance_periods',
-            $periodId,
-            (int)$existing['version'],
-            static function (array $current) use ($approverReference, $closedAt): array {
-                $current['state'] = 'locked';
-                $current['approved_by'] = $approverReference;
-                $current['closed_at'] = $closedAt;
-                return $current;
-            }
-        );
-        $this->audit->append(new AuditEnvelope(
-            'audit:period-closed:'.substr(hash('sha256', $periodId.'|'.$closedAt->format(DATE_ATOM)), 0, 32),
-            $approverReference,
-            'finance_period_closed',
-            'finance_period',
-            $periodId,
-            'financial_close_control',
-            AuditOutcome::SUCCEEDED,
-            $closedAt,
-            'trace:period:'.substr(hash('sha256', $periodId), 0, 24),
-            ['reviewed_by' => $reviewerReference, 'approved_by' => $approverReference]
-        ));
+        $updated = $this->repository->transaction(function () use (
+            $periodId, $existing, $reviewerReference, $approverReference, $closedAt
+        ): array {
+            $updated = $this->repository->compareAndSwap(
+                'finance_periods',
+                $periodId,
+                (int)$existing['version'],
+                static function (array $current) use ($approverReference, $closedAt): array {
+                    $current['state'] = 'locked';
+                    $current['approved_by'] = $approverReference;
+                    $current['closed_at'] = $closedAt;
+                    return $current;
+                }
+            );
+            $this->audit->append(new AuditEnvelope(
+                'audit:period-closed:'.substr(hash('sha256', $periodId.'|'.$closedAt->format(DATE_ATOM)), 0, 32),
+                $approverReference,
+                'finance_period_closed',
+                'finance_period',
+                $periodId,
+                'financial_close_control',
+                AuditOutcome::SUCCEEDED,
+                $closedAt,
+                'trace:period:'.substr(hash('sha256', $periodId), 0, 24),
+                ['reviewed_by' => $reviewerReference, 'approved_by' => $approverReference]
+            ));
+            return $updated;
+        });
         return $updated + ['reused' => false];
     }
 
