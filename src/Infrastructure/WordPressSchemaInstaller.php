@@ -255,9 +255,6 @@ final class WordPressSchemaInstaller
                 break;
             }
         }
-        if ($hasLegacyPeriodIndex && $wpdb->query("ALTER TABLE {$table} DROP INDEX `period_key`") === false) {
-            throw new RuntimeException('Legacy transparency period-only uniqueness could not be removed.');
-        }
 
         $rows = $wpdb->get_results(
             "SELECT id, snapshot_json, source_hash, snapshot_hash FROM {$table}",
@@ -266,6 +263,8 @@ final class WordPressSchemaInstaller
         if (!is_array($rows)) {
             throw new RuntimeException('Transparency snapshot rows could not be read for integrity migration.');
         }
+
+        $backfills = [];
         foreach ($rows as $row) {
             if (!is_array($row)
                 || !is_numeric($row['id'] ?? null)
@@ -285,15 +284,35 @@ final class WordPressSchemaInstaller
             ) {
                 throw new RuntimeException('Transparency snapshot source evidence failed migration verification.');
             }
-            $canonical = self::canonicalJson($decoded);
-            $expectedHash = hash('sha256', $canonical);
-            if (($row['snapshot_hash'] ?? null) === $expectedHash) {
+
+            $expectedHash = hash('sha256', self::canonicalJson($decoded));
+            $storedHash = $row['snapshot_hash'] ?? null;
+            if (is_string($storedHash) && preg_match('/^[a-f0-9]{64}$/', $storedHash) === 1) {
+                if (!hash_equals($storedHash, $expectedHash)) {
+                    // A valid pre-existing integrity hash is evidence, not a cache.
+                    // Never bless changed snapshot bytes by silently replacing it.
+                    throw new RuntimeException('Transparency snapshot integrity hash mismatch requires explicit evidence-preserving reconciliation.');
+                }
                 continue;
             }
-            $updated = $wpdb->update($table, ['snapshot_hash' => $expectedHash], ['id' => (int)$row['id']]);
+            if ($storedHash !== null && $storedHash !== '') {
+                throw new RuntimeException('Transparency snapshot contains malformed integrity evidence.');
+            }
+            $backfills[(int)$row['id']] = $expectedHash;
+        }
+
+        // Only legacy rows that never had a hash may be backfilled after every row
+        // has first passed source/integrity preflight. Existing valid hashes are immutable.
+        foreach ($backfills as $id => $expectedHash) {
+            $updated = $wpdb->update($table, ['snapshot_hash' => $expectedHash], ['id' => $id]);
             if ($updated !== 1) {
                 throw new RuntimeException('Transparency snapshot integrity hash could not be backfilled.');
             }
+        }
+
+        // Drop the superseded period-only uniqueness only after row evidence is safe.
+        if ($hasLegacyPeriodIndex && $wpdb->query("ALTER TABLE {$table} DROP INDEX `period_key`") === false) {
+            throw new RuntimeException('Legacy transparency period-only uniqueness could not be removed.');
         }
     }
 

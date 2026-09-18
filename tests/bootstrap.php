@@ -35,6 +35,7 @@ const CF03_ACTIVE_TEST_SUITES = [
     'run-round32-queue-starvation.php',
     'run-round33-payment-exposure.php',
     'run-round34-export-expiry.php',
+    'run-round35-transparency-migration.php',
     'run-release-inventory.php',
     'run-future-expansion-40.php',
 ];
