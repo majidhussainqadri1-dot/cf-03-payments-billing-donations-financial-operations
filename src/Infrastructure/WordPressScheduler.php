@@ -8,10 +8,14 @@ use DateTimeImmutable;
 use Sabri\CF03\Application\FinancialAuditService;
 use Sabri\CF03\Application\OutboxDispatcher;
 use Sabri\CF03\Application\SecureExportService;
+use Sabri\CF03\Contracts\QueryableFinancialRepository;
+use Sabri\CF03\Support\InvariantViolation;
 use Throwable;
 
 final class WordPressScheduler
 {
+    private const IDEMPOTENCY_PAGE_SIZE = 200;
+    private const MAX_PENDING_IDEMPOTENCY_SCAN = 10000;
     public const HOOK = 'sabri_cf03_process_financial_queue';
 
     /** @param array<string,mixed> $schedules @return array<string,mixed> */
@@ -48,24 +52,7 @@ final class WordPressScheduler
             $now = new DateTimeImmutable('now');
             (new OutboxDispatcher($repo, new WordPressOutboxTransport()))->dispatch($now, 100);
 
-            foreach ($repo->find('idempotency', ['state' => 'pending'], 500) as $record) {
-                try {
-                    $expires = $record['expires_at'] instanceof DateTimeImmutable
-                        ? $record['expires_at']
-                        : new DateTimeImmutable((string)$record['expires_at']);
-                } catch (Throwable) {
-                    continue;
-                }
-                if ($expires <= $now) {
-                    $repo->updateWhere('idempotency', [
-                        'idempotency_key' => $record['idempotency_key'],
-                        'state' => 'pending',
-                    ], [
-                        'state' => 'failed',
-                        'completed_at' => $now,
-                    ]);
-                }
-            }
+            self::expirePendingIdempotency($repo, $now);
 
             $store = WordPressSecureArtifactStoreFactory::make();
             if (!$store instanceof NullSecureArtifactStore) {
@@ -91,6 +78,43 @@ final class WordPressScheduler
         } catch (Throwable $error) {
             self::log('scheduled processing', $error);
         }
+    }
+
+    private static function expirePendingIdempotency(
+        QueryableFinancialRepository $repo,
+        DateTimeImmutable $now
+    ): int {
+        $records = [];
+        $offset = 0;
+        do {
+            $page = $repo->page('idempotency', ['state'=>'pending'], self::IDEMPOTENCY_PAGE_SIZE, $offset);
+            foreach ($page as $record) { $records[] = $record; }
+            $offset += count($page);
+            if ($offset > self::MAX_PENDING_IDEMPOTENCY_SCAN) {
+                throw new InvariantViolation('Pending idempotency scan exceeds the safe automatic bound.');
+            }
+        } while (count($page) === self::IDEMPOTENCY_PAGE_SIZE);
+
+        $expired = 0;
+        foreach ($records as $record) {
+            try {
+                $expires = $record['expires_at'] instanceof DateTimeImmutable
+                    ? $record['expires_at']
+                    : new DateTimeImmutable((string)$record['expires_at']);
+            } catch (Throwable) {
+                continue;
+            }
+            if ($expires > $now) { continue; }
+            $updated = $repo->updateWhere('idempotency', [
+                'idempotency_key' => $record['idempotency_key'],
+                'state' => 'pending',
+            ], [
+                'state' => 'failed',
+                'completed_at' => $now,
+            ]);
+            if ($updated === 1) { $expired++; }
+        }
+        return $expired;
     }
 
     private static function log(string $operation, Throwable $error): void

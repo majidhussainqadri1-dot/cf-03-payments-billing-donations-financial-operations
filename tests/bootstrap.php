@@ -32,6 +32,7 @@ const CF03_ACTIVE_TEST_SUITES = [
     'run-round28-public-disclosure-accessibility.php',
     'run-round29-release-identity.php',
     'run-round30-final-release-sweep.php',
+    'run-round32-queue-starvation.php',
     'run-release-inventory.php',
     'run-future-expansion-40.php',
 ];

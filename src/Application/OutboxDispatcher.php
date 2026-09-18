@@ -12,6 +12,8 @@ use Throwable;
 
 final class OutboxDispatcher
 {
+    private const SCAN_PAGE_SIZE = 200;
+    private const MAX_CANDIDATE_SCAN = 10000;
     public function __construct(
         private readonly QueryableFinancialRepository $repository,
         private readonly OutboxTransport $transport,
@@ -30,8 +32,8 @@ final class OutboxDispatcher
         }
 
         $candidates = array_merge(
-            $this->repository->find('outbox', ['state' => 'pending'], $limit),
-            $this->repository->find('outbox', ['state' => 'retry'], $limit),
+            $this->dueCandidates('pending', $now, $limit),
+            $this->dueCandidates('retry', $now, $limit),
             $this->expiredProcessingCandidates($now, $limit)
         );
         $result = ['delivered'=>0,'retried'=>0,'dead_lettered'=>0,'skipped'=>0,'recovered_leases'=>0];
@@ -126,15 +128,50 @@ final class OutboxDispatcher
     }
 
     /** @return list<array<string,mixed>> */
+    private function dueCandidates(string $state, DateTimeImmutable $now, int $limit): array
+    {
+        $due = [];
+        $offset = 0;
+        do {
+            $page = $this->repository->page('outbox', ['state'=>$state], self::SCAN_PAGE_SIZE, $offset);
+            foreach ($page as $message) {
+                $availableAt = self::date($message['available_at'] ?? null);
+                if ($availableAt !== null && $availableAt <= $now) {
+                    $due[] = $message;
+                    if (count($due) >= $limit) {
+                        return $due;
+                    }
+                }
+            }
+            $offset += count($page);
+            if ($offset > self::MAX_CANDIDATE_SCAN) {
+                throw new InvariantViolation('Outbox ready-candidate scan exceeds the safe automatic bound.');
+            }
+        } while (count($page) === self::SCAN_PAGE_SIZE);
+        return $due;
+    }
+
+    /** @return list<array<string,mixed>> */
     private function expiredProcessingCandidates(DateTimeImmutable $now, int $limit): array
     {
         $expired = [];
-        foreach ($this->repository->find('outbox', ['state'=>'processing'], $limit) as $message) {
-            $leasedUntil = self::date($message['leased_until'] ?? null);
-            if ($leasedUntil !== null && $leasedUntil <= $now) {
-                $expired[] = $message;
+        $offset = 0;
+        do {
+            $page = $this->repository->page('outbox', ['state'=>'processing'], self::SCAN_PAGE_SIZE, $offset);
+            foreach ($page as $message) {
+                $leasedUntil = self::date($message['leased_until'] ?? null);
+                if ($leasedUntil !== null && $leasedUntil <= $now) {
+                    $expired[] = $message;
+                    if (count($expired) >= $limit) {
+                        return $expired;
+                    }
+                }
             }
-        }
+            $offset += count($page);
+            if ($offset > self::MAX_CANDIDATE_SCAN) {
+                throw new InvariantViolation('Outbox processing-lease scan exceeds the safe automatic bound.');
+            }
+        } while (count($page) === self::SCAN_PAGE_SIZE);
         return $expired;
     }
 
