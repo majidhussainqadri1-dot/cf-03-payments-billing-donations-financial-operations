@@ -112,7 +112,7 @@ final class Plugin
         }
         $currentVersion = (string)get_option(self::OPTION_VERSION, '');
         $currentSchema = (string)get_option(self::OPTION_SCHEMA_VERSION, '');
-        $targetVersion = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.4.0-rc.4';
+        $targetVersion = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.4.0-rc.5';
         if (hash_equals($targetVersion, $currentVersion) && hash_equals(CompleteSchema::VERSION, $currentSchema)) {
             return;
         }
@@ -222,7 +222,7 @@ final class Plugin
         }
         self::recordMigrationEvidence($migrations);
 
-        $version = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.4.0-rc.4';
+        $version = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.4.0-rc.5';
         update_option(self::OPTION_VERSION, $version, false);
         update_option(self::OPTION_SCHEMA_VERSION, CompleteSchema::VERSION, false);
         update_option(self::OPTION_FINANCIAL_POLICY_DECISION, PlatformFinancialPolicy::DECISION_ID, false);
