@@ -183,7 +183,20 @@ final class RetentionOperationsService
             'actioned_at'=>$now,
         ]);
         if($updated!==1){
-            throw new InvariantViolation('Retention action completed externally but evidence could not be committed; automatic replay remains blocked.');
+            // External action may already have succeeded. Best-effort mark the
+            // durable claim uncertain; even if this write also fails, explicit
+            // reconciliation accepts the still-executing claim with verified evidence.
+            try {
+                $this->repository->updateWhere('retention_ledger',[
+                    'record_ref'=>$recordReference,
+                    'action_state'=>'executing',
+                    'actioned_at'=>null,
+                ],[
+                    'action_state'=>'uncertain',
+                ]);
+            } catch (Throwable) {
+            }
+            throw new InvariantViolation('Retention action completed externally but evidence could not be committed; automatic replay remains blocked pending explicit reconciliation.');
         }
         return [
             'record_ref'=>$recordReference,
@@ -200,10 +213,19 @@ final class RetentionOperationsService
         DateTimeImmutable $verifiedAt
     ): array {
         $this->reference($verifiedEvidenceReference);
+        $record=$this->repository->get('retention_ledger',$recordReference);
+        if($record===null
+            || (bool)($record['legal_hold']??false)
+            || ($record['actioned_at']??null)!==null
+            || !in_array((string)($record['action_state']??''),['uncertain','executing'],true)
+        ){
+            throw new InvariantViolation('Retention action is not eligible for verified external reconciliation.');
+        }
+        $state=(string)$record['action_state'];
         $updated=$this->repository->updateWhere('retention_ledger',[
             'record_ref'=>$recordReference,
             'legal_hold'=>false,
-            'action_state'=>'uncertain',
+            'action_state'=>$state,
             'actioned_at'=>null,
         ],[
             'action_state'=>'completed',

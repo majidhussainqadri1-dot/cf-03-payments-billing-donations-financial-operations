@@ -71,6 +71,7 @@ final class WordPressFinanceAdminApi
             ['/admin/retention/(?P<id>[A-Za-z0-9._:-]+)/hold','POST','placeHold','retention','retention_hold'],
             ['/admin/retention/(?P<id>[A-Za-z0-9._:-]+)/release','POST','releaseHold','retention','retention_release'],
             ['/admin/retention/(?P<id>[A-Za-z0-9._:-]+)/execute','POST','executeRetention','retention','retention_execute'],
+            ['/admin/retention/(?P<id>[A-Za-z0-9._:-]+)/reconcile','POST','reconcileRetention','retention','retention_reconcile'],
             ['/admin/incidents','POST','declareIncident','incidents','incident_declare'],
             ['/admin/incidents/(?P<id>[A-Za-z0-9._:-]+)/recover-request','POST','requestIncidentRecovery','incidents','incident_recovery_request'],
             ['/admin/incidents/(?P<id>[A-Za-z0-9._:-]+)/recover','POST','recoverIncident','incidents','incident_recovery_approve'],
@@ -275,6 +276,19 @@ final class WordPressFinanceAdminApi
             );
             return $result;
         });
+    }
+
+    public static function reconcileRetention(mixed $request=null):mixed
+    {
+        return self::handle(static fn():array=>self::auditedRetention(
+            'retention_action_reconciled',
+            (string)self::param($request,'id'),
+            static fn(RetentionOperationsService $s):array=>$s->reconcileUncertain(
+                (string)self::param($request,'id'),
+                (string)self::param($request,'evidence_reference'),
+                new DateTimeImmutable('now')
+            )
+        ));
     }
 
     public static function declareIncident(mixed $request=null):mixed{return self::handle(static fn():array=>self::incidents()->declare((string)self::param($request,'incident_id'),self::nonNegative(self::param($request,'severity')),(string)self::param($request,'reason_code'),self::actor(),new DateTimeImmutable('now'),self::boolean(self::param($request,'kill_checkout'),true),self::boolean(self::param($request,'kill_refunds'),true),self::boolean(self::param($request,'kill_webhooks'),true)));}

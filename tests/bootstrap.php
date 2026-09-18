@@ -26,6 +26,7 @@ const CF03_ACTIVE_TEST_SUITES = [
     'run-round22-webhook-idempotent-authenticity.php',
     'run-round23-ledger-integrity.php',
     'run-round24-settlement-reconciliation.php',
+    'run-round25-retention-reconciliation.php',
     'run-release-inventory.php',
     'run-future-expansion-40.php',
 ];
