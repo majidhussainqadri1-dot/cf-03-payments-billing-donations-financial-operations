@@ -80,7 +80,7 @@ $tests['migration runner binds durable checksum evidence to complete schema v4']
 
 $tests['restore rejects missing duplicate and unexpected provider postings'] = static function (): void {
     $hash = str_repeat('a', 64);
-    $manifest = ['ledger'=>['count'=>1,'hash'=>$hash]];
+    $manifest = ['ledger'=>['count'=>1,'hash'=>$hash],'provider_events'=>['count'=>1,'hash'=>$hash]];
     $restore = new RestoreReconciliation();
     expectInvariant(static fn () => $restore->verify($manifest,$manifest,['event:1'],[]));
     expectInvariant(static fn () => $restore->verify($manifest,$manifest,['event:1'],['event:1','event:1']));
