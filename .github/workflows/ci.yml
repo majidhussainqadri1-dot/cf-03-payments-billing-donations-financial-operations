@@ -66,6 +66,8 @@ jobs:
         run: php tests/run-round22-webhook-idempotent-authenticity.php
       - name: Round 23 ledger integrity regression
         run: php tests/run-round23-ledger-integrity.php
+      - name: Round 24 settlement reconciliation regression
+        run: php tests/run-round24-settlement-reconciliation.php
       - name: Release inventory acceptance
         run: php tests/run-release-inventory.php
       - name: Future Expansion Pack 40 acceptance
@@ -161,6 +163,7 @@ jobs:
           test -f tests/run-round20-final-adversarial.php
           test -f tests/run-round22-webhook-idempotent-authenticity.php
           test -f tests/run-round23-ledger-integrity.php
+          test -f tests/run-round24-settlement-reconciliation.php
       - name: Future 40 constitutional assertions
         run: |
           grep -q "AMENDMENT_ID = 'CF03-FUTURE40-2026-09-08'" src/Application/FutureExpansionRegistry.php

@@ -55,6 +55,8 @@ final class SettlementBatch
         $lineGross = 0;
         $lineFees = 0;
         $lineRefunds = 0;
+        $lineChargebacks = 0;
+        $payouts = [];
         $normalized = [];
         foreach ($lines as $line) {
             if (! is_array($line)
@@ -68,7 +70,7 @@ final class SettlementBatch
                 || ! is_int($line['amount_minor'])
                 || ! is_string($line['currency'])
                 || preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/', $line['reference']) !== 1
-                || ! in_array($line['type'], ['payment', 'fee', 'refund'], true)
+                || ! in_array($line['type'], ['payment', 'fee', 'refund', 'chargeback', 'payout'], true)
                 || $line['amount_minor'] < 0
                 || $line['currency'] !== $gross->currency()
             ) {
@@ -85,6 +87,8 @@ final class SettlementBatch
                 'payment' => $lineGross = self::safeAdd($lineGross, $line['amount_minor']),
                 'fee' => $lineFees = self::safeAdd($lineFees, $line['amount_minor']),
                 'refund' => $lineRefunds = self::safeAdd($lineRefunds, $line['amount_minor']),
+                'chargeback' => $lineChargebacks = self::safeAdd($lineChargebacks, $line['amount_minor']),
+                'payout' => $payouts[] = $line['amount_minor'],
             };
             $normalized[] = [
                 'reference' => $line['reference'],
@@ -95,9 +99,12 @@ final class SettlementBatch
         }
         if ($lineGross !== $gross->minorUnits()
             || $lineFees !== $fees->minorUnits()
-            || $lineRefunds !== $refunds->minorUnits()
+            || self::safeAdd($lineRefunds, $lineChargebacks) !== $refunds->minorUnits()
         ) {
             throw new InvariantViolation('Settlement line totals do not match batch totals.');
+        }
+        if (count($payouts) > 1 || ($payouts !== [] && $payouts[0] !== $net->minorUnits())) {
+            throw new InvariantViolation('Settlement payout line must be unique and equal the canonical net amount.');
         }
 
         $this->lines = $normalized;

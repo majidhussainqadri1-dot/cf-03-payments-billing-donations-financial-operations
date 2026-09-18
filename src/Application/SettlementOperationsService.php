@@ -17,6 +17,8 @@ use Sabri\CF03\Support\InvariantViolation;
 
 final class SettlementOperationsService
 {
+    private const SETTLEMENT_LINE_PAGE_SIZE = 500;
+    private const MAX_SETTLEMENT_LINES = 100000;
     public function __construct(
         private readonly QueryableFinancialRepository $repository,
         private readonly RuntimeConfiguration $configuration,
@@ -161,14 +163,27 @@ final class SettlementOperationsService
             throw new InvariantViolation('Reconciliation exception resolution lost a concurrent race.');
         }
 
-        $remaining = $this->repository->find('reconciliation_exceptions', [
-            'batch_id' => (string)$exception['batch_id'],
-            'state' => 'open',
-        ], 500);
-        if ($remaining === []) {
-            $this->repository->updateWhere('settlements', [
+        $remainingOpen = 0;
+        $offset = 0;
+        do {
+            $page = $this->repository->page('reconciliation_exceptions', [
                 'batch_id' => (string)$exception['batch_id'],
+                'state' => 'open',
+            ], 500, $offset);
+            $remainingOpen += count($page);
+            $offset += count($page);
+            if ($offset > 100000) {
+                throw new InvariantViolation('Reconciliation exception set exceeds the safe automatic bound.');
+            }
+        } while (count($page) === 500);
+        if ($remainingOpen === 0) {
+            $updatedBatch = $this->repository->updateWhere('settlements', [
+                'batch_id' => (string)$exception['batch_id'],
+                'status' => 'exception_review',
             ], ['status' => 'reconciled_pending_posting']);
+            if ($updatedBatch !== 1) {
+                throw new InvariantViolation('Reconciled settlement batch status could not be advanced exactly once.');
+            }
         }
 
         return [
@@ -176,7 +191,7 @@ final class SettlementOperationsService
             'state' => 'resolved',
             'accepted_risk' => $acceptedRisk,
             'resolution_reference' => $resolutionReference,
-            'remaining_open' => count($remaining),
+            'remaining_open' => $remainingOpen,
         ];
     }
 
@@ -502,16 +517,27 @@ final class SettlementOperationsService
     private function hydrateBatch(array $record): SettlementBatch
     {
         $lines = [];
-        foreach ($this->repository->find('settlement_lines', [
-            'batch_id' => $record['batch_id'],
-        ], 500) as $line) {
-            $lines[] = [
-                'reference' => (string)$line['line_ref'],
-                'type' => (string)$line['line_type'],
-                'amount_minor' => (int)$line['amount_minor'],
-                'currency' => (string)$line['currency'],
-            ];
-        }
+        $offset = 0;
+        do {
+            $page = $this->repository->page(
+                'settlement_lines',
+                ['batch_id' => $record['batch_id']],
+                self::SETTLEMENT_LINE_PAGE_SIZE,
+                $offset
+            );
+            foreach ($page as $line) {
+                $lines[] = [
+                    'reference' => (string)$line['line_ref'],
+                    'type' => (string)$line['line_type'],
+                    'amount_minor' => (int)$line['amount_minor'],
+                    'currency' => (string)$line['currency'],
+                ];
+            }
+            $offset += count($page);
+            if ($offset > self::MAX_SETTLEMENT_LINES) {
+                throw new InvariantViolation('Settlement batch exceeds the safe automatic posting line bound.');
+            }
+        } while (count($page) === self::SETTLEMENT_LINE_PAGE_SIZE);
         return new SettlementBatch(
             (string)$record['batch_id'],
             (string)$record['provider'],

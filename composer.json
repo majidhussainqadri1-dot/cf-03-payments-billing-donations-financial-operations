@@ -35,6 +35,7 @@
       "php tests/run-round20-final-adversarial.php",
       "php tests/run-round22-webhook-idempotent-authenticity.php",
       "php tests/run-round23-ledger-integrity.php",
+      "php tests/run-round24-settlement-reconciliation.php",
       "php tests/run-release-inventory.php",
       "php tests/run-future-expansion-40.php"
     ],
