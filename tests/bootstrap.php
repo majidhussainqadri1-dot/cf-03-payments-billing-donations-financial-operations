@@ -30,6 +30,7 @@ const CF03_ACTIVE_TEST_SUITES = [
     'run-round26-restore-configuration.php',
     'run-round27-migration-preflight.php',
     'run-round28-public-disclosure-accessibility.php',
+    'run-round29-release-identity.php',
     'run-release-inventory.php',
     'run-future-expansion-40.php',
 ];

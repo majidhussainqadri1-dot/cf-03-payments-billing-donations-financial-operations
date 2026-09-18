@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0-rc.4 — Post-Identity Hardening and Public-Disclosure Carrier
+
+- Assigns a new immutable software carrier identity to all source changes made after `1.4.0-rc.3`; the prior rc.3 artifact identity is preserved as historical evidence rather than silently reused for different source bytes.
+- Carries post-rc.3 webhook retry, ledger-integrity, settlement-reconciliation, retention-reconciliation, backup/restore, migration-preflight and public donation-disclosure hardening.
+- Keeps active canonical schema `4.0.2`; this carrier bump does not change schema SQL.
+- Keeps Future40 amendment origin `1.4.0-rc.1` / schema baseline `4.0.0` immutable while updating only the current hardened carrier to `1.4.0-rc.4`.
+- Donation remains voluntary one-time only; approved core/AI remain free; platform commission remains 0%; donor/non-donor parity is unchanged.
+- Deterministic package target is `cf-03-payments-billing-donations-financial-operations-1.4.0-rc.4.zip`.
+- Repository/source and automated-QA evidence only; no Staging, Live or operational activation claim.
+
 ## 1.4.0-rc.3 — Final Adversarial Identity and Manifest Hardening
 
 - Completed the tenth sequential review only after the full round had finished, then corrected all defects found in that round before final retest.
