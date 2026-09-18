@@ -44,6 +44,10 @@ jobs:
         run: php tests/run-round9-governance-security.php
       - name: Round 10 canonical identity and manifest regression
         run: php tests/run-round10-identity-manifest.php
+      - name: Round 12 accounting integrity regression
+        run: php tests/run-round12-accounting-integrity.php
+      - name: Round 13 audit chain append-order regression
+        run: php tests/run-round13-audit-order.php
       - name: Release inventory acceptance
         run: php tests/run-release-inventory.php
       - name: Future Expansion Pack 40 acceptance
@@ -91,7 +95,7 @@ jobs:
           grep -q 'MAX_MUTATION_BYTES = 65536' src/Infrastructure/WordPressRequestGuard.php
           grep -q 'IMMUTABLE_COLLECTIONS' src/Infrastructure/WordPressFinancialRepository.php
           grep -q 'assertActiveCollection' src/Infrastructure/WordPressFinancialRepository.php
-          grep -q 'ORDER BY {$idField} ASC' src/Infrastructure/WordPressFinancialRepository.php
+          grep -q "\$collection === 'audit' ? 'id ASC' : \$idField.' ASC'" src/Infrastructure/WordPressFinancialRepository.php
           grep -q 'UNIQUE KEY provider_customer_ref(provider_customer_ref)' src/Persistence/RuntimeSchemaExtension.php
           grep -q 'UNIQUE KEY provider_event_id(provider_event_id)' src/Persistence/RuntimeSchemaExtension.php
           grep -q 'UNIQUE KEY batch_id(batch_id)' src/Persistence/RuntimeSchemaExtension.php
@@ -128,6 +132,8 @@ jobs:
           test -f tests/run-round8-runtime-delivery-gates.php
           test -f tests/run-round9-governance-security.php
           test -f tests/run-round10-identity-manifest.php
+          test -f tests/run-round12-accounting-integrity.php
+          test -f tests/run-round13-audit-order.php
       - name: Future 40 constitutional assertions
         run: |
           grep -q "AMENDMENT_ID = 'CF03-FUTURE40-2026-09-08'" src/Application/FutureExpansionRegistry.php
