@@ -186,9 +186,9 @@ $tests['active manifests match release and written-plan amendment identity'] = s
     $release = json_decode((string)file_get_contents($root.'/manifests/cf03-release-1.4.0.json'), true, 512, JSON_THROW_ON_ERROR);
     $future = json_decode((string)file_get_contents($root.'/manifests/cf03-future-expansion-40.json'), true, 512, JSON_THROW_ON_ERROR);
     $appeal = json_decode((string)file_get_contents($root.'/manifests/donation-appeal-contract.json'), true, 512, JSON_THROW_ON_ERROR);
-    same('1.4.0-rc.4', $contracts['software_version']);
+    same('1.4.0-rc.5', $contracts['software_version']);
     same('4.0.2', $contracts['active_schema_version']);
-    same('1.4.0-rc.4', $release['software_version']);
+    same('1.4.0-rc.5', $release['software_version']);
     same('4.0.2', $release['schema_version']);
     same('v1.0', $release['base_plan_version']);
     same('v1.1', $release['written_plan_amendment_version']);
@@ -196,7 +196,7 @@ $tests['active manifests match release and written-plan amendment identity'] = s
     same('CF03-FUTURE40-2026-09-08', $release['amendment_id']);
     same(40, $future['feature_count']);
     same('fail_closed_by_default', $future['activation']);
-    same('1.4.0-rc.4', $future['current_hardened_carrier']);
+    same('1.4.0-rc.5', $future['current_hardened_carrier']);
     same('4.0.2', $future['active_schema_version']);
     same(7, $appeal['frequency']['minimum_days_between_appeals']);
     same(false, $appeal['recurring_available']);

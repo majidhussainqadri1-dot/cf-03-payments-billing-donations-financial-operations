@@ -4,7 +4,7 @@ This directory contains both **current governing implementation records** and **
 
 ## Current governing implementation records
 
-- `CF-03-New-Governing-Plans-Implementation-Baseline-2026-09-08.md` — current source baseline, carried by CF-03 `1.4.0-rc.4` / schema `4.0.2`.
+- `CF-03-New-Governing-Plans-Implementation-Baseline-2026-09-08.md` — current source baseline, carried by CF-03 `1.4.0-rc.5` / schema `4.0.2`.
 - `CF-03-Future-Expansion-Pack-40-2026-09-08.md` — written-plan amendment v1.1 / `CF03-FUTURE40-2026-09-08`; all 40 future capabilities remain fail closed by default.
 
 The governing plan identities are `SSH-PMP-2026-v3.0`, CF-03 Conditional Complete Master Plan 2026 v1.0, and written-plan amendment v1.1 / `CF03-FUTURE40-2026-09-08`.
