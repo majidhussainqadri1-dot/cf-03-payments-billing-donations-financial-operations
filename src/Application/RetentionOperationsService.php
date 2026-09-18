@@ -108,6 +108,9 @@ final class RetentionOperationsService
                 'record_ref'=>$recordReference,
                 'status'=>'already_actioned',
                 'evidence_reference'=>$record['action_evidence_ref']??null,
+                'actioned_at'=>$record['actioned_at'] instanceof DateTimeImmutable
+                    ? $record['actioned_at']->format(DATE_ATOM)
+                    : (is_string($record['actioned_at']) ? (new DateTimeImmutable($record['actioned_at']))->format(DATE_ATOM) : null),
             ];
         }
         $state=(string)($record['action_state']??'pending');

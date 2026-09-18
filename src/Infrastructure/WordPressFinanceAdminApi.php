@@ -244,7 +244,38 @@ final class WordPressFinanceAdminApi
     }
     public static function placeHold(mixed $request=null):mixed{return self::handle(static fn():array=>self::auditedRetention('retention_legal_hold_placed',(string)self::param($request,'id'),static fn(RetentionOperationsService $s):array=>$s->placeLegalHold((string)self::param($request,'id'),(string)self::param($request,'hold_reference'))));}
     public static function releaseHold(mixed $request=null):mixed{return self::handle(static fn():array=>self::auditedRetention('retention_legal_hold_released',(string)self::param($request,'id'),static fn(RetentionOperationsService $s):array=>$s->releaseLegalHold((string)self::param($request,'id'),(string)self::param($request,'hold_reference'))));}
-    public static function executeRetention(mixed $request=null):mixed{return self::handle(static fn():array=>self::auditedRetention('retention_action_executed',(string)self::param($request,'id'),static fn(RetentionOperationsService $s):array=>$s->executeDue((string)self::param($request,'id'),new DateTimeImmutable('now'))));}
+    public static function executeRetention(mixed $request=null):mixed
+    {
+        return self::handle(static function()use($request):array{
+            $repo=self::repo();$audit=new FinancialAuditService($repo);$actor=self::actor();$id=(string)self::param($request,'id');$now=new DateTimeImmutable('now');
+            // External archive/anonymize/delete is deliberately outside a DB
+            // transaction. Once the durable single-execution claim is committed,
+            // a later audit failure must not roll the claim back and replay an
+            // irreversible external action.
+            $result=(new RetentionOperationsService($repo,WordPressRetentionActionExecutorFactory::make()))->executeDue($id,$now);
+            $record=$repo->get('retention_ledger',$id);
+            if($record===null){throw new InvariantViolation('Retention evidence disappeared after execution.');}
+            $actioned=$record['actioned_at']??null;
+            $auditAt=$actioned instanceof DateTimeImmutable
+                ? $actioned
+                : (is_string($actioned)&&$actioned!==''?new DateTimeImmutable($actioned):$now);
+            self::appendAudit(
+                $audit,
+                'retention_action_executed',
+                'retention_record',
+                $id,
+                'retention_legal_hold',
+                $actor,
+                $auditAt,
+                [
+                    'action_state'=>(string)($record['action_state']??'pending'),
+                    'delete_mode'=>(string)($record['delete_mode']??''),
+                    'evidence_reference'=>(string)($record['action_evidence_ref']??''),
+                ]
+            );
+            return $result;
+        });
+    }
 
     public static function declareIncident(mixed $request=null):mixed{return self::handle(static fn():array=>self::incidents()->declare((string)self::param($request,'incident_id'),self::nonNegative(self::param($request,'severity')),(string)self::param($request,'reason_code'),self::actor(),new DateTimeImmutable('now'),self::boolean(self::param($request,'kill_checkout'),true),self::boolean(self::param($request,'kill_refunds'),true),self::boolean(self::param($request,'kill_webhooks'),true)));}
     public static function requestIncidentRecovery(mixed $request=null):mixed{return self::handle(static fn():array=>self::controls()->requestIncidentRecovery((string)self::param($request,'id'),self::actor(),(string)self::param($request,'resolution_evidence_reference'),new DateTimeImmutable('now'),self::boolean(self::param($request,'enable_checkout')),self::boolean(self::param($request,'enable_refunds')),self::boolean(self::param($request,'enable_webhooks'))));}
