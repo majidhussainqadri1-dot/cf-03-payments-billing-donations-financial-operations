@@ -21,3 +21,8 @@
 @media(max-width:600px){.sabri-cf03-amounts{display:grid;grid-template-columns:1fr 1fr}.sabri-cf03-record dl{grid-template-columns:1fr}.sabri-cf03-card{border-radius:10px}}
 @media(max-width:380px){.sabri-cf03-amounts{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.sabri-cf03-card *{scroll-behavior:auto!important;transition:none!important}}
+
+.sabri-cf03-disclosure{padding:.85rem 1rem;border:1px solid #c6d3ca;border-radius:10px;background:#fafcfb}
+.sabri-cf03-disclosure h3{margin-block:.1rem .6rem;font-size:1.05em}
+.sabri-cf03-disclosure ul{margin-block:.25rem;padding-inline-start:1.25rem}
+.sabri-cf03-disclosure li+li{margin-block-start:.35rem}

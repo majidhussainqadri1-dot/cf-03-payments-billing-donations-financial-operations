@@ -27,8 +27,17 @@ final class WordPressPublicUi
     public static function donate(): string
     {
         $collectionEnabled = false;
-        try { $collectionEnabled = WordPressRestApi::policy()['live_collection_enabled'] === true; }
-        catch (Throwable) { $collectionEnabled = false; }
+        $providerLabel = 'Not activated';
+        try {
+            $collectionEnabled = WordPressRestApi::policy()['live_collection_enabled'] === true;
+            $runtime = WordPressRuntimeConfiguration::load();
+            if ($collectionEnabled) {
+                $providerLabel = $runtime->providerCode();
+            }
+        } catch (Throwable) {
+            $collectionEnabled = false;
+            $providerLabel = 'Not activated';
+        }
         self::assets($collectionEnabled);
 
         $copy = DonationAppealCopy::contract();
@@ -58,13 +67,37 @@ final class WordPressPublicUi
         $consentLabel = $language === 'ur'
             ? 'میں تصدیق کرتا/کرتی ہوں کہ یہ صرف ایک رضاکارانہ یک وقتی عطیہ ہے؛ کوئی recurring یا خودکار دوبارہ چارج نہیں ہوگا۔'
             : 'I confirm this is a voluntary one-time donation only; there is no recurring or automatic repeat charge.';
+        $disclosure = $language === 'ur'
+            ? [
+                'purpose' => 'مقصد: ادارے کی پائیداری، علمی و تکنیکی ترقی اور ہومیوپیتھی کی ترویج۔',
+                'provider' => 'محفوظ hosted payment provider: '.$providerLabel,
+                'fees' => 'اس فارم میں CF-03 منتخب عطیہ رقم کے علاوہ کوئی الگ platform fee یا tax شامل نہیں کرتا؛ آخری ادائیگی سے پہلے hosted provider پر ظاہر ہونے والی مکمل رقم ضرور دیکھیں۔',
+                'refund' => 'Refund/Support: عطیہ کے بعد رسید اور جائز refund status آپ کے ریکارڈ میں رہے گا؛ مدد کے لیے /support/ استعمال کریں۔',
+                'data' => 'Data use: ادائیگی hosted/tokenized provider کے ذریعے ہوگی؛ card/PAN/CVV/PIN/OTP اس پلیٹ فارم پر محفوظ نہیں کیے جاتے۔',
+                'parity' => 'عطیہ دینے یا نہ دینے سے access، rank، verification، treatment، education، AI، publishing یا support میں کوئی فائدہ یا نقصان نہیں ہوگا۔',
+            ]
+            : [
+                'purpose' => 'Purpose: institutional sustainability, technical and educational development, and the advancement of homeopathy.',
+                'provider' => 'Secure hosted payment provider: '.$providerLabel,
+                'fees' => 'CF-03 adds no separate platform fee or tax to the selected donation amount in this form; review the full amount shown by the hosted provider before final payment.',
+                'refund' => 'Refund/Support: your receipt and any lawful refund status remain in your records; use /support/ for assistance.',
+                'data' => 'Data use: payment uses a hosted/tokenized provider; card/PAN/CVV/PIN/OTP data is not stored by this platform.',
+                'parity' => 'Donating or not donating never changes access, rank, verification, treatment, education, AI, publishing, or support.',
+            ];
+        $disclosureHtml = '<div class="sabri-cf03-disclosure" id="sabri-cf03-preaction-disclosure"><h3>'
+            .esc_html($language === 'ur' ? 'ادائیگی سے پہلے واضح معلومات' : 'Before you continue').'</h3><ul>';
+        foreach ($disclosure as $item) {
+            $disclosureHtml .= '<li>'.esc_html($item).'</li>';
+        }
+        $disclosureHtml .= '</ul></div>';
 
         return '<section class="sabri-cf03-card" dir="auto" aria-labelledby="sabri-cf03-donate-title">'
             .'<h2 id="sabri-cf03-donate-title"><ion-icon name="heart-outline" aria-hidden="true"></ion-icon> '.esc_html($heading).'</h2>'
             .'<p>'.esc_html($message).'</p>'
             .'<p id="sabri-cf03-donation-assurance" class="sabri-cf03-assurance">'.esc_html($assurance).'</p>'
             .$availability
-            .'<form class="sabri-cf03-donation-form" aria-describedby="sabri-cf03-donation-assurance" aria-busy="false" novalidate>'
+            .$disclosureHtml
+            .'<form class="sabri-cf03-donation-form" data-runtime-enabled="'.($collectionEnabled ? '1' : '0').'" aria-describedby="sabri-cf03-donation-assurance sabri-cf03-preaction-disclosure" aria-busy="false" novalidate>'
             .'<fieldset class="sabri-cf03-amounts"'.($collectionEnabled ? '' : ' disabled').'><legend>'
             .esc_html__('Choose a suggested amount or enter a custom amount; nothing is preselected.', 'sabri-cf03-finance').'</legend>'
             .$options.'</fieldset>'
@@ -73,9 +106,12 @@ final class WordPressPublicUi
             .'<label class="sabri-cf03-check"><input type="checkbox" name="one_time_consent" value="1"'.$disabled.'> <span>'
             .esc_html($consentLabel).'</span></label>'
             .'<input type="hidden" name="idempotency_key" value="">'
-            .'<button type="submit"'.$disabled.'><ion-icon name="heart-outline" aria-hidden="true"></ion-icon> '
+            .'<button type="submit" disabled aria-disabled="true"><ion-icon name="heart-outline" aria-hidden="true"></ion-icon> '
             .esc_html__('Continue to secure provider for one-time donation', 'sabri-cf03-finance').'</button>'
             .'<p class="sabri-cf03-status" role="status" aria-live="polite" aria-atomic="true"></p>'
+            .'<noscript><p class="sabri-cf03-availability" role="status">'.esc_html($language === 'ur'
+                ? 'محفوظ عطیہ checkout کے لیے JavaScript درکار ہے؛ JavaScript کے بغیر کوئی مالی درخواست نہیں بھیجی جائے گی۔'
+                : 'JavaScript is required for secure donation checkout; no financial request will be submitted without it.').'</p></noscript>'
             .'</form>'
             .'<p><a href="'.esc_url(home_url($transparencyPath)).'"><ion-icon name="document-text-outline" aria-hidden="true"></ion-icon> '
             .esc_html__('Financial transparency', 'sabri-cf03-finance').'</a></p>'

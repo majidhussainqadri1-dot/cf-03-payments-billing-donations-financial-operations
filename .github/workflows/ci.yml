@@ -74,6 +74,8 @@ jobs:
         run: php tests/run-round26-restore-configuration.php
       - name: Round 27 migration preflight regression
         run: php tests/run-round27-migration-preflight.php
+      - name: Round 28 public disclosure and accessibility regression
+        run: php tests/run-round28-public-disclosure-accessibility.php
       - name: Release inventory acceptance
         run: php tests/run-release-inventory.php
       - name: Future Expansion Pack 40 acceptance
@@ -173,6 +175,7 @@ jobs:
           test -f tests/run-round25-retention-reconciliation.php
           test -f tests/run-round26-restore-configuration.php
           test -f tests/run-round27-migration-preflight.php
+          test -f tests/run-round28-public-disclosure-accessibility.php
       - name: Future 40 constitutional assertions
         run: |
           grep -q "AMENDMENT_ID = 'CF03-FUTURE40-2026-09-08'" src/Application/FutureExpansionRegistry.php

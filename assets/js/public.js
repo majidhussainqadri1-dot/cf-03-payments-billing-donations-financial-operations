@@ -29,6 +29,14 @@
     return minor;
   };
 
+  document.querySelectorAll('.sabri-cf03-donation-form[data-runtime-enabled="1"]').forEach(form=>{
+    const submit=form.querySelector('button[type="submit"]');
+    if(cfg.collectionEnabled===true&&submit){
+      submit.disabled=false;
+      submit.setAttribute('aria-disabled','false');
+    }
+  });
+
   document.addEventListener('change',event=>{
     const radio=event.target.closest('.sabri-cf03-donation-form input[name="amount_minor"]');
     if(!radio)return;
@@ -57,7 +65,7 @@
 
     form.dataset.submitting='1';
     form.setAttribute('aria-busy','true');
-    if(submit)submit.disabled=true;
+    if(submit){submit.disabled=true;submit.setAttribute('aria-disabled','true');}
     if(status)status.textContent=cfg.messages?.working||'Working…';
 
     try{
@@ -92,7 +100,7 @@
     }finally{
       form.dataset.submitting='0';
       form.setAttribute('aria-busy','false');
-      if(submit&&cfg.collectionEnabled===true)submit.disabled=false;
+      if(submit&&cfg.collectionEnabled===true){submit.disabled=false;submit.setAttribute('aria-disabled','false');}
     }
   });
 
