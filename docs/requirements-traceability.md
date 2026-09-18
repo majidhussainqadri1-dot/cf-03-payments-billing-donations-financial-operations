@@ -1,10 +1,10 @@
-# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.3
+# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.4
 
 This matrix is the current **source-code traceability** for the two governing documents and the current Future40 amendment:
 
 1. `SSH-PMP-2026-v3.0` — Sabri Social Homeopathy Platform Definitive Master Plan v3.0;
 2. `CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0`;
-3. `CF03-FUTURE40-2026-09-08` — CF-03 Future Expansion Pack 40 Amendment, current hardened software carrier `1.4.0-rc.3`, active schema `4.0.2`.
+3. `CF03-FUTURE40-2026-09-08` — CF-03 Future Expansion Pack 40 Amendment, current hardened software carrier `1.4.0-rc.4`, active schema `4.0.2`.
 
 It does **not** claim provider, legal, PCI, staging, Live or operational acceptance. Where a requirement contains an external acceptance test, the source contract is implemented but the external acceptance gate remains pending.
 
@@ -58,7 +58,7 @@ The authoritative Future40 requirement-to-code/test mapping is additionally main
 - `manifests/cf03-future-expansion-40.json`;
 - `tests/run-future-expansion-40.php`.
 
-All 40 entries remain fail closed by default. `FX-38` and `FX-39` are conditional Change-Control capabilities; their distinct approval gates remain mandatory and code presence is not activation evidence. The Future40 manifest now separates its original `1.4.0-rc.1` / `4.0.0` amendment baseline from the current hardened carrier `1.4.0-rc.3` / `4.0.2`.
+All 40 entries remain fail closed by default. `FX-38` and `FX-39` are conditional Change-Control capabilities; their distinct approval gates remain mandatory and code presence is not activation evidence. The Future40 manifest now separates its original `1.4.0-rc.1` / `4.0.0` amendment baseline from the current hardened carrier `1.4.0-rc.4` / `4.0.2`.
 
 ## New-plan supersession lock
 

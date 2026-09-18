@@ -1,6 +1,6 @@
 # CF-03 New Governing Plans — Implementation Baseline
 
-**Current hardened source candidate:** `1.4.0-rc.3`  
+**Current hardened source candidate:** `1.4.0-rc.4`  
 **Active schema:** `4.0.2`  
 **Original baseline date:** 2026-09-08  
 **Current written-plan amendment:** `v1.1`, dated 2026-09-09, amendment ID `CF03-FUTURE40-2026-09-08`  

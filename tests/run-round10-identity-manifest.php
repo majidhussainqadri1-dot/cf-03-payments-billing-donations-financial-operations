@@ -53,7 +53,7 @@ $tests['future40 manifest separates immutable amendment baseline from current ha
     $manifest = json_decode((string)file_get_contents(dirname(__DIR__).'/manifests/cf03-future-expansion-40.json'), true, 512, JSON_THROW_ON_ERROR);
     if (($manifest['software_target'] ?? null) !== '1.4.0-rc.1'
         || ($manifest['original_schema_baseline'] ?? null) !== '4.0.0'
-        || ($manifest['current_hardened_carrier'] ?? null) !== '1.4.0-rc.3'
+        || ($manifest['current_hardened_carrier'] ?? null) !== '1.4.0-rc.4'
         || ($manifest['active_schema_version'] ?? null) !== '4.0.2'
         || ($manifest['feature_count'] ?? null) !== 40
         || ($manifest['activation'] ?? null) !== 'fail_closed_by_default'
@@ -67,11 +67,11 @@ $tests['current release and contract manifests match plugin carrier and schema']
     $release = json_decode((string)file_get_contents($root.'/manifests/cf03-release-1.4.0.json'), true, 512, JSON_THROW_ON_ERROR);
     $contracts = json_decode((string)file_get_contents($root.'/manifests/cf03-contracts.json'), true, 512, JSON_THROW_ON_ERROR);
     $plugin = (string)file_get_contents($root.'/cf-03-payments-billing-donations-financial-operations.php');
-    if (($release['software_version'] ?? null) !== '1.4.0-rc.3'
+    if (($release['software_version'] ?? null) !== '1.4.0-rc.4'
         || ($release['schema_version'] ?? null) !== '4.0.2'
-        || ($contracts['software_version'] ?? null) !== '1.4.0-rc.3'
+        || ($contracts['software_version'] ?? null) !== '1.4.0-rc.4'
         || ($contracts['active_schema_version'] ?? null) !== '4.0.2'
-        || !str_contains($plugin, 'Version: 1.4.0-rc.3')
+        || !str_contains($plugin, 'Version: 1.4.0-rc.4')
         || !str_contains($plugin, "define('SABRI_CF03_SCHEMA_VERSION', '4.0.2')")
     ) {
         throw new RuntimeException('Current carrier identity drift detected.');

@@ -6,7 +6,7 @@
 **Base plan retained:** CF-03 Conditional Complete Master Plan `v1.0`  
 **Original amendment software target:** `1.4.0-rc.1`  
 **Original amendment schema baseline:** `4.0.0`  
-**Current hardened carrier:** `1.4.0-rc.3` / schema `4.0.2`; Future40 financial law and activation boundaries are unchanged.  
+**Current hardened carrier:** `1.4.0-rc.4` / schema `4.0.2`; Future40 financial law and activation boundaries are unchanged.  
 **Activation:** all 40 capabilities are coded as future/fail-closed contracts; code presence does not itself activate Live financial behavior.
 
 ## Governing lock

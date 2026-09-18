@@ -136,10 +136,10 @@ $tests['future pack cannot activate itself or revive donor privilege'] = static 
 $tests['release identity and package builder stay aligned'] = static function (): void {
     $bootstrap = source('cf-03-payments-billing-donations-financial-operations.php');
     $builder = source('scripts/build-package.sh');
-    contains($bootstrap, 'Version: 1.4.0-rc.3', true);
+    contains($bootstrap, 'Version: 1.4.0-rc.4', true);
     contains($bootstrap, "SABRI_CF03_SCHEMA_VERSION', '4.0.2'", true);
     contains($bootstrap, 'CF03-FUTURE40-2026-09-08', true);
-    contains($builder, 'VERSION="1.4.0-rc.3"', true);
+    contains($builder, 'VERSION="1.4.0-rc.4"', true);
 };
 
 $failures = 0;
