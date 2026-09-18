@@ -28,6 +28,7 @@ const CF03_ACTIVE_TEST_SUITES = [
     'run-round24-settlement-reconciliation.php',
     'run-round25-retention-reconciliation.php',
     'run-round26-restore-configuration.php',
+    'run-round27-migration-preflight.php',
     'run-release-inventory.php',
     'run-future-expansion-40.php',
 ];

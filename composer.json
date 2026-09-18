@@ -38,6 +38,7 @@
       "php tests/run-round24-settlement-reconciliation.php",
       "php tests/run-round25-retention-reconciliation.php",
       "php tests/run-round26-restore-configuration.php",
+      "php tests/run-round27-migration-preflight.php",
       "php tests/run-release-inventory.php",
       "php tests/run-future-expansion-40.php"
     ],

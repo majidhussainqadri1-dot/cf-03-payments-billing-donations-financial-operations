@@ -36,6 +36,9 @@ final class WordPressSchemaInstaller
         }
 
         $tables = CompleteSchema::tables($wpdb->prefix);
+        // Migration identities are immutable. Check any durable evidence for this
+        // schema version before dbDelta is allowed to mutate a table.
+        self::preflightMigrationChecksums($wpdb, $tables);
         $applied = [];
         $defects = [];
         foreach ($tables as $name => $sql) {
@@ -87,6 +90,59 @@ final class WordPressSchemaInstaller
             throw new RuntimeException('CF-03 schema installation did not verify every canonical table.');
         }
         return $applied;
+    }
+
+    /** @param array<string,string> $tables */
+    private static function preflightMigrationChecksums(object $wpdb, array $tables): void
+    {
+        $migrationSql = $tables['migrations'] ?? null;
+        if (!is_string($migrationSql)
+            || preg_match('/^CREATE TABLE\s+([^\s(]+)/i', $migrationSql, $match) !== 1
+        ) {
+            throw new RuntimeException('CF-03 migration table identity is unavailable for checksum preflight.');
+        }
+        $migrationTable = $match[1];
+        if (preg_match('/^[A-Za-z0-9_]+$/', $migrationTable) !== 1) {
+            throw new RuntimeException('CF-03 migration table identity is unsafe.');
+        }
+        $pattern = method_exists($wpdb, 'esc_like')
+            ? $wpdb->esc_like($migrationTable)
+            : addcslashes($migrationTable, '_%\\');
+        $query = $wpdb->prepare('SHOW TABLES LIKE %s', $pattern);
+        $found = $wpdb->get_var($query);
+        if (!is_string($found) || $found !== $migrationTable) {
+            // Fresh install: no durable migration evidence exists yet.
+            return;
+        }
+
+        $versionPrefix = 'cf03-'.CompleteSchema::VERSION.'-';
+        $expected = [];
+        foreach ($tables as $name => $sql) {
+            $expected[$versionPrefix.$name] = hash('sha256', $sql);
+        }
+        $rows = $wpdb->get_results(
+            "SELECT migration_id, checksum, status FROM {$migrationTable}",
+            defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A'
+        );
+        if (!is_array($rows)) {
+            throw new RuntimeException('Stored migration checksum evidence could not be read before schema mutation.');
+        }
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                throw new RuntimeException('Stored migration checksum evidence is malformed.');
+            }
+            $id = $row['migration_id'] ?? null;
+            if (!is_string($id) || !str_starts_with($id, $versionPrefix)) {
+                continue;
+            }
+            if (!isset($expected[$id])
+                || !is_string($row['checksum'] ?? null)
+                || !hash_equals($expected[$id], (string)$row['checksum'])
+                || ($row['status'] ?? null) !== 'completed'
+            ) {
+                throw new RuntimeException('Applied migration checksum drift detected before schema mutation: '.(string)$id.'.');
+            }
+        }
     }
 
     /** @return list<string> */
