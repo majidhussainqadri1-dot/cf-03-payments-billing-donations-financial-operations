@@ -16,6 +16,8 @@ final class WordPressScheduler
 {
     private const IDEMPOTENCY_PAGE_SIZE = 200;
     private const MAX_PENDING_IDEMPOTENCY_SCAN = 10000;
+    private const EXPORT_EXPIRY_PAGE_SIZE = 100;
+    private const MAX_EXPORT_EXPIRY_SCAN = 10000;
     public const HOOK = 'sabri_cf03_process_financial_queue';
 
     /** @param array<string,mixed> $schedules @return array<string,mixed> */
@@ -55,13 +57,15 @@ final class WordPressScheduler
             self::expirePendingIdempotency($repo, $now);
 
             $store = WordPressSecureArtifactStoreFactory::make();
+            $exports = new SecureExportService(
+                $repo,
+                $store,
+                WordPressRuntimeConfiguration::load(),
+                new FinancialAuditService($repo)
+            );
+            self::expireFinanceExports($repo, $exports, $now);
+
             if (!$store instanceof NullSecureArtifactStore) {
-                $exports = new SecureExportService(
-                    $repo,
-                    $store,
-                    WordPressRuntimeConfiguration::load(),
-                    new FinancialAuditService($repo)
-                );
                 foreach ($repo->find('exports', ['state' => 'queued'], 10) as $job) {
                     try {
                         $exports->process(
@@ -78,6 +82,55 @@ final class WordPressScheduler
         } catch (Throwable $error) {
             self::log('scheduled processing', $error);
         }
+    }
+
+    private static function expireFinanceExports(
+        QueryableFinancialRepository $repo,
+        SecureExportService $exports,
+        DateTimeImmutable $now
+    ): int {
+        $expired = 0;
+        $scanned = 0;
+        foreach (['queued','running','ready','failed','expired'] as $state) {
+            $offset = 0;
+            do {
+                $page = $repo->page('exports', ['state'=>$state], self::EXPORT_EXPIRY_PAGE_SIZE, $offset);
+                foreach ($page as $record) {
+                    $scanned++;
+                    if ($scanned > self::MAX_EXPORT_EXPIRY_SCAN) {
+                        throw new InvariantViolation('Finance export expiry scan exceeds the safe automatic bound.');
+                    }
+                    try {
+                        $expiresAt = $record['expires_at'] instanceof DateTimeImmutable
+                            ? $record['expires_at']
+                            : new DateTimeImmutable((string)$record['expires_at']);
+                    } catch (Throwable) {
+                        continue;
+                    }
+                    if ($expiresAt > $now) { continue; }
+                    try {
+                        $exports->expire(
+                            (string)$record['job_id'],
+                            (int)$record['version'],
+                            $now
+                        );
+                        $expired++;
+                    } catch (Throwable $error) {
+                        self::log('export expiry', $error);
+                    }
+                }
+                // Expiring rows moves them between state result sets. Restart at zero
+                // after any mutation so a shrinking page cannot skip a later record.
+                if ($state !== 'expired' && $page !== []) {
+                    $offset = 0;
+                    $remaining = $repo->page('exports', ['state'=>$state], self::EXPORT_EXPIRY_PAGE_SIZE, 0);
+                    if ($remaining === $page) { $offset += count($page); }
+                } else {
+                    $offset += count($page);
+                }
+            } while (count($page) === self::EXPORT_EXPIRY_PAGE_SIZE);
+        }
+        return $expired;
     }
 
     private static function expirePendingIdempotency(

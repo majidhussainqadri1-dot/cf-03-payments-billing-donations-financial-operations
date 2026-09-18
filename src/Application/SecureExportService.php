@@ -196,6 +196,69 @@ final class SecureExportService
     }
 
     /** @return array<string,mixed> */
+    public function expire(string $jobId, int $expectedVersion, DateTimeImmutable $now): array
+    {
+        $record = $this->repository->get('exports', $jobId);
+        if ($record === null) {
+            throw new InvariantViolation('Finance export job was not found.');
+        }
+        $expiresAt = self::immutableDate($record['expires_at'] ?? null);
+        if ($now < $expiresAt) {
+            throw new InvariantViolation('Finance export has not reached its expiry.');
+        }
+
+        $alreadyExpired = ($record['state'] ?? null) === 'expired';
+        if (($record['state'] ?? null) === 'revoked') {
+            return self::safe($record) + ['reused' => true];
+        }
+        if (!$alreadyExpired) {
+            if ((int)($record['version'] ?? 0) !== $expectedVersion) {
+                throw new InvariantViolation('Finance export expiry checkpoint is stale.');
+            }
+            $record = $this->repository->transaction(function () use ($jobId, $expectedVersion, $now): array {
+                $updated = $this->repository->compareAndSwap(
+                    'exports',
+                    $jobId,
+                    $expectedVersion,
+                    static function (array $current) use ($now): array {
+                        if (!in_array((string)($current['state'] ?? ''), ['queued','running','ready','failed'], true)) {
+                            throw new InvariantViolation('Finance export cannot expire from the current state.');
+                        }
+                        $current['state'] = 'expired';
+                        // Retain object reference until physical deletion is confirmed.
+                        $current['updated_at'] = $now;
+                        return $current;
+                    }
+                );
+                $this->auditEvent('finance_export_expired', 'system:retention', $jobId, $now, [
+                    'artifact_deletion_pending' => is_string($updated['encrypted_object_ref'] ?? null)
+                        && $updated['encrypted_object_ref'] !== '',
+                ]);
+                return $updated;
+            });
+        }
+
+        $objectReference = is_string($record['encrypted_object_ref'] ?? null)
+            ? (string)$record['encrypted_object_ref']
+            : '';
+        if ($objectReference !== '') {
+            $this->store->delete($objectReference);
+            $cleared = $this->repository->updateWhere(
+                'exports',
+                ['job_id'=>$jobId,'state'=>'expired','encrypted_object_ref'=>$objectReference],
+                ['encrypted_object_ref'=>null,'updated_at'=>$now]
+            );
+            if ($cleared !== 1) {
+                throw new InvariantViolation('Expired finance export artifact deletion could not be durably acknowledged.');
+            }
+            $latest = $this->repository->get('exports', $jobId);
+            if ($latest !== null) { $record = $latest; }
+        }
+
+        return self::safe($record) + ['reused' => $alreadyExpired];
+    }
+
+    /** @return array<string,mixed> */
     public function revoke(string $jobId, string $requesterReference, bool $financeOverride, int $expectedVersion, DateTimeImmutable $now): array
     {
         $record = $this->repository->get('exports', $jobId);
