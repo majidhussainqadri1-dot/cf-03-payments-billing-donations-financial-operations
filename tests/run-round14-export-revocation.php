@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 require_once __DIR__.'/bootstrap.php';
 
-use DateTimeImmutable;
-use RuntimeException;
 use Sabri\CF03\Application\FinancialAuditService;
 use Sabri\CF03\Application\RuntimeConfiguration;
 use Sabri\CF03\Application\SecureExportService;
@@ -81,7 +79,7 @@ if (($result['state'] ?? null) !== 'revoked' || ($result['reused'] ?? false) !==
     throw new RuntimeException('Retry with the original caller version must resume an already-revoked cleanup.');
 }
 $final = $repo->get('exports', 'export.round14');
-if (($final['encrypted_object_ref'] ?? 'not-null') !== null || $store->deleteAttempts !== 2) {
+if (!array_key_exists('encrypted_object_ref', $final) || $final['encrypted_object_ref'] !== null || $store->deleteAttempts !== 2) {
     throw new RuntimeException('Retry must finish physical artifact deletion and clear its durable reference.');
 }
 if (count($repo->all('audit')) !== 1) {
