@@ -41,7 +41,8 @@ final class WordPressPublicUi
         self::assets($collectionEnabled);
 
         $copy = DonationAppealCopy::contract();
-        $language = function_exists('get_locale') && str_starts_with((string)get_locale(), 'ur') ? 'ur' : 'en-US';
+        $language = self::language();
+        $direction = $language === 'ur' ? 'rtl' : 'ltr';
         $text = is_array($copy[$language] ?? null) ? $copy[$language] : $copy['en-US'];
         $options = '';
         foreach ($copy['amounts'] ?? [] as $amount) {
@@ -91,7 +92,7 @@ final class WordPressPublicUi
         }
         $disclosureHtml .= '</ul></div>';
 
-        return '<section class="sabri-cf03-card" dir="auto" aria-labelledby="sabri-cf03-donate-title">'
+        return '<section class="sabri-cf03-card" lang="'.esc_attr($language).'" dir="'.esc_attr($direction).'" aria-labelledby="sabri-cf03-donate-title">'
             .'<h2 id="sabri-cf03-donate-title"><ion-icon name="heart-outline" aria-hidden="true"></ion-icon> '.esc_html($heading).'</h2>'
             .'<p>'.esc_html($message).'</p>'
             .'<p id="sabri-cf03-donation-assurance" class="sabri-cf03-assurance">'.esc_html($assurance).'</p>'
@@ -121,11 +122,14 @@ final class WordPressPublicUi
     public static function billing(): string
     {
         self::assets();
+        $language = self::language();
+        $direction = $language === 'ur' ? 'rtl' : 'ltr';
+        $attrs = ' lang="'.esc_attr($language).'" dir="'.esc_attr($direction).'"';
         if (!function_exists('is_user_logged_in') || !is_user_logged_in()) {
-            return '<section class="sabri-cf03-card" dir="auto"><h2>'.esc_html__('Donation History and Receipts', 'sabri-cf03-finance').'</h2><p>'
+            return '<section class="sabri-cf03-card"'.$attrs.'><h2>'.esc_html__('Donation History and Receipts', 'sabri-cf03-finance').'</h2><p>'
                 .esc_html__('Please sign in to view your private one-time donations, receipts and refund status.', 'sabri-cf03-finance').'</p></section>';
         }
-        return '<section class="sabri-cf03-card sabri-cf03-billing" dir="auto" aria-labelledby="sabri-cf03-billing-title"><h2 id="sabri-cf03-billing-title">'
+        return '<section class="sabri-cf03-card sabri-cf03-billing"'.$attrs.' aria-labelledby="sabri-cf03-billing-title"><h2 id="sabri-cf03-billing-title">'
             .'<ion-icon name="receipt-outline" aria-hidden="true"></ion-icon> '.esc_html__('Donation History and Receipts', 'sabri-cf03-finance').'</h2>'
             .'<button type="button" data-sabri-cf03-load-billing aria-controls="sabri-cf03-billing-results"><ion-icon name="refresh-outline" aria-hidden="true"></ion-icon> '
             .esc_html__('Load my records', 'sabri-cf03-finance').'</button>'
@@ -138,7 +142,10 @@ final class WordPressPublicUi
         try { $result = WordPressRestApi::transparency(); }
         catch (Throwable) { $result = ['status' => 'unavailable', 'snapshot' => null]; }
         $snapshot = $result['snapshot'] ?? null;
-        $body = '<p>'.esc_html((new PlatformFinancialPolicy())->publicDisclosure()['en-US']).'</p>';
+        $language = self::language();
+        $direction = $language === 'ur' ? 'rtl' : 'ltr';
+        $publicDisclosure = (new PlatformFinancialPolicy())->publicDisclosure();
+        $body = '<p>'.esc_html((string)($publicDisclosure[$language] ?? $publicDisclosure['en-US'])).'</p>';
         if (is_array($snapshot)) {
             $body .= '<dl>';
             foreach ($snapshot as $key => $value) {
@@ -154,8 +161,15 @@ final class WordPressPublicUi
         if ($neutrality['donor_and_non_donor_core_capabilities_equal']) {
             $body .= '<p>'.esc_html__('Donors and non-donors receive the same core platform capabilities, education and AI.', 'sabri-cf03-finance').'</p>';
         }
-        return '<section class="sabri-cf03-card" dir="auto"><h2><ion-icon name="analytics-outline" aria-hidden="true"></ion-icon> '
+        return '<section class="sabri-cf03-card" lang="'.esc_attr($language).'" dir="'.esc_attr($direction).'"><h2><ion-icon name="analytics-outline" aria-hidden="true"></ion-icon> '
             .esc_html__('Financial Transparency', 'sabri-cf03-finance').'</h2>'.$body.'</section>';
+    }
+
+    private static function language(): string
+    {
+        return function_exists('get_locale') && str_starts_with((string)get_locale(), 'ur')
+            ? 'ur'
+            : 'en-US';
     }
 
     private static function assets(?bool $collectionEnabled = null): void

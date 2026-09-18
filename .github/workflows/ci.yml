@@ -88,6 +88,8 @@ jobs:
         run: php tests/run-round34-export-expiry.php
       - name: Round 35 transparency migration integrity regression
         run: php tests/run-round35-transparency-migration.php
+      - name: Round 36 RTL localization regression
+        run: php tests/run-round36-rtl-localization.php
       - name: Release inventory acceptance
         run: php tests/run-release-inventory.php
       - name: Future Expansion Pack 40 acceptance
@@ -194,6 +196,7 @@ jobs:
           test -f tests/run-round33-payment-exposure.php
           test -f tests/run-round34-export-expiry.php
           test -f tests/run-round35-transparency-migration.php
+          test -f tests/run-round36-rtl-localization.php
       - name: Future 40 constitutional assertions
         run: |
           grep -q "AMENDMENT_ID = 'CF03-FUTURE40-2026-09-08'" src/Application/FutureExpansionRegistry.php
