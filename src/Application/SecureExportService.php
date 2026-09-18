@@ -199,27 +199,48 @@ final class SecureExportService
     public function revoke(string $jobId, string $requesterReference, bool $financeOverride, int $expectedVersion, DateTimeImmutable $now): array
     {
         $record = $this->repository->get('exports', $jobId);
-        if ($record === null || (int)($record['version'] ?? 0) !== $expectedVersion) {
-            throw new InvariantViolation('Finance export job is missing or stale.');
+        if ($record === null) {
+            throw new InvariantViolation('Finance export job was not found.');
         }
         if (!$financeOverride && (string)$record['requester_ref'] !== $requesterReference) {
             throw new InvariantViolation('Finance export does not belong to the requester.');
         }
 
-        $objectReference = is_string($record['encrypted_object_ref'] ?? null)
-            ? (string)$record['encrypted_object_ref']
-            : '';
-
-        if (($record['state'] ?? null) !== 'revoked') {
-            $record = $this->repository->compareAndSwap('exports', $jobId, $expectedVersion, static function (array $current) use ($now): array {
-                $current['state'] = 'revoked';
-                // Keep the object reference until physical deletion is confirmed. Grant logic
-                // rejects revoked state immediately, so this is safe and retryable.
-                $current['updated_at'] = $now;
-                return $current;
+        $alreadyRevoked = ($record['state'] ?? null) === 'revoked';
+        if (!$alreadyRevoked) {
+            if ((int)($record['version'] ?? 0) !== $expectedVersion) {
+                throw new InvariantViolation('Finance export job is stale.');
+            }
+            $record = $this->repository->transaction(function () use (
+                $jobId, $expectedVersion, $requesterReference, $financeOverride, $now
+            ): array {
+                $updated = $this->repository->compareAndSwap(
+                    'exports',
+                    $jobId,
+                    $expectedVersion,
+                    static function (array $current) use ($now): array {
+                        $current['state'] = 'revoked';
+                        // The object reference deliberately survives the state transition.
+                        // Delivery is already blocked by state, while physical deletion may
+                        // be retried safely after an external-store outage.
+                        $current['updated_at'] = $now;
+                        return $current;
+                    }
+                );
+                // Commit revocation evidence atomically with the state transition. A
+                // later artifact-store failure must not require a second audit event.
+                $this->auditEvent('finance_export_revoked', $requesterReference, $jobId, $now, [
+                    'finance_override' => $financeOverride,
+                    'artifact_deletion_pending' => is_string($updated['encrypted_object_ref'] ?? null)
+                        && $updated['encrypted_object_ref'] !== '',
+                ]);
+                return $updated;
             });
         }
 
+        $objectReference = is_string($record['encrypted_object_ref'] ?? null)
+            ? (string)$record['encrypted_object_ref']
+            : '';
         if ($objectReference !== '') {
             $this->store->delete($objectReference);
             $cleared = $this->repository->updateWhere(
@@ -234,11 +255,7 @@ final class SecureExportService
             if ($latest !== null) { $record = $latest; }
         }
 
-        $this->auditEvent('finance_export_revoked', $requesterReference, $jobId, $now, [
-            'finance_override' => $financeOverride,
-            'artifact_deleted' => $objectReference !== '',
-        ]);
-        return self::safe($record);
+        return self::safe($record) + ['reused' => $alreadyRevoked];
     }
 
     /** @param array<string,mixed> $specification */

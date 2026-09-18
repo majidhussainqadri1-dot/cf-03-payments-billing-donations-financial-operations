@@ -16,6 +16,7 @@ const CF03_ACTIVE_TEST_SUITES = [
     'run-round10-identity-manifest.php',
     'run-round12-accounting-integrity.php',
     'run-round13-audit-order.php',
+    'run-round14-export-revocation.php',
     'run-release-inventory.php',
     'run-future-expansion-40.php',
 ];
