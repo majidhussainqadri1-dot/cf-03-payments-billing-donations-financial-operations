@@ -254,7 +254,8 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         }
         [$table, $idField] = $this->spec($collection);
         [$where, $values] = $this->where($table, $criteria);
-        $sql = "SELECT * FROM {$table}{$where} ORDER BY {$idField} ASC LIMIT ".(int)$limit.' OFFSET '.(int)$offset;
+        $orderBy = $collection === 'audit' ? 'id ASC' : $idField.' ASC';
+        $sql = "SELECT * FROM {$table}{$where} ORDER BY {$orderBy} LIMIT ".(int)$limit.' OFFSET '.(int)$offset;
         if ($values !== []) {
             $prepared = $this->wpdb->prepare($sql, ...$values);
             if (!is_string($prepared) || $prepared === '') {

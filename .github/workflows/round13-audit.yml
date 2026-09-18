@@ -1,0 +1,21 @@
+name: CF-03 Round 13 Audit Chain Order
+
+on:
+  push:
+    branches:
+      - cf03-review-20-2026-09-17
+  pull_request:
+
+jobs:
+  audit-order:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.1', '8.2', '8.3']
+    container: php:${{ matrix.php }}-cli
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Syntax check
+        run: php -l tests/run-round13-audit-order.php
+      - name: Audit append-order regression
+        run: php tests/run-round13-audit-order.php
