@@ -186,7 +186,7 @@ final class DailyReconciliationService
             $currency = $line['currency'];
             $record = match ($type) {
                 'payment' => $this->first('intents', ['provider_ref' => $reference, 'provider' => $batch->providerCode()]),
-                'refund' => $this->first('refunds', ['provider_ref' => $reference]),
+                'refund' => $this->refundForProvider($reference, $batch->providerCode()),
                 'chargeback' => $this->first('chargebacks', [
                     'provider_case_ref' => $reference,
                     'provider' => $batch->providerCode(),
@@ -219,6 +219,34 @@ final class DailyReconciliationService
             ];
         }
         return $internal;
+    }
+
+    /** @return array<string,mixed>|null */
+    private function refundForProvider(string $providerReference, string $providerCode): ?array
+    {
+        $matches = [];
+        $offset = 0;
+        do {
+            $page = $this->repository->page('refunds', ['provider_ref' => $providerReference], 100, $offset);
+            foreach ($page as $refund) {
+                $intentId = (string)($refund['intent_id'] ?? '');
+                if ($intentId === '') {
+                    throw new InvariantViolation('Refund reconciliation evidence is missing its canonical payment intent.');
+                }
+                $intent = $this->repository->get('intents', $intentId);
+                if ($intent === null) {
+                    throw new InvariantViolation('Refund reconciliation evidence has no canonical payment intent.');
+                }
+                if (($intent['provider'] ?? null) === $providerCode) {
+                    $matches[] = $refund;
+                    if (count($matches) > 1) {
+                        throw new InvariantViolation('Canonical refund reference is ambiguous within one provider.');
+                    }
+                }
+            }
+            $offset += count($page);
+        } while (count($page) === 100);
+        return $matches[0] ?? null;
     }
 
     /** @param array<string,mixed> $criteria @return array<string,mixed>|null */

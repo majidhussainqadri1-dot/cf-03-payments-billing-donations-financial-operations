@@ -43,7 +43,36 @@ final class IncidentOperationsService
         $current = $this->store->get();
         $mode = (string)($current['state'] ?? 'corrupt');
         if ($mode === 'contained') {
-            throw new InvariantViolation('An active financial incident must be recovered before another incident is declared.');
+            // A state-store write can succeed before the immutable database audit append.
+            // Exact replay of the same declaration repairs that missing audit evidence
+            // without weakening containment or permitting a second incident.
+            if (($current['incident_id'] ?? null) !== $incidentId
+                || (int)($current['severity'] ?? -1) !== $severity
+                || ($current['reason_code'] ?? null) !== $reasonCode
+                || ($current['declared_by'] ?? null) !== $commanderReference
+            ) {
+                throw new InvariantViolation('An active financial incident must be recovered before another incident is declared.');
+            }
+            $declaredAt = new DateTimeImmutable((string)$current['declared_at']);
+            $this->audit->append(new AuditEnvelope(
+                'audit:incident:'.substr(hash('sha256', $incidentId.'|'.$declaredAt->format(DATE_ATOM)), 0, 32),
+                $commanderReference,
+                'incident_declared',
+                'financial_incident',
+                $incidentId,
+                'incident_containment',
+                AuditOutcome::SUCCEEDED,
+                $declaredAt,
+                'trace:incident:'.substr(hash('sha256', $incidentId), 0, 24),
+                [
+                    'severity' => $severity,
+                    'reason_code' => $reasonCode,
+                    'checkout_killed' => ($current['checkout_enabled'] ?? true) === false,
+                    'refunds_killed' => ($current['refunds_enabled'] ?? true) === false,
+                    'webhooks_killed' => ($current['webhooks_enabled'] ?? true) === false,
+                ]
+            ));
+            return $current + ['reused' => true];
         }
         if (!in_array($mode, ['normal', 'recovered'], true)) {
             throw new InvariantViolation('Corrupt financial incident state blocks incident mutation.');

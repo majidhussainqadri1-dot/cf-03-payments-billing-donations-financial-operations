@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use JsonException;
 use Sabri\CF03\Contracts\QueryableFinancialRepository;
 use Sabri\CF03\Domain\Money;
+use Sabri\CF03\Domain\PlatformFinancialPolicy;
 use Sabri\CF03\Support\InvariantViolation;
 use Throwable;
 
@@ -318,6 +319,9 @@ final class DonationCheckoutService
                 'amount_minor_units' => $draft->amount()->minorUnits(),
                 'currency' => $draft->amount()->currency(),
                 'donation_type' => 'one_time',
+                'explicit_one_time_consent' => true,
+                'purpose_code' => 'institutional_sustainability_and_homeopathy_advancement',
+                'no_privilege_policy' => PlatformFinancialPolicy::DECISION_ID,
                 'idempotency_key' => $draft->idempotencyKey(),
             ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
         } catch (JsonException $error) {
