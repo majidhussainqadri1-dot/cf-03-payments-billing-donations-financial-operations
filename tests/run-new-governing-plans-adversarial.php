@@ -203,6 +203,14 @@ $tests['retention action is claimed before external mutation and records audit e
     contains($retention, 'already_claimed_or_actioned', true);
 };
 
+
+$tests['expired outbox processing leases are recoverable instead of becoming permanently stuck'] = static function (): void {
+    $outbox = source('src/Application/OutboxDispatcher.php');
+    contains($outbox, "find('outbox', ['state' => 'processing']", true);
+    contains($outbox, "\$leasedUntil !== null && \$leasedUntil > \$now", true);
+    contains($outbox, "\$leaseCriteria['leased_until']", true);
+};
+
 $failures = 0;
 foreach ($tests as $name => $test) {
     try {
