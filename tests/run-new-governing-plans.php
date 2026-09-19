@@ -32,7 +32,7 @@ $now = new DateTimeImmutable('2026-09-08T04:30:00+05:00');
 $tests['only two new plans govern current candidate'] = static function (): void {
     same([
         'SSH-PMP-2026-v3.0',
-        'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0',
+        'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.1',
     ], GoverningPlanRegistry::governingPlans());
     same('CF03-2026-v1.0', PlatformFinancialPolicy::DECISION_ID);
 };
