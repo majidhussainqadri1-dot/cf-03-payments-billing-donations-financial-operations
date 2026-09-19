@@ -85,6 +85,12 @@ $tests['paid AI billing and subscription services are tombstones not charging pa
     contains($subscriptions, "repository->insert('subscriptions'", false);
 };
 
+$tests['retired financial collections are inaccessible through active repository'] = static function (): void {
+    $repo = source('src/Infrastructure/WordPressFinancialRepository.php');
+    contains($repo, "RETIRED_COLLECTIONS = ['recurring_consents', 'subscriptions', 'usage_authorizations', 'usage_facts']", true);
+    contains($repo, 'Retired financial collection is unavailable to active runtime code.', true);
+};
+
 $tests['active manifests contain no current monthly donation contract'] = static function (): void {
     foreach (['manifests/cf03-contracts.json','manifests/cf03-release-1.4.0.json','manifests/cf03-future-expansion-40.json','manifests/donation-appeal-contract.json'] as $path) {
         $text = source($path);
