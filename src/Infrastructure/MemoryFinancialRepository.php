@@ -15,6 +15,9 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
     /** @var list<string> */
     private const IMMUTABLE_COLLECTIONS = ['ledger_transactions', 'ledger_entries', 'audit'];
 
+    /** @var list<string> */
+    private const RETIRED_COLLECTIONS = ['recurring_consents', 'subscriptions', 'usage_authorizations', 'usage_facts'];
+
     /** @var array<string,array<string,array<string,mixed>>> */
     private array $data = [];
     /** @var array<string,array<string,array<string,mixed>>> */
@@ -207,6 +210,9 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
 
     private static function assertCollection(string $collection): void
     {
+        if (in_array($collection, self::RETIRED_COLLECTIONS, true)) {
+            throw new InvariantViolation('Retired financial collection is not addressable by the active runtime repository.');
+        }
         if (preg_match('/^[a-z][a-z0-9_]{2,63}$/', $collection) !== 1) {
             throw new InvalidArgumentException('Financial collection identifier is invalid.');
         }
