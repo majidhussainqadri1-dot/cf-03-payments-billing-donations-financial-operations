@@ -249,15 +249,22 @@ final class RefundWorkflowService
     public function settle(string $refundId, int $expectedVersion, bool $reconciled, DateTimeImmutable $now): array
     {
         self::reference($refundId, 'Refund ID');
+        if (!$reconciled) {
+            throw new InvariantViolation('Refund settlement requires trusted provider reconciliation evidence.');
+        }
         $updated = $this->repository->compareAndSwap(
             'refunds',
             $refundId,
             $expectedVersion,
-            static function (array $current) use ($reconciled, $now): array {
+            static function (array $current) use ($now): array {
                 if (!in_array((string)($current['state'] ?? ''), ['provider_pending', 'uncertain', 'succeeded'], true)) {
                     throw new InvariantViolation('Refund is not awaiting provider settlement.');
                 }
-                $current['state'] = $reconciled ? 'closed' : 'succeeded';
+                $providerReference = (string)($current['provider_ref'] ?? '');
+                if ($providerReference === '' || str_starts_with($providerReference, 'pending:')) {
+                    throw new InvariantViolation('Refund cannot close without a confirmed provider reference.');
+                }
+                $current['state'] = 'closed';
                 $current['updated_at'] = $now;
                 return $current;
             }
