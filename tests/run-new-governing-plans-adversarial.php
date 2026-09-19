@@ -104,6 +104,12 @@ $tests['runtime financial policy cites current CF-03 governing plan'] = static f
     contains($policy, 'Conditional-Complete-Master-Plan-2026-v1.0', false);
 };
 
+$tests['privacy export follows active billing groups including receipts'] = static function (): void {
+    $privacy = source('src/Infrastructure/WordPressPrivacy.php');
+    contains($privacy, "['receipts','donations','refunds','exports']", true);
+    contains($privacy, "['invoices','donations','subscriptions'", false);
+};
+
 $tests['active manifests contain no current monthly donation contract'] = static function (): void {
     foreach (['manifests/cf03-contracts.json','manifests/cf03-release-1.4.0.json','manifests/cf03-future-expansion-40.json','manifests/donation-appeal-contract.json'] as $path) {
         $text = source($path);
