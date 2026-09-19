@@ -41,7 +41,7 @@ jobs:
       - name: Current governing source assertions
         run: |
           grep -RInq 'SSH-PMP-2026-v3.0' src manifests README.md docs/requirements-traceability.md docs/final-plan/CF-03-New-Governing-Plans-Implementation-Baseline-2026-09-08.md
-          grep -RInq 'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0' src manifests README.md docs/requirements-traceability.md
+          grep -RInq 'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.1' src manifests README.md docs/requirements-traceability.md
           grep -q 'Version: 1.4.0-rc.1' cf-03-payments-billing-donations-financial-operations.php
           grep -Eq "define\('SABRI_CF03_VERSION',[[:space:]]*'1.4.0-rc.1'\)" cf-03-payments-billing-donations-financial-operations.php
           grep -Eq "define\('SABRI_CF03_SCHEMA_VERSION',[[:space:]]*'4.0.0'\)" cf-03-payments-billing-donations-financial-operations.php
