@@ -25,7 +25,10 @@ final class OutboxDispatcher
         if ($limit < 1 || $limit > 200) { throw new \InvalidArgumentException('Outbox dispatch limit is invalid.'); }
         $candidates = array_merge(
             $this->repository->find('outbox', ['state' => 'pending'], $limit),
-            $this->repository->find('outbox', ['state' => 'retry'], $limit)
+            $this->repository->find('outbox', ['state' => 'retry'], $limit),
+            // A worker can die after claiming a message. Expired processing leases
+            // must be recoverable or the financial fact can remain stuck forever.
+            $this->repository->find('outbox', ['state' => 'processing'], $limit)
         );
         $result = ['delivered'=>0,'retried'=>0,'dead_lettered'=>0,'skipped'=>0];
         $processed = 0;
@@ -35,7 +38,18 @@ final class OutboxDispatcher
             if ($availableAt === null || $availableAt > $now) { $result['skipped']++; continue; }
             $eventId = (string)($message['event_id'] ?? '');
             $state = (string)($message['state'] ?? '');
-            $leased = $this->repository->updateWhere('outbox', ['event_id'=>$eventId,'state'=>$state], [
+            $leaseCriteria = ['event_id'=>$eventId,'state'=>$state];
+            if ($state === 'processing') {
+                $leasedUntil = self::date($message['leased_until'] ?? null);
+                if ($leasedUntil !== null && $leasedUntil > $now) {
+                    $result['skipped']++;
+                    continue;
+                }
+                // Bind reclamation to the exact expired/null lease evidence seen by
+                // this worker so two recovery workers cannot both reclaim it.
+                $leaseCriteria['leased_until'] = $message['leased_until'] ?? null;
+            }
+            $leased = $this->repository->updateWhere('outbox', $leaseCriteria, [
                 'state'=>'processing','leased_until'=>$now->modify('+5 minutes'),
             ]);
             if ($leased !== 1) { $result['skipped']++; continue; }
