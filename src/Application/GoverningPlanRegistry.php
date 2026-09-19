@@ -9,7 +9,7 @@ use Sabri\CF03\Domain\PlatformFinancialPolicy;
 final class GoverningPlanRegistry
 {
     public const DEFINITIVE_MASTER_PLAN = 'SSH-PMP-2026-v3.0';
-    public const CF03_CONDITIONAL_MASTER_PLAN = 'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0';
+    public const CF03_CONDITIONAL_MASTER_PLAN = 'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.1';
 
     public const FREE_BASELINE = 'CHAT-BIZ-022';
     public const SEVEN_DAY_APPEAL = 'CF03-FR-019';
