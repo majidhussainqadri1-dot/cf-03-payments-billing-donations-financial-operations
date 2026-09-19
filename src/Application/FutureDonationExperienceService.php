@@ -75,11 +75,7 @@ final class FutureDonationExperienceService
         if ($receiptId === '') {
             throw new InvalidArgumentException('Receipt ID is required.');
         }
-        foreach (['pan', 'cvv', 'cvc', 'pin', 'otp', 'provider_secret', 'bank_password'] as $forbidden) {
-            if (array_key_exists($forbidden, $snapshot)) {
-                throw new InvalidArgumentException('Sensitive credential material is prohibited in receipt snapshots.');
-            }
-        }
+        $this->assertNoSensitiveReceiptKeys($snapshot);
         $canonical = $this->canonicalJson($snapshot);
         return [
             'receipt_id' => $receiptId,
@@ -187,6 +183,26 @@ final class FutureDonationExperienceService
     }
 
     /** @param array<string,mixed> $value */
+
+    /** @param array<mixed> $value */
+    private function assertNoSensitiveReceiptKeys(array $value): void
+    {
+        $forbidden = ['pan','cvv','cvc','pin','otp','password','secret','provider_secret','bank_password','card_number','access_token','refresh_token'];
+        foreach ($value as $key => $child) {
+            if (is_string($key)) {
+                $normalized = strtolower($key);
+                foreach ($forbidden as $fragment) {
+                    if ($normalized === $fragment || str_contains($normalized, $fragment)) {
+                        throw new InvalidArgumentException('Sensitive credential material is prohibited in receipt snapshots.');
+                    }
+                }
+            }
+            if (is_array($child)) {
+                $this->assertNoSensitiveReceiptKeys($child);
+            }
+        }
+    }
+
     private function canonicalJson(array $value): string
     {
         $this->ksortRecursive($value);
