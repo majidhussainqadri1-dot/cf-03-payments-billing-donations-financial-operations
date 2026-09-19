@@ -69,6 +69,7 @@ $assert($privacy['public_identity'] === false && $privacy['behavioral_profile_cr
 $vault = $donation->receiptVaultEntry('receipt.1', ['amount_minor' => 1000, 'currency' => 'USD']);
 $assert(strlen($vault['snapshot_sha256']) === 64 && $vault['immutable'] === true, 'FX-04 receipt vault');
 $throws(fn() => $donation->receiptVaultEntry('receipt.2', ['cvv' => '123']), 'FX-04 secret rejection');
+$throws(fn() => $donation->receiptVaultEntry('receipt.3', ['nested' => ['provider_secret' => 'x']]), 'FX-04 nested secret rejection');
 
 $secret = str_repeat('s', 32);
 $token = $donation->receiptVerificationToken('receipt.1', $vault['snapshot_sha256'], $secret);
@@ -184,6 +185,7 @@ $integration = new FutureIntegrationSustainabilityService();
 $analytics = $integration->privacyPreservingAnalytics([['checkout_attempts'=>10,'checkout_successes'=>8,'refunds_completed'=>1,'reconciliation_exceptions'=>0]]);
 $assert($analytics['metrics']['checkout_attempts'] === 10 && $analytics['donor_profiling'] === false, 'FX-31 privacy analytics');
 $throws(fn() => $integration->privacyPreservingAnalytics([['actor_ref'=>'user:1']]), 'FX-31 rejects identifiers');
+$throws(fn() => $integration->privacyPreservingAnalytics([['nested'=>['donor_ref'=>'user:1']]]), 'FX-31 rejects nested identifiers');
 
 $a11y = $integration->accessibilityContract();
 $assert($a11y['rtl_urdu'] === true && $a11y['screen_reader'] === true, 'FX-32 accessibility contract');
@@ -197,6 +199,7 @@ $assert($notifications['donation_appeals'] === false && $notifications['transact
 $event = $integration->financeEventEnvelope('DonationSettled','d1','t1',['amount_minor'=>1000]);
 $assert($event['entitlement_command'] === false && strlen($event['payload_sha256']) === 64, 'FX-35 event explorer envelope');
 $throws(fn() => $integration->financeEventEnvelope('DonationSettled','d1','t1',['grant_access'=>true]), 'FX-35 rejects entitlement command');
+$throws(fn() => $integration->financeEventEnvelope('DonationSettled','d1','t1',['nested'=>['grant_access'=>true]]), 'FX-35 rejects nested entitlement command');
 
 $jurisdiction = $integration->jurisdictionRule('PK',['PKR','USD'],['p1'],['refund_terms'],true);
 $assert($jurisdiction['country'] === 'PK' && $jurisdiction['launch_approved'] === true, 'FX-36 jurisdiction registry');
