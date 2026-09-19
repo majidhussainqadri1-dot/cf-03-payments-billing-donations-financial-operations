@@ -9,6 +9,8 @@ use InvalidArgumentException;
 use JsonException;
 use Sabri\CF03\Contracts\QueryableFinancialRepository;
 use Sabri\CF03\Contracts\SecureArtifactStore;
+use Sabri\CF03\Domain\AuditEnvelope;
+use Sabri\CF03\Domain\AuditOutcome;
 use Sabri\CF03\Domain\FinancialDownloadGrant;
 use Sabri\CF03\Domain\SecureExportJob;
 use Sabri\CF03\Support\InvariantViolation;
@@ -64,7 +66,13 @@ final class SecureExportService
             }
             throw new InvariantViolation('Finance export identifier already exists with different scope.');
         }
-        $this->repository->insert('exports', $jobId, $record);
+        $this->repository->transaction(function () use ($jobId, $record, $requesterReference, $requestedAt): void {
+            $this->repository->insert('exports', $jobId, $record);
+            $this->appendAudit('export_requested', $jobId, $requesterReference, $requestedAt, [
+                'specification_hash' => $record['specification_hash'],
+                'maximum_rows' => $record['maximum_rows'],
+            ]);
+        });
         return self::safe($record) + ['reused' => false];
     }
 
@@ -109,6 +117,10 @@ final class SecureExportService
                 $current['updated_at'] = $now;
                 return $current;
             });
+            $this->appendAudit('export_processed', $jobId, $operatorReference, $now, [
+                'manifest_hash' => (string)$stored['sha256'],
+                'size_bytes' => (int)$stored['size_bytes'],
+            ]);
             return self::safe($ready) + ['size_bytes' => (int)$stored['size_bytes']];
         } catch (\Throwable $error) {
             $this->repository->updateWhere('exports', ['job_id' => $jobId, 'state' => 'running'], ['state' => 'failed', 'updated_at' => $now]);
@@ -138,11 +150,11 @@ final class SecureExportService
         if ($expires <= $now || $expires > $now->modify('+30 minutes')) {
             throw new InvariantViolation('Finance export download grant expiry is invalid.');
         }
-        return new FinancialDownloadGrant(
+        $grant = new FinancialDownloadGrant(
             'grant.export.'.substr(hash('sha256', $jobId.'|'.$requesterReference.'|'.$now->format(DATE_ATOM)), 0, 32),
             'finance_export',
             $jobId,
-            $financeOverride ? 'finance:authorized' : $requesterReference,
+            $requesterReference,
             'cf03-financial-export-'.preg_replace('/[^A-Za-z0-9._-]+/', '-', $jobId).'.csv',
             'text/csv',
             (string)$record['manifest_hash'],
@@ -151,6 +163,12 @@ final class SecureExportService
             true,
             (string)$record['encrypted_object_ref']
         );
+        $this->appendAudit('export_download_granted', $jobId, $requesterReference, $now, [
+            'finance_override' => $financeOverride,
+            'manifest_hash' => (string)$record['manifest_hash'],
+            'expires_at' => $expires->format(DATE_ATOM),
+        ]);
+        return $grant;
     }
 
     /** @return array<string,mixed> */
@@ -172,7 +190,27 @@ final class SecureExportService
             $current['updated_at'] = $now;
             return $current;
         });
+        $this->appendAudit('export_revoked', $jobId, $requesterReference, $now, [
+            'finance_override' => $financeOverride,
+        ]);
         return self::safe($updated);
+    }
+
+    /** @param array<string,mixed> $metadata */
+    private function appendAudit(string $action, string $jobId, string $actorReference, DateTimeImmutable $at, array $metadata): void
+    {
+        $this->audit->append(new AuditEnvelope(
+            'audit:export:'.substr(hash('sha256', $action.'|'.$jobId.'|'.$actorReference.'|'.$at->format(DATE_ATOM)), 0, 32),
+            $actorReference,
+            $action,
+            'finance_export',
+            $jobId,
+            'authorized_finance_export',
+            AuditOutcome::SUCCEEDED,
+            $at,
+            'trace:export:'.substr(hash('sha256', $jobId), 0, 24),
+            $metadata
+        ));
     }
 
     /** @param array<string,mixed> $specification */
