@@ -139,6 +139,13 @@ $tests['future pack cannot activate itself or revive donor privilege'] = static 
     contains($policy, "'future_pack_activated_by_code_presence' => false", true);
 };
 
+$tests['upgrade fallback and migration evidence match current schema law'] = static function (): void {
+    $plugin = source('src/Plugin.php');
+    contains($plugin, "SABRI_CF03_VERSION : '1.4.0-rc.1'", true);
+    contains($plugin, "'retired_tables' => \\Sabri\\CF03\\Persistence\\RuntimeSchemaExtension::RETIRED_TABLES", true);
+    contains($plugin, "'retired_active_tables' => []", true);
+};
+
 $tests['release identity and package builder stay aligned'] = static function (): void {
     $bootstrap = source('cf-03-payments-billing-donations-financial-operations.php');
     $builder = source('scripts/build-package.sh');
