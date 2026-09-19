@@ -42,8 +42,8 @@ jobs:
         run: |
           grep -RInq 'SSH-PMP-2026-v3.0' src manifests README.md docs/requirements-traceability.md docs/final-plan/CF-03-New-Governing-Plans-Implementation-Baseline-2026-09-08.md
           grep -RInq 'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.1' src manifests README.md docs/requirements-traceability.md
-          grep -q 'Version: 1.4.0-rc.1' cf-03-payments-billing-donations-financial-operations.php
-          grep -Eq "define\('SABRI_CF03_VERSION',[[:space:]]*'1.4.0-rc.1'\)" cf-03-payments-billing-donations-financial-operations.php
+          grep -q 'Version: 1.4.0-rc.2' cf-03-payments-billing-donations-financial-operations.php
+          grep -Eq "define\('SABRI_CF03_VERSION',[[:space:]]*'1.4.0-rc.2'\)" cf-03-payments-billing-donations-financial-operations.php
           grep -Eq "define\('SABRI_CF03_SCHEMA_VERSION',[[:space:]]*'4.0.0'\)" cf-03-payments-billing-donations-financial-operations.php
           grep -Eq "define\('SABRI_CF03_FUTURE_EXPANSION_ID',[[:space:]]*'CF03-FUTURE40-2026-09-08'\)" cf-03-payments-billing-donations-financial-operations.php
           grep -q "public const VERSION = '4.0.0'" src/Persistence/RuntimeSchemaExtension.php
@@ -70,7 +70,8 @@ jobs:
       - name: Future 40 constitutional assertions
         run: |
           grep -q "AMENDMENT_ID = 'CF03-FUTURE40-2026-09-08'" src/Application/FutureExpansionRegistry.php
-          grep -q "SOFTWARE_TARGET = '1.4.0-rc.1'" src/Application/FutureExpansionRegistry.php
+          grep -q "AMENDMENT_BASE_SOFTWARE_TARGET = '1.4.0-rc.1'" src/Application/FutureExpansionRegistry.php
+          grep -q "SOFTWARE_TARGET = '1.4.0-rc.2'" src/Application/FutureExpansionRegistry.php
           grep -q "future_pack_activated_by_code_presence' => false" src/Domain/FutureFinancePolicy.php
           php -r 'require "tests/bootstrap.php"; Sabri\CF03\Application\FutureExpansionRegistry::assertIntegrity(); $f=Sabri\CF03\Application\FutureExpansionRegistry::all(); if(count($f)!==40){exit(1);} foreach($f as $id=>$x){if(($x["activated"]??true)!==false || ($x["donor_privilege_allowed"]??true)!==false || ($x["recurring_donation_allowed"]??true)!==false || ($x["paid_core_allowed"]??true)!==false){fwrite(STDERR,"future governance violation: $id\n"); exit(1);}}'
           php -r '$m=json_decode(file_get_contents("manifests/cf03-future-expansion-40.json"),true,512,JSON_THROW_ON_ERROR); if(($m["feature_count"]??0)!==40 || count($m["features"]??[])!==40 || ($m["activation"]??"")!=="fail_closed_by_default"){exit(1);}'
@@ -84,7 +85,7 @@ jobs:
       - name: Build twice
         run: |
           bash scripts/build-package.sh
-          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.4.0-rc.1.zip
+          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.4.0-rc.2.zip
           first="$(sha256sum "$ZIP" | cut -d' ' -f1)"
           bash scripts/build-package.sh
           second="$(sha256sum "$ZIP" | cut -d' ' -f1)"
@@ -92,11 +93,11 @@ jobs:
           echo "PACKAGE_SHA256=$second" >> "$GITHUB_ENV"
       - name: Verify canonical package
         run: |
-          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.4.0-rc.1.zip
+          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.4.0-rc.2.zip
           ROOT=cf-03-payments-billing-donations-financial-operations
           test -f "$ZIP"
           unzip -Z1 "$ZIP" | awk -F/ 'NF && $1 != "cf-03-payments-billing-donations-financial-operations" { exit 1 }'
-          unzip -p "$ZIP" "$ROOT/cf-03-payments-billing-donations-financial-operations.php" | grep -q 'Version: 1.4.0-rc.1'
+          unzip -p "$ZIP" "$ROOT/cf-03-payments-billing-donations-financial-operations.php" | grep -q 'Version: 1.4.0-rc.2'
           unzip -p "$ZIP" "$ROOT/cf-03-payments-billing-donations-financial-operations.php" | grep -Eq "define\('SABRI_CF03_SCHEMA_VERSION',[[:space:]]*'4.0.0'\)"
           unzip -p "$ZIP" "$ROOT/cf-03-payments-billing-donations-financial-operations.php" | grep -q 'CF03-FUTURE40-2026-09-08'
           unzip -p "$ZIP" "$ROOT/src/Persistence/RuntimeSchemaExtension.php" | grep -q "VERSION = '4.0.0'"
@@ -111,7 +112,7 @@ jobs:
           ! unzip -Z1 "$ZIP" | grep -Eq '(^|/)(tests|\.github|scripts)/|\.tmp$|\.log$|\.map$|\.DS_Store$'
       - name: Verify packaged source parity
         run: |
-          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.4.0-rc.1.zip
+          ZIP=build/cf-03-payments-billing-donations-financial-operations-1.4.0-rc.2.zip
           ROOT=cf-03-payments-billing-donations-financial-operations
           TMP="$(mktemp -d)"
           unzip -q "$ZIP" -d "$TMP"
