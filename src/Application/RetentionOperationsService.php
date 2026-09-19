@@ -22,6 +22,61 @@ final class RetentionOperationsService
     /** @return array<string,mixed> */
     public function releaseLegalHold(string $recordReference,string $holdReference):array{$updated=$this->repository->updateWhere('retention_ledger',['record_ref'=>$recordReference,'legal_hold'=>true,'legal_hold_ref'=>$holdReference],['legal_hold'=>false,'legal_hold_ref'=>null]);if($updated!==1){throw new InvariantViolation('Legal hold release reference does not match.');}return ['record_ref'=>$recordReference,'legal_hold'=>false];}
     /** @return array<string,mixed> */
-    public function executeDue(string $recordReference,DateTimeImmutable $now):array{$record=$this->repository->get('retention_ledger',$recordReference);if($record===null){throw new InvariantViolation('Retention record was not found.');}if((bool)$record['legal_hold']){throw new InvariantViolation('Legal hold blocks retention action.');}if($record['actioned_at']!==null){return ['record_ref'=>$recordReference,'status'=>'already_actioned'];}if($record['expires_at']===null){return ['record_ref'=>$recordReference,'status'=>'retained'];}$expires=$record['expires_at'] instanceof DateTimeImmutable?$record['expires_at']:new DateTimeImmutable((string)$record['expires_at']);if($expires>$now){throw new InvariantViolation('Retention action is not due.');}$mode=(string)$record['delete_mode'];if($mode==='retain_immutable'){return ['record_ref'=>$recordReference,'status'=>'retained_immutable'];}$evidence=match($mode){'archive'=>$this->executor->archive((string)$record['record_type'],$recordReference),'anonymize'=>$this->executor->anonymize((string)$record['record_type'],$recordReference),'delete'=>$this->executor->delete((string)$record['record_type'],$recordReference),default=>throw new InvariantViolation('Unknown retention action mode.')};if(preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/',$evidence)!==1){throw new InvariantViolation('Retention executor returned invalid evidence.');}$updated=$this->repository->updateWhere('retention_ledger',['record_ref'=>$recordReference,'actioned_at'=>null],['actioned_at'=>$now]);if($updated!==1){throw new InvariantViolation('Retention action evidence could not be committed.');}return ['record_ref'=>$recordReference,'status'=>$mode,'evidence_reference'=>$evidence,'actioned_at'=>$now->format(DATE_ATOM)];}
+    public function executeDue(string $recordReference,DateTimeImmutable $now):array
+    {
+        $record=$this->repository->get('retention_ledger',$recordReference);
+        if($record===null){throw new InvariantViolation('Retention record was not found.');}
+        if((bool)$record['legal_hold']){throw new InvariantViolation('Legal hold blocks retention action.');}
+        if($record['actioned_at']!==null){return ['record_ref'=>$recordReference,'status'=>'already_claimed_or_actioned'];}
+        if($record['expires_at']===null){return ['record_ref'=>$recordReference,'status'=>'retained'];}
+        $expires=$record['expires_at'] instanceof DateTimeImmutable?$record['expires_at']:new DateTimeImmutable((string)$record['expires_at']);
+        if($expires>$now){throw new InvariantViolation('Retention action is not due.');}
+        $mode=(string)$record['delete_mode'];
+        if($mode==='retain_immutable'){return ['record_ref'=>$recordReference,'status'=>'retained_immutable'];}
+
+        // Claim before invoking the external retention executor. This prevents two
+        // concurrent workers from deleting/anonymizing/archiving the same record twice.
+        $claimed=$this->repository->updateWhere(
+            'retention_ledger',
+            ['record_ref'=>$recordReference,'legal_hold'=>false,'actioned_at'=>null],
+            ['actioned_at'=>$now]
+        );
+        if($claimed!==1){throw new InvariantViolation('Retention action is already claimed or changed.');}
+
+        try{
+            $evidence=match($mode){
+                'archive'=>$this->executor->archive((string)$record['record_type'],$recordReference),
+                'anonymize'=>$this->executor->anonymize((string)$record['record_type'],$recordReference),
+                'delete'=>$this->executor->delete((string)$record['record_type'],$recordReference),
+                default=>throw new InvariantViolation('Unknown retention action mode.')
+            };
+            if(preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/',$evidence)!==1){
+                throw new InvariantViolation('Retention executor returned invalid evidence.');
+            }
+        }catch(\Throwable $error){
+            // External action did not return valid completion evidence. Release the
+            // claim only if it is still ours so a later reconciliation retry is possible.
+            $this->repository->updateWhere(
+                'retention_ledger',
+                ['record_ref'=>$recordReference,'actioned_at'=>$now],
+                ['actioned_at'=>null]
+            );
+            throw $error;
+        }
+
+        (new FinancialAuditService($this->repository))->append(new \Sabri\CF03\Domain\AuditEnvelope(
+            'audit:retention:'.substr(hash('sha256',$recordReference.'|'.$mode.'|'.$evidence),0,32),
+            'system:retention',
+            'retention_'.$mode,
+            'retention_record',
+            $recordReference,
+            'retention_execution',
+            \Sabri\CF03\Domain\AuditOutcome::SUCCEEDED,
+            $now,
+            'trace:retention:'.substr(hash('sha256',$recordReference),0,24),
+            ['evidence_reference'=>$evidence,'record_type'=>(string)$record['record_type']]
+        ));
+        return ['record_ref'=>$recordReference,'status'=>$mode,'evidence_reference'=>$evidence,'actioned_at'=>$now->format(DATE_ATOM)];
+    }
     private function reference(string $value):void{if(preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,191}$/',$value)!==1){throw new InvalidArgumentException('Retention reference is invalid.');}}
 }
