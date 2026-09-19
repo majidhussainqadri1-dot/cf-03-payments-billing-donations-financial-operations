@@ -18,7 +18,7 @@ final class PlatformFinancialPolicy
     /** @deprecated Kept only for source compatibility; the governing rule is seven days, not monthly. */
     public const MONTHLY_PROMPT_MINIMUM_DAYS = self::APPEAL_MINIMUM_DAYS;
     public const GOVERNING_MASTER_PLAN = 'SSH-PMP-2026-v3.0';
-    public const GOVERNING_CF03_PLAN = 'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0';
+    public const GOVERNING_CF03_PLAN = 'CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.1-Future40-Amended-2026-09-09';
 
     /** @return list<Money> */
     public function suggestedDonationAmounts(): array
