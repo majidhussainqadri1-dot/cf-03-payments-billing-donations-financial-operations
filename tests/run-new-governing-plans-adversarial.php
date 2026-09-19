@@ -142,6 +142,31 @@ $tests['release identity and package builder stay aligned'] = static function ()
     contains($builder, 'VERSION="1.4.0-rc.1"', true);
 };
 
+
+$tests['active migration runner uses schema 4 and never creates retired tables'] = static function (): void {
+    $migration = source('src/Persistence/MigrationRunner.php');
+    contains($migration, 'CompleteSchema::tables($prefix)', true);
+    contains($migration, "CompleteSchema::VERSION", true);
+    contains($migration, 'Schema::tables($prefix)', false);
+};
+
+$tests['active repositories refuse retired financial collections even if legacy tables remain'] = static function (): void {
+    $memory = new \Sabri\CF03\Infrastructure\MemoryFinancialRepository();
+    foreach (['recurring_consents','subscriptions','usage_authorizations','usage_facts'] as $collection) {
+        throws(static fn () => $memory->get($collection, 'legacy:1'), InvariantViolation::class);
+    }
+    $sourceRepo = source('src/Infrastructure/WordPressFinancialRepository.php');
+    contains($sourceRepo, 'RETIRED_COLLECTIONS', true);
+    contains($sourceRepo, 'Retired financial collection is not addressable by the active runtime repository.', true);
+};
+
+$tests['refund requests serialize remaining-balance reservation through intent CAS'] = static function (): void {
+    $refunds = source('src/Application/RefundWorkflowService.php');
+    contains($refunds, "return \$this->repository->transaction", true);
+    contains($refunds, "compareAndSwap(\n            'intents'", true);
+    contains($refunds, 'Two different refund IDs must never both observe the same remaining balance.', true);
+};
+
 $failures = 0;
 foreach ($tests as $name => $test) {
     try {
