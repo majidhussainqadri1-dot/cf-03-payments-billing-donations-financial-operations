@@ -1,4 +1,6 @@
-# CF-03 Integrated Final Plan 2026 v2.0
+# CF-03 Integrated Final Plan 2026 v2.0 — Historical/Superseded
+
+> **Status notice:** Retained for provenance only. This document's monthly/30-day/recurring-donation and schema 3.3.0 rules are superseded. Current governing truth is the platform master plan `SSH-PMP-2026-v3.0`, CF-03 written plan v1.1 (v1.0 base plus Future40 amendment), and `CF03-FUTURE40-2026-09-08`; current software target is `1.4.0-rc.1`, active schema `4.0.0`, one-time donation only, minimum 7-day appeal suppression, free core/AI/education, donor neutrality and 0% platform commission.
 
 ## Governing status
 
