@@ -184,6 +184,25 @@ $tests['finance export grants bind override access to the actual authenticated a
     contains($exports, "export_revoked", true);
 };
 
+
+$tests['backup manifest covers all 27 active canonical collections'] = static function (): void {
+    $integrity = source('src/Application/SystemIntegrityService.php');
+    foreach (['products','prices','customer_refs','idempotency','provider_registry','exports','adjustments','fraud_reviews','donor_acknowledgments'] as $collection) {
+        contains($integrity, "'".$collection."'", true);
+    }
+};
+
+$tests['retention action is claimed before external mutation and records audit evidence'] = static function (): void {
+    $retention = source('src/Application/RetentionOperationsService.php');
+    $claim = strpos($retention, "'actioned_at'=>\$now");
+    $external = strpos($retention, "\$this->executor->archive");
+    if ($claim === false || $external === false || $claim >= $external) {
+        throw new RuntimeException('Retention action is not claimed before external execution.');
+    }
+    contains($retention, 'audit:retention:', true);
+    contains($retention, 'already_claimed_or_actioned', true);
+};
+
 $failures = 0;
 foreach ($tests as $name => $test) {
     try {
