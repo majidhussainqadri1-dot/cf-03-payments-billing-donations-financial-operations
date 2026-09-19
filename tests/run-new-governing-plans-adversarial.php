@@ -91,6 +91,13 @@ $tests['retired financial collections are inaccessible through active repository
     contains($repo, 'Retired financial collection is unavailable to active runtime code.', true);
 };
 
+$tests['refund settlement cannot close on an unconfirmed provider checkpoint'] = static function (): void {
+    $refunds = source('src/Application/RefundWorkflowService.php');
+    contains($refunds, 'Refund settlement requires trusted provider reconciliation evidence.', true);
+    contains($refunds, "str_starts_with($providerReference, 'pending:')", true);
+    contains($refunds, "\$current['state'] = 'closed';", true);
+};
+
 $tests['active manifests contain no current monthly donation contract'] = static function (): void {
     foreach (['manifests/cf03-contracts.json','manifests/cf03-release-1.4.0.json','manifests/cf03-future-expansion-40.json','manifests/donation-appeal-contract.json'] as $path) {
         $text = source($path);
