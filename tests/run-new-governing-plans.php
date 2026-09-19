@@ -183,9 +183,9 @@ $tests['active manifests match release identity'] = static function (): void {
     $release = json_decode((string)file_get_contents($root.'/manifests/cf03-release-1.4.0.json'), true, 512, JSON_THROW_ON_ERROR);
     $future = json_decode((string)file_get_contents($root.'/manifests/cf03-future-expansion-40.json'), true, 512, JSON_THROW_ON_ERROR);
     $appeal = json_decode((string)file_get_contents($root.'/manifests/donation-appeal-contract.json'), true, 512, JSON_THROW_ON_ERROR);
-    same('1.4.0-rc.1', $contracts['software_version']);
+    same('1.4.0-rc.2', $contracts['software_version']);
     same('4.0.0', $contracts['active_schema_version']);
-    same('1.4.0-rc.1', $release['software_version']);
+    same('1.4.0-rc.2', $release['software_version']);
     same(40, $future['feature_count']);
     same('fail_closed_by_default', $future['activation']);
     same(7, $appeal['frequency']['minimum_days_between_appeals']);
