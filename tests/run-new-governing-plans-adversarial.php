@@ -211,6 +211,22 @@ $tests['expired outbox processing leases are recoverable instead of becoming per
     contains($outbox, "\$leaseCriteria['leased_until']", true);
 };
 
+
+$tests['release manifests do not pretend repository state proves current Live deployment state'] = static function (): void {
+    $release = json_decode((string)file_get_contents(dirname(__DIR__).'/manifests/cf03-release-1.4.0.json'), true, 512, JSON_THROW_ON_ERROR);
+    $contracts = json_decode((string)file_get_contents(dirname(__DIR__).'/manifests/cf03-contracts.json'), true, 512, JSON_THROW_ON_ERROR);
+    same('unverified_by_repository', $release['live_verification_status']);
+    same('repository_does_not_assert_live_state', $release['deployment_status_claim']);
+    same('unverified_by_repository', $contracts['live_runtime_status']);
+    same(false, array_key_exists('live_deployed', $release));
+};
+
+$tests['plugin fallback version matches the current source candidate identity'] = static function (): void {
+    $plugin = source('src/Plugin.php');
+    contains($plugin, "'1.3.0-rc.1'", false);
+    contains($plugin, "'1.4.0-rc.1'", true);
+};
+
 $failures = 0;
 foreach ($tests as $name => $test) {
     try {
