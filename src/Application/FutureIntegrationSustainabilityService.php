@@ -17,11 +17,11 @@ final class FutureIntegrationSustainabilityService
             foreach ($totals as $key => $value) {
                 $totals[$key] += max(0, (int)($row[$key] ?? 0));
             }
-            foreach (['actor_ref','donor_ref','email','phone','ip_address'] as $forbidden) {
-                if (array_key_exists($forbidden, $row)) {
-                    throw new InvalidArgumentException('Privacy-preserving analytics may not ingest direct donor/user identifiers.');
-                }
-            }
+            $this->assertNoNestedKeys(
+                $row,
+                ['actor_ref','donor_ref','email','phone','ip_address'],
+                'Privacy-preserving analytics may not ingest direct donor/user identifiers.'
+            );
         }
         return [
             'metrics' => $totals,
@@ -86,11 +86,11 @@ final class FutureIntegrationSustainabilityService
         if ($eventType === '' || $aggregateId === '' || $traceId === '') {
             throw new InvalidArgumentException('Finance event type, aggregate and trace IDs are required.');
         }
-        foreach (['grant_access','rank_boost','verification_upgrade','ai_quota','education_access'] as $forbidden) {
-            if (array_key_exists($forbidden, $payload)) {
-                throw new InvalidArgumentException('Financial events may not carry entitlement or ranking commands.');
-            }
-        }
+        $this->assertNoNestedKeys(
+            $payload,
+            ['grant_access','rank_boost','verification_upgrade','ai_quota','education_access'],
+            'Financial events may not carry entitlement or ranking commands.'
+        );
         ksort($payload);
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         if (!is_string($json)) {
@@ -222,4 +222,18 @@ final class FutureIntegrationSustainabilityService
             'command_scope' => 'operational_governance_only',
         ];
     }
+    /** @param array<mixed> $value @param list<string> $forbidden */
+    private function assertNoNestedKeys(array $value, array $forbidden, string $message): void
+    {
+        foreach ($value as $key => $child) {
+            if (is_string($key) && in_array(strtolower($key), $forbidden, true)) {
+                throw new InvalidArgumentException($message);
+            }
+            if (is_array($child)) {
+                $this->assertNoNestedKeys($child, $forbidden, $message);
+            }
+        }
+    }
+
+
 }
