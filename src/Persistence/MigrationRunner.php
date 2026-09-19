@@ -39,8 +39,8 @@ final class MigrationRunner
         }
 
         $applied = [];
-        foreach (Schema::tables($prefix) as $name => $sql) {
-            $id = 'cf03-' . Schema::VERSION . '-' . $name;
+        foreach (CompleteSchema::tables($prefix) as $name => $sql) {
+            $id = 'cf03-' . CompleteSchema::VERSION . '-' . $name;
             $checksum = hash('sha256', $sql);
             if (($this->isApplied)($id)) {
                 if ($this->appliedChecksum === null) {
