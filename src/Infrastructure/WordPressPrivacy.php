@@ -60,7 +60,7 @@ final class WordPressPrivacy
         }
 
         $data = [];
-        foreach (['invoices','donations','subscriptions','refunds','exports'] as $group) {
+        foreach (['receipts','donations','refunds','exports'] as $group) {
             foreach ($records[$group] ?? [] as $index => $record) {
                 $items = [];
                 foreach ($record as $name => $value) {
