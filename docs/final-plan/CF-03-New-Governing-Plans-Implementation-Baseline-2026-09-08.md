@@ -1,4 +1,6 @@
-# CF-03 New Governing Plans — Implementation Baseline
+# CF-03 New Governing Plans — Implementation Baseline — Historical 1.3.0 Baseline
+
+> **Status notice:** This file records the 1.3.0 reconciliation baseline. It is superseded for current release identity by CF-03 written plan v1.1, `CF03-FUTURE40-2026-09-08` and software `1.4.0-rc.1`; its substantive free-core/one-time-donation law remains preserved where consistent.
 
 **Source candidate:** `1.3.0-rc.1`  
 **Active schema:** `4.0.0`  
@@ -8,7 +10,7 @@
 ## Governing sources
 
 1. `SSH-PMP-2026-v3.0` — Sabri Social Homeopathy Platform Definitive Master Plan v3.0.
-2. `CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0`.
+2. `CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.1` (v1.0 base plus Future40 written amendment).
 
 No earlier recovered directive, CF-03 v2.0 text, README, PR description or runtime code overrides these two current plans.
 
