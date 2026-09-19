@@ -13,6 +13,7 @@ use Sabri\CF03\Domain\LedgerTransaction;
 use Sabri\CF03\Domain\Money;
 use Sabri\CF03\Domain\PaymentIntentState;
 use Sabri\CF03\Domain\PaymentIntentTransition;
+use Sabri\CF03\Domain\ProviderEvidence;
 
 $tests = [];
 
@@ -122,6 +123,26 @@ $tests['FX-39 requires founder legal-accounting Sharia and operational readiness
     assertSame(false, $service->sustainabilityModule('waqf', false, true, true, true)['enabled']);
     assertSame(false, $service->sustainabilityModule('waqf', true, false, true, true)['enabled']);
     assertSame(true, $service->sustainabilityModule('waqf', true, true, true, true)['enabled']);
+};
+
+$tests['signed duplicate provider evidence stays trusted for canonical idempotency handling'] = static function (): void {
+    $now = new DateTimeImmutable('2026-09-19T12:00:00+00:00');
+    $evidence = new ProviderEvidence(
+        'provider.sandbox',
+        'event:retry:1',
+        'payment.settled',
+        'intent:retry:1',
+        new Money(1400, 'USD'),
+        'key:v1',
+        $now->modify('-10 seconds'),
+        $now,
+        str_repeat('a', 64),
+        true,
+        false,
+        $now->modify('-10 seconds')
+    );
+    $evidence->assertTrusted();
+    assertSame(false, $evidence->eventIdUnique());
 };
 
 $failures = 0;
