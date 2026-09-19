@@ -1,9 +1,11 @@
-# Founder-Approved Final Donation and Financial Transparency Policy
+# Founder-Approved Final Donation and Financial Transparency Policy — Historical/Superseded
+
+> **Status notice:** This document is retained strictly as historical decision provenance. Its monthly/30-day/recurring-donation rules were superseded by the later Founder-approved governing CF-03 plan. Current law is voluntary **one-time donation only**, minimum **7-day** appeal suppression, no recurring mandate/automatic repeat charge, free core/AI/education, donor neutrality and 0% platform commission. Nothing below may be used to reactivate superseded behavior.
 
 **Decision ID:** `SSH-FIN-DONATION-2026-08-04-01`  
 **Founder and Owner:** Dr. Allamah Majid Hussain Sabri Muhaddith Murshid  
 **Effective:** 4 August 2026, 10:02 PM PKT  
-**Status:** Founder-Approved Interim Governing Policy
+**Status:** Historical/Superseded Founder decision provenance — not current product law
 
 ## Final decision
 
