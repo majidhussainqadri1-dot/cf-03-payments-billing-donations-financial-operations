@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0-rc.2 — Ten-Round Corrective Review
+
+- Completed ten sequential repository review rounds against the current CF-03 v1.1 governing plan and Future40 amendment.
+- Aligned current governing-plan identity to v1.1 and quarantined superseded monthly/30-day/recurring policy documents as historical evidence.
+- Corrected webhook retry/idempotency handling so exact signed provider retries reach canonical durable duplicate reconciliation without weakening signature trust.
+- Hardened active schema migration, retired-state access, concurrent refund-balance reservation, private-object error handling, finance export actor binding/audit, full 27-table backup coverage, retention execution claims/audit, expired outbox lease recovery and nested sensitive/entitlement-field rejection.
+- Removed repository assertions about unknown Live deployment state and retained fail-closed source-candidate defaults.
+- Schema remains `4.0.0`; Future40 amendment identity remains `CF03-FUTURE40-2026-09-08`; no Future40 capability is activated by code presence.
+- Deterministic package target is `cf-03-payments-billing-donations-financial-operations-1.4.0-rc.2.zip`.
+
+
 ## 1.4.0-rc.1 — Future Expansion Pack 40
 
 - Added governing amendment `CF03-FUTURE40-2026-09-08` with exactly **40** coded future financial-governance capabilities.
