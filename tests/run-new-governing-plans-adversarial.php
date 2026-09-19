@@ -98,6 +98,12 @@ $tests['refund settlement cannot close on an unconfirmed provider checkpoint'] =
     contains($refunds, "\$current['state'] = 'closed';", true);
 };
 
+$tests['runtime financial policy cites current CF-03 governing plan'] = static function (): void {
+    $policy = source('src/Domain/PlatformFinancialPolicy.php');
+    contains($policy, 'Conditional-Complete-Master-Plan-2026-v1.1-Future40-Amended-2026-09-09', true);
+    contains($policy, 'Conditional-Complete-Master-Plan-2026-v1.0', false);
+};
+
 $tests['active manifests contain no current monthly donation contract'] = static function (): void {
     foreach (['manifests/cf03-contracts.json','manifests/cf03-release-1.4.0.json','manifests/cf03-future-expansion-40.json','manifests/donation-appeal-contract.json'] as $path) {
         $text = source($path);
