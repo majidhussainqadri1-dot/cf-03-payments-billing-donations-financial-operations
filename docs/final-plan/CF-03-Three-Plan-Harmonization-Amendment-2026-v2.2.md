@@ -1,54 +1,51 @@
 # CF-03 Three-Plan Harmonization Amendment 2026 v2.2
 
-## Governing sources
+> **HISTORICAL / SUPERSEDED — NOT ACTIVE GOVERNING TRUTH.** This document is retained only for provenance and audit history. Its recovered-directive, monthly/30-day donation-prompt, paid-product, subscription, recurring-donation, schema and other conflicting rules MUST NOT be used as current runtime or release requirements. Current authority is `SSH-PMP-2026-v3.0` together with **CF-03 — Payments, Billing, Donations and Financial Operations — Conditional Complete Master Plan 2026 v1.1 — Future40 Amended 2026-09-09** and the fail-closed `CF03-FUTURE40-2026-09-08` amendment. Current public donation law is voluntary one-time donation only with the current seven-day suppression rule; recurring donation and automatic repeat charge are unavailable.
 
-This amendment reconciles the repository against the actual three governing plans requested by the Founder:
+## Historical governing sources at the time of this amendment
+
+This amendment formerly reconciled the repository against the three plans then treated as governing:
 
 1. `SSH-PMP-2026-v3.0` — Sabri Social Homeopathy Platform Definitive Master Plan 2026 v3.0;
 2. Sabri Platform All-Chats Recovered Directive Register 2026 v2.0, dated 5 August 2026;
-3. CF-03 Integrated Final Plan 2026 v2.0, governed by `SSH-FIN-DONATION-2026-08-04-01`.
+3. CF-03 Integrated Final Plan 2026 v2.0, then governed by `SSH-FIN-DONATION-2026-08-04-01`.
 
-The previous v2.1 amendment referred only to the narrower Current-Chat Directive Register v1.0. It remains historical evidence but is superseded by this amendment for current three-plan traceability.
+The previous v2.1 amendment referred only to the narrower Current-Chat Directive Register v1.0. Both v2.1 and this v2.2 document are now historical evidence for current-governance purposes.
 
-## Clause-by-clause financial resolution
+## Historical clause-by-clause financial resolution
 
-### Active and consistent recovered directives
+The remainder of this document records the historical resolution only and does not activate any current behavior.
+
+### Rules that were treated as active at that time
 
 - `RCD-020`: all approved platform services remain free and old prices remain dormant.
-- `RCD-021`: USD 10, USD 14, USD 50 and positive custom USD remain approved; no amount or recurring option is preselected.
-- `RCD-023`: Clinic and Marketplace commission remains 0%; payment or donation cannot influence ranking, recommendation, visibility, review or privileged support.
-- `CHAT-DL-001`: eligible CF-03 invoices, receipts, finance exports and verified aggregate transparency snapshots have a rights-aware download contract.
-- `CHAT-QA-001`: post-GitHub harmonization, iterative correction and zero-known critical/high defect release law remain governing.
+- `RCD-021`: USD 10, USD 14, USD 50 and positive custom USD were approved; no amount or recurring option was preselected.
+- `RCD-023`: Clinic and Marketplace commission remained 0%; payment or donation could not influence ranking, recommendation, visibility, review or privileged support.
+- `CHAT-DL-001`: eligible CF-03 invoices, receipts, finance exports and verified aggregate transparency snapshots had a rights-aware download contract.
+- `CHAT-QA-001`: post-GitHub harmonization, iterative correction and zero-known critical/high defect release law remained governing.
 
-### Conflict found and resolved
+### Historical conflict resolution
 
-`RCD-022` repeats an earlier seven-day Donation Appeal frequency. It conflicts with the later and more specific Founder-approved financial decision `SSH-FIN-DONATION-2026-08-04-01`, effective 4 August 2026 at 10:02 PM PKT.
+`RCD-022` repeated an earlier seven-day Donation Appeal frequency. It was then treated as conflicting with Founder-approved financial decision `SSH-FIN-DONATION-2026-08-04-01`, effective 4 August 2026 at 10:02 PM PKT.
 
-The All-Chats register itself states that the latest explicit Founder decision prevails over older conflicting wording. Therefore:
+At that historical point the resolution was:
 
-- `RCD-022` is historical/superseded for CF-03;
-- `CF03-FR-037` remains active;
-- the appeal may appear at most once in a calendar month;
-- Remind Me Later, Not Now, Close and completed donation each impose at least 30 days of suppression;
-- active monthly donors, sensitive contexts, page/session caps and payment-failure suppression remain enforced.
+- `RCD-022` treated as superseded;
+- `CF03-FR-037` treated as active;
+- appeal at most once in a calendar month;
+- Remind Me Later, Not Now, Close and completed donation imposing at least 30 days of suppression;
+- active monthly donors, sensitive contexts, page/session caps and payment-failure suppression enforced.
 
-## Source enforcement
+**These monthly/30-day and monthly-donor statements are superseded and must not be read as current law.**
 
-The resolution is machine-readable in `GoverningPlanRegistry` and the release manifest. CI verifies:
+## Historical source enforcement
 
-- the exact All-Chats v2 source identity;
-- explicit `RCD-022` supersession;
-- the later Founder decision ID and effective timestamp;
-- active consistency of `RCD-020`, `RCD-021` and `RCD-023`;
-- 30-day/monthly prompt constants;
-- no Live collection or file-delivery activation.
+At the time, the resolution was machine-readable in `GoverningPlanRegistry` and the release manifest, and CI checked the then-current source identities and constants. Those historical assertions are not current acceptance criteria unless independently required by the current governing plans.
 
-## Functional requirement
+## Historical functional requirement
 
-`CF03-FR-044 — Governing Plan and Recovered-Directive Conflict Lock`
-
-CF-03 must register the three governing plans, retain recovered directives for traceability, and refuse to reactivate a conflicting financial directive unless a new dated Founder change-control explicitly replaces `SSH-FIN-DONATION-2026-08-04-01` with migration, tests, rollback and acceptance evidence.
+`CF03-FR-044 — Governing Plan and Recovered-Directive Conflict Lock` was defined for the former three-plan regime. It is retained here for provenance only; current conflict resolution must follow the current governing-plan hierarchy.
 
 ## Completion boundary
 
-This amendment confirms repository-source and automated-QA compliance only. Provider, legal/tax/accounting, PCI, independent security, Hostinger staging, File 20/File 25 presentation, browser/accessibility/performance, backup/restore/rollback and Founder Live approval remain external gates.
+This historical amendment never established Live collection. Provider, legal/tax/accounting, PCI, independent security, staging, cross-file presentation, browser/accessibility/performance, backup/restore/rollback and Founder Live approval remained external gates, and they remain separate evidence states under the current Live-First rule.
