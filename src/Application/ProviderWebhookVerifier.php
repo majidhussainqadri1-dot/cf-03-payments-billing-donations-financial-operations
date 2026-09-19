@@ -21,7 +21,9 @@ final class ProviderWebhookVerifier
 
     /**
      * @param callable(string,string):string $secretResolver provider, key version -> secret
-     * @param callable(string,string):bool $eventIsUnique provider, event ID -> atomic uniqueness reservation
+     * @param callable(string,string):bool $eventIsUnique provider, event ID -> replay-registry observation/reservation.
+     * A false result is preserved on ProviderEvidence but is not itself a signature failure;
+     * canonical ingestion owns exact duplicate acknowledgement and durable idempotency.
      */
     public function __construct(
         private readonly mixed $secretResolver,
@@ -110,8 +112,10 @@ final class ProviderWebhookVerifier
             throw new InvalidArgumentException('Provider webhook occurred_at is invalid.', 0, $error);
         }
 
-        // Reserve only after signature, replay and payload validation. A forged request
-        // must never consume a legitimate provider event ID.
+        // Consult/reserve replay identity only after signature, replay-window and payload
+        // validation. A forged request must never consume a legitimate provider event ID.
+        // Duplicate signed delivery is allowed to reach canonical ingestion, where the
+        // durable provider-event record is compared for exact evidence parity.
         $unique = ($this->eventIsUnique)($providerCode, $payload['event_id']);
         $evidence = new ProviderEvidence(
             $providerCode,
