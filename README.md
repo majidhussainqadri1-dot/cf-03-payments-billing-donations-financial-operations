@@ -12,8 +12,8 @@ Canonical conditional financial owner for the **Sabri Social Homeopathy Platform
 The current source is governed by:
 
 1. **Sabri Social Homeopathy Platform Definitive Master Plan 2026 v3.0** — `SSH-PMP-2026-v3.0`;
-2. **CF-03 — Payments, Billing, Donations and Financial Operations — Conditional Complete Master Plan 2026 v1.0**;
-3. **CF-03 Future Expansion Pack 40 Amendment** — `CF03-FUTURE40-2026-09-08`, which adds future code contracts without changing current financial law.
+2. **CF-03 — Payments, Billing, Donations and Financial Operations — Conditional Complete Master Plan 2026 v1.1** — the v1.0 base plus the written Future40 amendment;
+3. **CF-03 Future Expansion Pack 40 Amendment** — `CF03-FUTURE40-2026-09-08`, the machine/code amendment paired with written-plan v1.1 and preserving current financial law.
 
 Earlier CF-03 v2.0, recovered-directive, 30-day/monthly-donation, paid-AI and subscription rules remain historical evidence only.
 
