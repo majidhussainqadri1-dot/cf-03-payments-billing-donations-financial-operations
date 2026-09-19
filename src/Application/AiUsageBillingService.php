@@ -51,7 +51,7 @@ final class AiUsageBillingService
         string $decisionReference
     ): array {
         throw new InvariantViolation(
-            'Financial AI metering is prohibited under CF-03 v1.0; reliability/fair-use controls must live outside financial charging.'
+            'Financial AI metering is prohibited under the current CF-03 governing plan; reliability/fair-use controls must live outside financial charging.'
         );
     }
 }
