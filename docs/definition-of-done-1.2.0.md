@@ -1,4 +1,6 @@
-# CF-03 1.2.0-rc.2 — Definition of Done
+# CF-03 1.2.0-rc.2 — Definition of Done — Historical/Superseded
+
+> **Status notice:** This release gate is historical evidence only. Its monthly/30-day/recurring/subscription-era requirements are not current acceptance law. Current acceptance is governed by the CF-03 v1.1 written plan, `CF03-FUTURE40-2026-09-08`, software `1.4.0-rc.1`, schema `4.0.0`, one-time donations only, 7-day minimum appeal suppression and fail-closed Future40 activation.
 
 ## Repository-source gates
 
