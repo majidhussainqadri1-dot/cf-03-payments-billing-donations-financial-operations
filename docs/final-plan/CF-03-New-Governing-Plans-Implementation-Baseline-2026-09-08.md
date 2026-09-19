@@ -8,7 +8,7 @@
 ## Governing sources
 
 1. `SSH-PMP-2026-v3.0` — Sabri Social Homeopathy Platform Definitive Master Plan v3.0.
-2. `CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0`.
+2. `CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.1-Future40-Amended-2026-09-09`.
 
 No earlier recovered directive, CF-03 v2.0 text, README, PR description or runtime code overrides these two current plans.
 

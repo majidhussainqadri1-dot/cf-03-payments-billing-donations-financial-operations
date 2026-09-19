@@ -85,6 +85,40 @@ $tests['paid AI billing and subscription services are tombstones not charging pa
     contains($subscriptions, "repository->insert('subscriptions'", false);
 };
 
+$tests['retired financial collections are inaccessible through active repository'] = static function (): void {
+    $repo = source('src/Infrastructure/WordPressFinancialRepository.php');
+    contains($repo, "RETIRED_COLLECTIONS = ['recurring_consents', 'subscriptions', 'usage_authorizations', 'usage_facts']", true);
+    contains($repo, 'Retired financial collection is unavailable to active runtime code.', true);
+};
+
+$tests['refund settlement cannot close on an unconfirmed provider checkpoint'] = static function (): void {
+    $refunds = source('src/Application/RefundWorkflowService.php');
+    contains($refunds, 'Refund settlement requires trusted provider reconciliation evidence.', true);
+    contains($refunds, "str_starts_with(\$providerReference, 'pending:')", true);
+    contains($refunds, "\$current['state'] = 'closed';", true);
+};
+
+$tests['runtime financial policy cites current CF-03 governing plan'] = static function (): void {
+    $policy = source('src/Domain/PlatformFinancialPolicy.php');
+    contains($policy, 'Conditional-Complete-Master-Plan-2026-v1.1-Future40-Amended-2026-09-09', true);
+    contains($policy, 'Conditional-Complete-Master-Plan-2026-v1.0', false);
+};
+
+$tests['privacy export follows active billing groups including receipts'] = static function (): void {
+    $privacy = source('src/Infrastructure/WordPressPrivacy.php');
+    contains($privacy, "['receipts','donations','refunds','exports']", true);
+    contains($privacy, "['invoices','donations','subscriptions'", false);
+};
+
+$tests['security and schema manifest reflect current governing identity'] = static function (): void {
+    $security = source('SECURITY.md');
+    $manifest = source('manifests/cf03-contracts.json');
+    contains($security, 'Master Plan 2026 v1.1 — Future40 Amended 2026-09-09', true);
+    contains($security, 'Master Plan 2026 v1.0', false);
+    contains($manifest, '"retired_active_tables":[]', true);
+    contains($manifest, '"retired_tables":["recurring_consents","subscriptions","usage_authorizations","usage_facts"]', true);
+};
+
 $tests['active manifests contain no current monthly donation contract'] = static function (): void {
     foreach (['manifests/cf03-contracts.json','manifests/cf03-release-1.4.0.json','manifests/cf03-future-expansion-40.json','manifests/donation-appeal-contract.json'] as $path) {
         $text = source($path);
@@ -131,6 +165,13 @@ $tests['future pack cannot activate itself or revive donor privilege'] = static 
     contains($registry, "'recurring_donation_allowed' => false", true);
     contains($registry, "'paid_core_allowed' => false", true);
     contains($policy, "'future_pack_activated_by_code_presence' => false", true);
+};
+
+$tests['upgrade fallback and migration evidence match current schema law'] = static function (): void {
+    $plugin = source('src/Plugin.php');
+    contains($plugin, "SABRI_CF03_VERSION : '1.4.0-rc.1'", true);
+    contains($plugin, "'retired_tables' => \\Sabri\\CF03\\Persistence\\RuntimeSchemaExtension::RETIRED_TABLES", true);
+    contains($plugin, "'retired_active_tables' => []", true);
 };
 
 $tests['release identity and package builder stay aligned'] = static function (): void {

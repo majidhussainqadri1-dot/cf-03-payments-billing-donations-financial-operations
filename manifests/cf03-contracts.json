@@ -6,14 +6,14 @@
   "status": "new-governing-plans-plus-future40-source-candidate-runtime-fail-closed",
   "governing_sources": [
     "SSH-PMP-2026-v3.0",
-    "CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.0",
+    "CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.1-Future40-Amended-2026-09-09",
     "CF03-FUTURE40-2026-09-08"
   ],
   "runtime_collection_enabled": false,
   "contracts": {
     "free_core": {"single_free_tier":true,"structured_education_free":true,"sabri_ai_core_free":true,"paid_core_checkout":false},
     "donation_checkout": {"one_time_only":true,"explicit_one_time_consent":true,"recurring_available":false,"automatic_repeat_charge":false,"live_enabled":false},
-    "active_schema": {"version":"4.0.0","canonical_tables":27,"retired_active_tables":["recurring_consents","subscriptions","usage_authorizations","usage_facts"]},
+    "active_schema": {"version":"4.0.0","canonical_tables":27,"retired_tables":["recurring_consents","subscriptions","usage_authorizations","usage_facts"],"retired_active_tables":[]},
     "public_transparency": {"aggregate_only":true,"fabricated_values":false,"donor_identity_public":false},
     "privacy": {"public_runtime_details_redacted":true,"webhook_sensitive_headers_stripped":true,"mandatory_financial_retention":true},
     "future_expansion_40": {
