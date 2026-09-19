@@ -13,9 +13,11 @@ final class SystemIntegrityService
 {
     /** @var list<string> */
     private const CRITICAL_COLLECTIONS = [
-        'intents','provider_events','ledger_transactions','ledger_entries','invoices','refunds',
-        'chargebacks','donations','settlements','settlement_lines','reconciliation_exceptions',
-        'finance_periods','expenses','transparency_snapshots','audit','outbox','retention_ledger','migrations',
+        'products','prices','customer_refs','intents','provider_events','ledger_transactions','ledger_entries',
+        'invoices','refunds','chargebacks','donations','settlements','settlement_lines',
+        'reconciliation_exceptions','finance_periods','adjustments','fraud_reviews','exports','idempotency',
+        'outbox','audit','retention_ledger','provider_registry','migrations','expenses',
+        'transparency_snapshots','donor_acknowledgments',
     ];
 
     public function __construct(
