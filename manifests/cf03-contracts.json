@@ -1,6 +1,6 @@
 {
   "module": "CF-03",
-  "software_version": "1.4.0-rc.1",
+  "software_version": "1.4.0-rc.2",
   "historical_base_schema_version": "2.0.0",
   "active_schema_version": "4.0.0",
   "status": "new-governing-plans-plus-future40-source-candidate-runtime-fail-closed",
@@ -21,7 +21,7 @@
       "explicit_one_time_consent": true,
       "recurring_available": false,
       "automatic_repeat_charge": false,
-      "live_enabled": false
+      "live_activation_inferred_from_repository": false
     },
     "active_schema": {
       "version": "4.0.0",
