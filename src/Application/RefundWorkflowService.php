@@ -43,73 +43,96 @@ final class RefundWorkflowService
             throw new InvalidArgumentException('Refund amount must be positive.');
         }
 
-        $existing = $this->repository->get('refunds', $refundId);
-        if ($existing !== null) {
-            if (($existing['intent_id'] ?? null) === $intentId
-                && ($existing['requester_ref'] ?? null) === $requesterReference
-                && (int)($existing['amount_minor'] ?? -1) === $amount->minorUnits()
-                && ($existing['currency'] ?? null) === $amount->currency()
-                && ($existing['reason'] ?? null) === $reasonCode
-            ) {
-                return $this->safe($existing) + ['reused' => true];
+        return $this->repository->transaction(function () use ($refundId, $intentId, $requesterReference, $amount, $reasonCode, $now): array {
+            $existing = $this->repository->get('refunds', $refundId);
+            if ($existing !== null) {
+                if (($existing['intent_id'] ?? null) === $intentId
+                    && ($existing['requester_ref'] ?? null) === $requesterReference
+                    && (int)($existing['amount_minor'] ?? -1) === $amount->minorUnits()
+                    && ($existing['currency'] ?? null) === $amount->currency()
+                    && ($existing['reason'] ?? null) === $reasonCode
+                ) {
+                    return $this->safe($existing) + ['reused' => true];
+                }
+                throw new InvariantViolation('Refund identifier already exists with different terms.');
             }
-            throw new InvariantViolation('Refund identifier already exists with different terms.');
-        }
-
-        $intent = $this->repository->get('intents', $intentId);
-        if ($intent === null || (string)($intent['actor_ref'] ?? '') !== $requesterReference) {
-            throw new InvariantViolation('Refundable payment was not found in requester scope.');
-        }
-        if (!in_array((string)($intent['state'] ?? ''), ['captured', 'settled'], true)) {
-            throw new InvariantViolation('Payment is not in a refundable state.');
-        }
-        $paid = new Money((int)$intent['amount_minor'], (string)$intent['currency']);
-        if ($amount->currency() !== $paid->currency()) {
-            throw new InvariantViolation('Refund currency does not match the payment.');
-        }
-
-        $committed = 0;
-        foreach ($this->repository->find('refunds', ['intent_id' => $intentId], 500) as $prior) {
-            if (!in_array((string)($prior['state'] ?? ''), self::BALANCE_COMMITTING_STATES, true)) {
-                continue;
+    
+            $intent = $this->repository->get('intents', $intentId);
+            if ($intent === null || (string)($intent['actor_ref'] ?? '') !== $requesterReference) {
+                throw new InvariantViolation('Refundable payment was not found in requester scope.');
             }
-            if (($prior['currency'] ?? null) !== $paid->currency()) {
-                throw new InvariantViolation('Existing refund records contain a conflicting currency.');
+            if (!in_array((string)($intent['state'] ?? ''), ['captured', 'settled'], true)) {
+                throw new InvariantViolation('Payment is not in a refundable state.');
             }
-            $priorAmount = (int)($prior['amount_minor'] ?? -1);
-            if ($priorAmount <= 0 || $priorAmount > PHP_INT_MAX - $committed) {
-                throw new InvariantViolation('Existing refund balance evidence is invalid.');
+    
+            // Serialize refund-balance reservation on the canonical payment intent.
+            // Two different refund IDs must never both observe the same remaining balance.
+            $intentVersion = (int)($intent['version'] ?? $intent['record_version'] ?? 0);
+            if ($intentVersion < 1) {
+                throw new InvariantViolation('Refundable payment has no canonical record version.');
             }
-            $committed += $priorAmount;
-        }
-        if ($committed > $paid->minorUnits()) {
-            throw new InvariantViolation('Committed refunds already exceed the original payment.');
-        }
-        $remaining = $paid->minorUnits() - $committed;
-        if ($amount->minorUnits() > $remaining) {
-            throw new InvariantViolation('Refund exceeds the remaining payment balance.');
-        }
-
-        $record = [
-            'refund_id' => $refundId,
-            'intent_id' => $intentId,
-            'amount_minor' => $amount->minorUnits(),
-            'currency' => $amount->currency(),
-            'refundable_balance_minor' => $remaining,
-            'requester_ref' => $requesterReference,
-            'reviewer_ref' => null,
-            'executor_ref' => null,
-            'reason' => $reasonCode,
-            'decision_reason' => null,
-            'policy_version' => 'refund.current.v1',
-            'state' => 'requested',
-            'provider_ref' => null,
-            'record_version' => 1,
-            'requested_at' => $now,
-            'updated_at' => $now,
-        ];
-        $this->repository->insert('refunds', $refundId, $record);
-        return $this->safe($record) + ['reused' => false];
+            $intent = $this->repository->compareAndSwap(
+                'intents',
+                $intentId,
+                $intentVersion,
+                static function (array $current) use ($requesterReference): array {
+                    if ((string)($current['actor_ref'] ?? '') !== $requesterReference
+                        || !in_array((string)($current['state'] ?? ''), ['captured', 'settled'], true)
+                    ) {
+                        throw new InvariantViolation('Refundable payment changed while reserving refund balance.');
+                    }
+                    return $current;
+                }
+            );
+    
+            $paid = new Money((int)$intent['amount_minor'], (string)$intent['currency']);
+            if ($amount->currency() !== $paid->currency()) {
+                throw new InvariantViolation('Refund currency does not match the payment.');
+            }
+    
+            $committed = 0;
+            foreach ($this->repository->find('refunds', ['intent_id' => $intentId], 500) as $prior) {
+                if (!in_array((string)($prior['state'] ?? ''), self::BALANCE_COMMITTING_STATES, true)) {
+                    continue;
+                }
+                if (($prior['currency'] ?? null) !== $paid->currency()) {
+                    throw new InvariantViolation('Existing refund records contain a conflicting currency.');
+                }
+                $priorAmount = (int)($prior['amount_minor'] ?? -1);
+                if ($priorAmount <= 0 || $priorAmount > PHP_INT_MAX - $committed) {
+                    throw new InvariantViolation('Existing refund balance evidence is invalid.');
+                }
+                $committed += $priorAmount;
+            }
+            if ($committed > $paid->minorUnits()) {
+                throw new InvariantViolation('Committed refunds already exceed the original payment.');
+            }
+            $remaining = $paid->minorUnits() - $committed;
+            if ($amount->minorUnits() > $remaining) {
+                throw new InvariantViolation('Refund exceeds the remaining payment balance.');
+            }
+    
+            $record = [
+                'refund_id' => $refundId,
+                'intent_id' => $intentId,
+                'amount_minor' => $amount->minorUnits(),
+                'currency' => $amount->currency(),
+                'refundable_balance_minor' => $remaining,
+                'requester_ref' => $requesterReference,
+                'reviewer_ref' => null,
+                'executor_ref' => null,
+                'reason' => $reasonCode,
+                'decision_reason' => null,
+                'policy_version' => 'refund.current.v1',
+                'state' => 'requested',
+                'provider_ref' => null,
+                'record_version' => 1,
+                'requested_at' => $now,
+                'updated_at' => $now,
+            ];
+            $this->repository->insert('refunds', $refundId, $record);
+            return $this->safe($record) + ['reused' => false];
+        });
     }
 
     /** @return array<string,mixed> */
