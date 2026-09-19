@@ -2,10 +2,10 @@
 
 Canonical conditional financial owner for the **Sabri Social Homeopathy Platform**.
 
-> **Current source candidate:** `1.4.0-rc.1`  
+> **Current source candidate:** `1.4.0-rc.2`  
 > **Active canonical schema:** `4.0.0` — 27 active canonical tables  
 > **Future Expansion Pack:** `CF03-FUTURE40-2026-09-08` — 40 coded future capabilities, all fail closed by default  
-> **Runtime:** fail closed. Live collection and financial file delivery are not claimed.
+> **Source-candidate default:** fail closed. Exact Live runtime/deployment state is unverified by this repository.
 
 ## Current governing plans
 
@@ -39,7 +39,7 @@ The active schema intentionally excludes `recurring_consents`, `subscriptions`, 
 
 ## Future Expansion Pack — 40 coded facilities
 
-Release `1.4.0-rc.1` adds exactly **40** future capabilities under `CF03-FUTURE40-2026-09-08`.
+The Future40 amendment was introduced against `1.4.0-rc.1`; current corrected source candidate `1.4.0-rc.2` retains exactly **40** future capabilities under `CF03-FUTURE40-2026-09-08`.
 
 They are grouped as:
 
