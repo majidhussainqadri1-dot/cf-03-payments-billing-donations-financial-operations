@@ -94,7 +94,7 @@ $tests['retired financial collections are inaccessible through active repository
 $tests['refund settlement cannot close on an unconfirmed provider checkpoint'] = static function (): void {
     $refunds = source('src/Application/RefundWorkflowService.php');
     contains($refunds, 'Refund settlement requires trusted provider reconciliation evidence.', true);
-    contains($refunds, "str_starts_with($providerReference, 'pending:')", true);
+    contains($refunds, "str_starts_with(\$providerReference, 'pending:')", true);
     contains($refunds, "\$current['state'] = 'closed';", true);
 };
 
