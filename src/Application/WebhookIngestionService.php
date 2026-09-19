@@ -52,6 +52,11 @@ final class WebhookIngestionService
                 'provider_event_id' => $evidence->providerEventId(),
             ];
         }
+        if (! $evidence->eventIdUnique()) {
+            throw new InvariantViolation(
+                'Provider replay registry reports a duplicate event but no canonical event record exists; reconciliation is required.'
+            );
+        }
 
         $mapped = $this->mapper->mapTrusted($evidence);
         $intent = $this->repository->get('intents', $evidence->paymentIntentId());
