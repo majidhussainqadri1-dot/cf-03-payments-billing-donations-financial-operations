@@ -125,9 +125,14 @@ final class WordPressFinancialDocumentApi
             $status = $error instanceof InvalidArgumentException
                 ? 422
                 : ($error instanceof InvariantViolation ? 409 : 500);
-            $message = $status === 500
-                ? 'The financial document could not be prepared safely.'
-                : $error->getMessage();
+            // Never distinguish "not found" from "exists but outside owner scope" for
+            // authenticated document lookups. That distinction would disclose private
+            // financial-object existence to an unauthorized actor.
+            $message = $error instanceof InvalidArgumentException
+                ? $error->getMessage()
+                : ($error instanceof InvariantViolation
+                    ? 'The financial document is unavailable or not accessible in the current authorized scope.'
+                    : 'The financial document could not be prepared safely.');
             if (class_exists('WP_Error')) {
                 return new \WP_Error('sabri_cf03_document_error', $message, ['status' => $status]);
             }
