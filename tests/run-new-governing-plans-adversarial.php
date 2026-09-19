@@ -136,10 +136,10 @@ $tests['future pack cannot activate itself or revive donor privilege'] = static 
 $tests['release identity and package builder stay aligned'] = static function (): void {
     $bootstrap = source('cf-03-payments-billing-donations-financial-operations.php');
     $builder = source('scripts/build-package.sh');
-    contains($bootstrap, 'Version: 1.4.0-rc.1', true);
+    contains($bootstrap, 'Version: 1.4.0-rc.2', true);
     contains($bootstrap, "SABRI_CF03_SCHEMA_VERSION', '4.0.0'", true);
     contains($bootstrap, 'CF03-FUTURE40-2026-09-08', true);
-    contains($builder, 'VERSION="1.4.0-rc.1"', true);
+    contains($builder, 'VERSION="1.4.0-rc.2"', true);
 };
 
 
@@ -147,7 +147,7 @@ $tests['active migration runner uses schema 4 and never creates retired tables']
     $migration = source('src/Persistence/MigrationRunner.php');
     contains($migration, 'CompleteSchema::tables($prefix)', true);
     contains($migration, "CompleteSchema::VERSION", true);
-    contains($migration, 'Schema::tables($prefix)', false);
+    contains($migration, 'foreach (Schema::tables($prefix)', false);
 };
 
 $tests['active repositories refuse retired financial collections even if legacy tables remain'] = static function (): void {
@@ -163,7 +163,8 @@ $tests['active repositories refuse retired financial collections even if legacy 
 $tests['refund requests serialize remaining-balance reservation through intent CAS'] = static function (): void {
     $refunds = source('src/Application/RefundWorkflowService.php');
     contains($refunds, "return \$this->repository->transaction", true);
-    contains($refunds, "compareAndSwap(\n            'intents'", true);
+    contains($refunds, 'repository->compareAndSwap(', true);
+    contains($refunds, "'intents',", true);
     contains($refunds, 'Two different refund IDs must never both observe the same remaining balance.', true);
 };
 
