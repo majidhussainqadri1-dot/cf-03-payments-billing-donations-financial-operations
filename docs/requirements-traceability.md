@@ -1,10 +1,10 @@
-# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.1
+# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.2
 
 This matrix is the current **source-code traceability** for the two governing documents and the current Future40 amendment:
 
 1. `SSH-PMP-2026-v3.0` — Sabri Social Homeopathy Platform Definitive Master Plan v3.0;
 2. `CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.1` — consolidated written plan identity (v1.0 base plus Future40 amendment);
-3. `CF03-FUTURE40-2026-09-08` — CF-03 Future Expansion Pack 40 machine/code amendment, software target `1.4.0-rc.1`, active schema `4.0.0`.
+3. `CF03-FUTURE40-2026-09-08` — CF-03 Future Expansion Pack 40 machine/code amendment, original amendment target `1.4.0-rc.1`; current corrected source candidate `1.4.0-rc.2`, active schema `4.0.0`.
 
 It does **not** claim provider, legal, PCI, staging, Live or operational acceptance. Where a requirement contains an external acceptance test, the source contract is implemented but the external acceptance gate remains pending.
 
