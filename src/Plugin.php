@@ -110,7 +110,7 @@ final class Plugin
         }
         $currentVersion = (string)get_option(self::OPTION_VERSION, '');
         $currentSchema = (string)get_option(self::OPTION_SCHEMA_VERSION, '');
-        $targetVersion = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.3.0-rc.1';
+        $targetVersion = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.4.0-rc.1';
         if (hash_equals($targetVersion, $currentVersion) && hash_equals(CompleteSchema::VERSION, $currentSchema)) {
             return;
         }
@@ -227,7 +227,8 @@ final class Plugin
             'schema_version' => CompleteSchema::VERSION,
             'base_schema_version' => CompleteSchema::BASE_VERSION,
             'migration_ids' => $migrations,
-            'retired_active_tables' => \Sabri\CF03\Persistence\RuntimeSchemaExtension::RETIRED_TABLES,
+            'retired_tables' => \Sabri\CF03\Persistence\RuntimeSchemaExtension::RETIRED_TABLES,
+            'retired_active_tables' => [], // compatibility key: retired tables are not active canonical truth
             'completed_at' => gmdate(DATE_ATOM),
         ], false);
         update_option(self::OPTION_RUNTIME_STATUS, self::RUNTIME_STATUS, false);
