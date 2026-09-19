@@ -1,4 +1,6 @@
-# CF-03 Three-Plan Harmonization Amendment 2026 v2.2
+# CF-03 Three-Plan Harmonization Amendment 2026 v2.2 — Historical/Superseded
+
+> **Status notice:** Retained for provenance only. Its 30-day/calendar-month and recurring-era resolution was superseded by the later CF-03 v1.1 governing plan and `CF03-FUTURE40-2026-09-08`. It must not be treated as current deployment, acceptance or business-policy authority.
 
 ## Governing sources
 
