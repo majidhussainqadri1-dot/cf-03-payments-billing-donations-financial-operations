@@ -167,6 +167,23 @@ $tests['refund requests serialize remaining-balance reservation through intent C
     contains($refunds, 'Two different refund IDs must never both observe the same remaining balance.', true);
 };
 
+
+$tests['private financial document errors do not reveal object existence'] = static function (): void {
+    $api = source('src/Infrastructure/WordPressFinancialDocumentApi.php');
+    contains($api, 'unavailable or not accessible in the current authorized scope', true);
+    contains($api, "Financial document is outside the authenticated owner scope.';", false);
+};
+
+$tests['finance export grants bind override access to the actual authenticated actor and are audited'] = static function (): void {
+    $exports = source('src/Application/SecureExportService.php');
+    contains($exports, "\$requesterReference,\n            'cf03-financial-export-'", true);
+    contains($exports, "'finance:authorized' : \$requesterReference", false);
+    contains($exports, "export_download_granted", true);
+    contains($exports, "export_requested", true);
+    contains($exports, "export_processed", true);
+    contains($exports, "export_revoked", true);
+};
+
 $failures = 0;
 foreach ($tests as $name => $test) {
     try {
