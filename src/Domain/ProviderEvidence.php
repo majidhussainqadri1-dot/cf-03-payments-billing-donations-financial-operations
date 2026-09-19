@@ -54,10 +54,10 @@ final class ProviderEvidence
             throw new InvariantViolation('Provider evidence signature is not verified.');
         }
 
-        if (! $this->eventIdUnique) {
-            throw new InvariantViolation('Provider event ID has already been processed.');
-        }
-
+        // Event-ID uniqueness is a processing/idempotency concern, not a cryptographic
+        // trust property. A provider may legitimately retry the exact same signed
+        // event. Canonical ingestion must compare that retry with the durable
+        // provider-event record and acknowledge only exact evidence parity.
         $age = $this->receivedAt->getTimestamp() - $this->signatureTimestamp->getTimestamp();
         if ($age < 0 || $age > $replayWindowSeconds) {
             throw new InvariantViolation('Provider evidence is outside the accepted replay window.');
