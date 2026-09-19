@@ -9,7 +9,7 @@
 - A new donation appeal is blocked for at least **7 days** after display/dismissal and after a completed one-time donation, subject also to the current session/page/context safeguards.
 - No donation amount or recurrence is preselected.
 - Donation never creates access, ranking, verification, visibility, publishing, support, education, AI, clinic, marketplace or other privilege.
-- The current source of truth is `SSH-PMP-2026-v3.0`, the CF-03 Conditional Complete Master Plan 2026 v1.0, and current repository amendments including `CF03-FUTURE40-2026-09-08`.
+- The current source of truth is `SSH-PMP-2026-v3.0`, the CF-03 Conditional Complete Master Plan 2026 v1.1 (v1.0 base plus Future40 amendment), and current repository amendment `CF03-FUTURE40-2026-09-08`.
 
 ## Historical record retained for provenance
 
