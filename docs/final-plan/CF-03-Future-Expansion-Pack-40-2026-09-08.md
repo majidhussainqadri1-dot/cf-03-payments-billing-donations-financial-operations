@@ -1,7 +1,8 @@
 # CF-03 Future Expansion Pack — 40 Facilities
 
 **Amendment ID:** `CF03-FUTURE40-2026-09-08`  
-**Software target:** `1.4.0-rc.1`  
+**Original amendment software target:** `1.4.0-rc.1`  
+**Current corrected source candidate:** `1.4.0-rc.2`  
 **Schema:** `4.0.0` unchanged  
 **Activation:** all 40 capabilities are coded as future/fail-closed contracts; code presence does not itself activate Live financial behavior.
 
