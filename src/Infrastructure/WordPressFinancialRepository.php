@@ -53,6 +53,9 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
     /** @var list<string> */
     private const IMMUTABLE_COLLECTIONS = ['ledger_transactions', 'ledger_entries', 'audit'];
 
+    /** @var list<string> */
+    private const RETIRED_COLLECTIONS = ['recurring_consents', 'subscriptions', 'usage_authorizations', 'usage_facts'];
+
     /** @var array<string,list<string>> */
     private array $columnCache = [];
     private int $transactionDepth = 0;
@@ -316,6 +319,9 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
     /** @return array{0:string,1:string} */
     private function spec(string $collection): array
     {
+        if (in_array($collection, self::RETIRED_COLLECTIONS, true)) {
+            throw new InvariantViolation('Retired financial collection is not addressable by the active runtime repository.');
+        }
         $spec = self::COLLECTIONS[$collection] ?? null;
         if ($spec === null) {
             throw new InvalidArgumentException('Unknown canonical financial collection.');
