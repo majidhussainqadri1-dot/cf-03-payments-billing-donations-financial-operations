@@ -110,6 +110,15 @@ $tests['privacy export follows active billing groups including receipts'] = stat
     contains($privacy, "['invoices','donations','subscriptions'", false);
 };
 
+$tests['security and schema manifest reflect current governing identity'] = static function (): void {
+    $security = source('SECURITY.md');
+    $manifest = source('manifests/cf03-contracts.json');
+    contains($security, 'Master Plan 2026 v1.1 — Future40 Amended 2026-09-09', true);
+    contains($security, 'Master Plan 2026 v1.0', false);
+    contains($manifest, '"retired_active_tables":[]', true);
+    contains($manifest, '"retired_tables":["recurring_consents","subscriptions","usage_authorizations","usage_facts"]', true);
+};
+
 $tests['active manifests contain no current monthly donation contract'] = static function (): void {
     foreach (['manifests/cf03-contracts.json','manifests/cf03-release-1.4.0.json','manifests/cf03-future-expansion-40.json','manifests/donation-appeal-contract.json'] as $path) {
         $text = source($path);
