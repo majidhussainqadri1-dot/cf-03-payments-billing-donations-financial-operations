@@ -9,38 +9,70 @@
     "CF-03-Payments-Billing-Donations-Financial-Operations-Conditional-Complete-Master-Plan-2026-v1.1",
     "CF03-FUTURE40-2026-09-08"
   ],
-  "runtime_collection_enabled": false,
   "contracts": {
-    "free_core": {"single_free_tier":true,"structured_education_free":true,"sabri_ai_core_free":true,"paid_core_checkout":false},
-    "donation_checkout": {"one_time_only":true,"explicit_one_time_consent":true,"recurring_available":false,"automatic_repeat_charge":false,"live_enabled":false},
-    "active_schema": {"version":"4.0.0","canonical_tables":27,"retired_active_tables":["recurring_consents","subscriptions","usage_authorizations","usage_facts"]},
-    "public_transparency": {"aggregate_only":true,"fabricated_values":false,"donor_identity_public":false},
-    "privacy": {"public_runtime_details_redacted":true,"webhook_sensitive_headers_stripped":true,"mandatory_financial_retention":true},
+    "free_core": {
+      "single_free_tier": true,
+      "structured_education_free": true,
+      "sabri_ai_core_free": true,
+      "paid_core_checkout": false
+    },
+    "donation_checkout": {
+      "one_time_only": true,
+      "explicit_one_time_consent": true,
+      "recurring_available": false,
+      "automatic_repeat_charge": false,
+      "live_enabled": false
+    },
+    "active_schema": {
+      "version": "4.0.0",
+      "canonical_tables": 27,
+      "retired_active_tables": [
+        "recurring_consents",
+        "subscriptions",
+        "usage_authorizations",
+        "usage_facts"
+      ]
+    },
+    "public_transparency": {
+      "aggregate_only": true,
+      "fabricated_values": false,
+      "donor_identity_public": false
+    },
+    "privacy": {
+      "public_runtime_details_redacted": true,
+      "webhook_sensitive_headers_stripped": true,
+      "mandatory_financial_retention": true
+    },
     "future_expansion_40": {
-      "version":"1.0",
-      "amendment_id":"CF03-FUTURE40-2026-09-08",
-      "feature_count":40,
-      "coded":true,
-      "activated":false,
-      "activation_by_code_presence":false,
-      "conditional_change_control_features":["FX-38","FX-39"],
-      "manifest":"manifests/cf03-future-expansion-40.json",
-      "functional_test":"tests/run-future-expansion-40.php"
+      "version": "1.0",
+      "amendment_id": "CF03-FUTURE40-2026-09-08",
+      "feature_count": 40,
+      "coded": true,
+      "activated": false,
+      "activation_by_code_presence": false,
+      "conditional_change_control_features": [
+        "FX-38",
+        "FX-39"
+      ],
+      "manifest": "manifests/cf03-future-expansion-40.json",
+      "functional_test": "tests/run-future-expansion-40.php"
     }
   },
   "constitutional_invariants": {
-    "all_core_services_free":true,
-    "structured_education_free":true,
-    "sabri_ai_core_free":true,
-    "fixed_fee_allowed":false,
-    "clinic_commission_basis_points":0,
-    "marketplace_commission_basis_points":0,
-    "donation_grants_privilege":false,
-    "donation_type":"one_time",
-    "donation_default_amount":null,
-    "donation_recurring_available":false,
-    "automatic_repeat_charge":false,
-    "file00_is_entitlement_authority":true,
-    "future_pack_changes_current_financial_law":false
-  }
+    "all_core_services_free": true,
+    "structured_education_free": true,
+    "sabri_ai_core_free": true,
+    "fixed_fee_allowed": false,
+    "clinic_commission_basis_points": 0,
+    "marketplace_commission_basis_points": 0,
+    "donation_grants_privilege": false,
+    "donation_type": "one_time",
+    "donation_default_amount": null,
+    "donation_recurring_available": false,
+    "automatic_repeat_charge": false,
+    "file00_is_entitlement_authority": true,
+    "future_pack_changes_current_financial_law": false
+  },
+  "default_source_candidate_collection_enabled": false,
+  "live_runtime_status": "unverified_by_repository"
 }
