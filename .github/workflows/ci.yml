@@ -30,6 +30,8 @@ jobs:
         run: php tests/run-new-governing-plans-adversarial.php
       - name: Future Expansion Pack 40 acceptance
         run: php tests/run-future-expansion-40.php
+      - name: Fresh CF03 signed-webhook idempotency and timestamp safety
+        run: php tests/run-fresh-provider-boundary-oct21.php
       - name: Validate manifests
         run: |
           for file in manifests/*.json; do
