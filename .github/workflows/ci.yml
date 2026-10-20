@@ -28,6 +28,8 @@ jobs:
         run: php tests/run-new-governing-plans.php
       - name: New governing plans adversarial acceptance
         run: php tests/run-new-governing-plans-adversarial.php
+      - name: Approved donation product checkout boundary
+        run: php tests/run-approved-donation-catalog-gate.php
       - name: Future Expansion Pack 40 acceptance
         run: php tests/run-future-expansion-40.php
       - name: Validate manifests
