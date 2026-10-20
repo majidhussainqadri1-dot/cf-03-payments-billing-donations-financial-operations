@@ -79,7 +79,7 @@ The source declares File 00/05/16 free access and AI equality; File 08/18 zero c
 
 ## Follow-up
 
-- Verify the isolated change against exact-head CI, including the 8 scenario assertions, and obtain fresh adversarial review.
+- Verify the isolated change against exact-head CI, including the 9 scenario assertions, and obtain fresh adversarial review.
 - Do not merge/deploy until impact on existing installations and the product-approval provisioning workflow are accepted.
 - Resolve issue #6 in repository metadata, not only documentation.
 - Validate checkout rate limits and CF-02/File 00/File 18 integration using real owner contracts before asserting production completion.
