@@ -1,4 +1,4 @@
-# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.1
+# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.2
 
 This matrix is the current **source-code traceability** for the two governing documents and the current Future40 amendment:
 
