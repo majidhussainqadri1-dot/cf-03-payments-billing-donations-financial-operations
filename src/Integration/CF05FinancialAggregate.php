@@ -44,7 +44,18 @@ final class CF05FinancialAggregate
             throw new InvariantViolation('CF-05 snapshot provenance or source hash is incomplete.');
         }
 
+        // Require the exact published aggregate bytes, not merely a plausible
+        // supplied hash. A derivative analytics consumer cannot authenticate
+        // or silently repair corrupted financial source truth.
+        if (!hash_equals($snapshotHash, hash('sha256', self::canonicalJson($snapshot)))) {
+            throw new InvariantViolation('CF-05 financial aggregate snapshot hash mismatch.');
+        }
         $projection = FinancialTransparencySnapshot::fromArray($snapshot)->toPublicProjection();
+        foreach (['total_expenses_minor', 'current_balance_minor', 'founder_paid_or_withdrawn_minor'] as $field) {
+            if (!is_int($snapshot[$field] ?? null) || $snapshot[$field] !== $projection[$field]) {
+                throw new InvariantViolation('CF-05 financial aggregate declared totals do not reconcile.');
+            }
+        }
         if (($publishedRow['snapshot_id'] ?? null) !== $projection['snapshot_id']
             || ($publishedRow['currency'] ?? null) !== $projection['currency']
             || !is_string($publishedRow['period_key'] ?? null)
@@ -73,5 +84,21 @@ final class CF05FinancialAggregate
             'individual_records_included' => false,
             'financial_decision_authority' => false,
         ];
+    }
+
+    /** Deterministic publication encoding matches ExpenseTransparencyService. */
+    private static function canonicalJson(array $payload): string
+    {
+        $sort = static function (mixed $item) use (&$sort): mixed {
+            if (!is_array($item)) { return $item; }
+            if (!array_is_list($item)) { ksort($item, SORT_STRING); }
+            foreach ($item as $key => $value) { $item[$key] = $sort($value); }
+            return $item;
+        };
+        try {
+            return json_encode($sort($payload), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        } catch (\JsonException $error) {
+            throw new InvariantViolation('CF-05 aggregate source is not canonically serializable.', 0, $error);
+        }
     }
 }
