@@ -26,10 +26,18 @@ final class OutboxDispatcher
         // Restore expired processing leases without changing delivery identity.
         // Consumers must deduplicate the stable event_id (at-least-once delivery).
         $recovered = $this->recoverExpiredLeases($now, $limit);
+        // A stable oldest-due merge prevents pending traffic from starving
+        // retries and prevents future-dated messages from hiding due work.
         $candidates = array_merge(
-            $this->repository->find('outbox', ['state' => 'pending'], $limit),
-            $this->repository->find('outbox', ['state' => 'retry'], $limit)
+            $this->repository->dueOutbox('pending', $now, $limit),
+            $this->repository->dueOutbox('retry', $now, $limit)
         );
+        usort($candidates, static function (array $left, array $right): int {
+            $a = self::date($left['available_at'] ?? null);
+            $b = self::date($right['available_at'] ?? null);
+            return ($a <=> $b)
+                ?: strcmp((string)($left['event_id'] ?? ''), (string)($right['event_id'] ?? ''));
+        });
         $result = ['delivered'=>0,'retried'=>$recovered['retried'],
             'dead_lettered'=>$recovered['dead_lettered'],'skipped'=>$recovered['skipped']];
         $processed = 0;
@@ -79,7 +87,9 @@ final class OutboxDispatcher
     private function recoverExpiredLeases(DateTimeImmutable $now, int $limit): array
     {
         $counts = ['retried' => 0, 'dead_lettered' => 0, 'skipped' => 0];
-        foreach ($this->repository->page('outbox', ['state' => 'processing'], min(500, max(50, $limit)), 0) as $row) {
+        // Query due leases directly; an arbitrarily large number of live
+        // worker leases must not hide a later expired lease from recovery.
+        foreach ($this->repository->dueOutbox('processing', $now, min(500, $limit)) as $row) {
             $observedLease = $row['leased_until'] ?? null;
             $expires = self::date($observedLease);
             if ($expires === null || $expires > $now) {
