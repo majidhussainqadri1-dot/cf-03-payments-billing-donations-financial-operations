@@ -58,6 +58,16 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
         return $this->data[$collection][$id] ?? null;
     }
 
+    public function getForUpdate(string $collection, string $id): ?array
+    {
+        if ($this->transactionDepth < 1) {
+            throw new InvariantViolation('Financial record lock requires an active transaction.');
+        }
+        // A memory transaction serializes operations within this test adapter.
+        // Cross-process locking is verified by the SQL adapter and staging.
+        return $this->get($collection, $id);
+    }
+
     public function compareAndSwap(string $collection, string $id, int $expectedVersion, callable $mutator): array
     {
         $this->assertMutable($collection);
