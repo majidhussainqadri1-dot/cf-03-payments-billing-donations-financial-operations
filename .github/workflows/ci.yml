@@ -34,6 +34,8 @@ jobs:
         run: php tests/run-expired-outbox-leases.php
       - name: Fair oldest-due financial outbox dispatch
         run: php tests/run-outbox-due-fairness.php
+      - name: Approved pre-donation disclosure fail-closed gate
+        run: php tests/run-approved-disclosure.php
       - name: Provider idempotency subject isolation
         run: php tests/run-provider-idempotency-scoping.php
       - name: Registered financial fact consumer boundary
