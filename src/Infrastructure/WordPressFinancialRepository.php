@@ -126,6 +126,20 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         }
         self::assertIdentifier($id);
         [$table, $idField] = $this->spec($collection);
+        // MyISAM and other non-transactional engines cannot enforce a row
+        // lock or rollback. Never make refundable-balance reservations based
+        // on an unverified engine; remediation is a separate DBA migration.
+        $pattern = method_exists($this->wpdb, 'esc_like')
+            ? $this->wpdb->esc_like($table)
+            : addcslashes($table, '_%\\');
+        $engineSql = $this->wpdb->prepare('SHOW TABLE STATUS LIKE %s', $pattern);
+        if (!is_string($engineSql) || $engineSql === '') {
+            throw new RuntimeException('Financial engine verification query could not be prepared.');
+        }
+        $engineRow = $this->wpdb->get_row($engineSql, defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
+        if (!is_array($engineRow) || strcasecmp((string)($engineRow['Engine'] ?? ''), 'InnoDB') !== 0) {
+            throw new InvariantViolation('Financial intent row lock requires a verified InnoDB table engine.');
+        }
         // This row lock must be obtained BEFORE reading per-intent refunds;
         // otherwise concurrent independent refund requests can both see
         // the same remaining balance under REPEATABLE READ.
