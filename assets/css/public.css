@@ -1,4 +1,4 @@
-.sabri-cf03-card{--sabri-green:#187a3d;border:1px solid #b9c9bf;border:1px solid color-mix(in srgb,var(--sabri-green) 28%,#ddd);border-radius:16px;padding:clamp(1rem,3vw,1.75rem);background:#fff;color:#17211a;max-width:72rem;margin:1rem auto;box-shadow:0 6px 24px rgba(0,0,0,.06)}
+.sabri-cf03-card{--sabri-green:#087A4E;border:1px solid #b9c9bf;border:1px solid color-mix(in srgb,var(--sabri-green) 28%,#ddd);border-radius:16px;padding:clamp(1rem,3vw,1.75rem);background:#fff;color:#17211a;max-width:72rem;margin:1rem auto;box-shadow:0 6px 24px rgba(0,0,0,.06)}
 .sabri-cf03-card h2{display:flex;align-items:center;gap:.55rem;color:var(--sabri-green)}
 .sabri-cf03-card form{display:grid;gap:1rem}
 .sabri-cf03-amounts{display:flex;flex-wrap:wrap;gap:.75rem;border:1px solid #c6d3ca;border-radius:10px;padding:1rem}
