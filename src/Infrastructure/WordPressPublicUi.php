@@ -29,6 +29,16 @@ final class WordPressPublicUi
         $collectionEnabled = false;
         try { $collectionEnabled = WordPressRestApi::policy()['live_collection_enabled'] === true; }
         catch (Throwable) { $collectionEnabled = false; }
+        $disclosure = null;
+        if ($collectionEnabled) {
+            try {
+                $runtime = WordPressRuntimeConfiguration::load();
+                $disclosure = WordPressDonationDisclosure::forProvider($runtime->providerCode());
+            } catch (Throwable) {
+                $disclosure = null;
+            }
+            if ($disclosure === null) { $collectionEnabled = false; }
+        }
         self::assets($collectionEnabled);
 
         $copy = DonationAppealCopy::contract();
@@ -53,16 +63,6 @@ final class WordPressPublicUi
             ? 'محفوظ یک وقتی عطیہ وصولی کا نظام ابھی تیاری اور منظوری کے مرحلے میں ہے؛ فی الحال کوئی رقم وصول نہیں کی جارہی۔'
             : 'Secure one-time donation collection is still being prepared and approved; no funds are being collected at this time.';
         $disabled = $collectionEnabled ? '' : ' disabled aria-disabled="true"';
-        $disclosure = null;
-        if ($collectionEnabled) {
-            try {
-                $runtime = WordPressRuntimeConfiguration::load();
-                $disclosure = WordPressDonationDisclosure::forProvider($runtime->providerCode());
-            } catch (Throwable) {
-                $disclosure = null;
-            }
-            if ($disclosure === null) { $collectionEnabled = false; }
-        }
         $availability = $collectionEnabled ? ''
             : '<p class="sabri-cf03-availability" role="status" aria-live="polite">'.esc_html($preparedMessage).'</p>';
         $disclosureHtml = '';
