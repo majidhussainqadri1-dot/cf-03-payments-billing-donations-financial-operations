@@ -270,6 +270,31 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         return array_values(array_map(fn (array $row): array => $this->hydrate($row), $rows));
     }
 
+    public function dueOutbox(string $state, \DateTimeImmutable $at, int $limit): array
+    {
+        if (!in_array($state, ['pending', 'retry', 'processing'], true)
+            || $limit < 1 || $limit > 500) {
+            throw new InvalidArgumentException('Invalid due financial outbox query.');
+        }
+        [$table] = $this->spec('outbox');
+        $deadline = $state === 'processing' ? 'leased_until' : 'available_at';
+        // Dynamic identifiers are selected from fixed, validated literals.
+        $sql = $this->wpdb->prepare(
+            "SELECT * FROM {$table} WHERE state = %s AND {$deadline} <= %s ORDER BY {$deadline} ASC, id ASC LIMIT %d",
+            $state,
+            $at->format('Y-m-d H:i:s.u'),
+            $limit
+        );
+        if (!is_string($sql) || $sql === '') {
+            throw new \RuntimeException('Financial outbox due query could not be prepared.');
+        }
+        $rows = $this->wpdb->get_results($sql, defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
+        if (!is_array($rows)) {
+            throw new \RuntimeException('Financial outbox due query failed.');
+        }
+        return array_values(array_map(fn(array $row): array => $this->hydrate($row), $rows));
+    }
+
     public function updateWhere(string $collection, array $criteria, array $changes): int
     {
         $this->assertMutable($collection);
