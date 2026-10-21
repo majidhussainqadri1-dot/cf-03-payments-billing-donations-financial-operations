@@ -38,6 +38,8 @@ jobs:
         run: php tests/run-approved-disclosure.php
       - name: Atomic same-intent refund reservations
         run: php tests/run-refund-reservation-atomic.php
+      - name: Financial refund InnoDB engine preflight
+        run: php tests/run-refund-database-engine.php
       - name: CF-05 ledger-only financial aggregate consumer boundary
         run: php tests/run-cf05-aggregate-boundary.php
       - name: Forty independent seeded financial safety scenarios
@@ -54,7 +56,7 @@ jobs:
         run: php tests/run-future-expansion-40.php
       - name: Composer and CI active test-suite parity
         run: |
-          php -r '$j=json_decode(file_get_contents("composer.json"),true,512,JSON_THROW_ON_ERROR); $w=file_get_contents(".github/workflows/ci.yml"); $tests=$j["scripts"]["test"]??[]; if(count($tests)!==15){fwrite(STDERR,"Expected twelve governed Composer suites.\\n");exit(1);} foreach($tests as $test){if(!str_contains($w,"run: ".$test)){fwrite(STDERR,"Missing from CI: ".$test."\\n");exit(1);}}'
+          php -r '$j=json_decode(file_get_contents("composer.json"),true,512,JSON_THROW_ON_ERROR); $w=file_get_contents(".github/workflows/ci.yml"); $tests=$j["scripts"]["test"]??[]; if(count($tests)!==16){fwrite(STDERR,"Expected twelve governed Composer suites.\\n");exit(1);} foreach($tests as $test){if(!str_contains($w,"run: ".$test)){fwrite(STDERR,"Missing from CI: ".$test."\\n");exit(1);}}'
       - name: Validate manifests
         run: |
           for file in manifests/*.json; do
