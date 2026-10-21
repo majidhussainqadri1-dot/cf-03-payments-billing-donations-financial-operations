@@ -33,7 +33,7 @@ It does **not** claim provider, legal, PCI, staging, Live or operational accepta
 | CF03-FR-021 Access/donor parity | Donation facts are receipt/accounting facts only; `DonationNeutralityPolicy`; no access event | Implemented invariant | File 00/05/16/21/26 consumer contract tests pending across repos |
 | CF03-FR-022 Abandon/revoke/refund clarity | One-time history/refund status; recurring management retired/fail-closed; new independent attempt only | Implemented | Browser/support journey acceptance pending |
 | CF03-FR-023 Free AI and education boundary | `PlatformFinancialPolicy`; paid AI metering service is a compatibility tombstone; subscription runtime retired | Implemented invariant | File 05/16 cross-file parity acceptance pending |
-| CF03-FR-024 Refund request | `RefundRequest`, `RefundBalance`, `RefundWorkflowService`, bounded refundable balance/idempotency | Implemented | Provider sandbox/user-support journey pending |
+| CF03-FR-024 Refund request | `RefundRequest`, `RefundBalance`, `RefundWorkflowService`, transactional per-intent InnoDB row locking, 500-record fail-closed refund balance guard and idempotency | Implemented | Provider sandbox/user-support journey pending |
 | CF03-FR-025 Refund authorization/execution | Reviewer/executor separation, provider checkpoint, uncertain-state reconciliation, ledger reversal | Implemented | Real provider timeout/retry/dual-control acceptance pending |
 | CF03-FR-026 Chargeback/dispute | `ChargebackCase`, `RiskOperationsService`, settlement/reconciliation hooks and evidence lifecycle | Implemented | Provider dispute lifecycle/notification acceptance pending |
 | CF03-FR-027 Donation receipt/refund | One-time receipt snapshot, private identity, lawful refund ledger/outbox, recurring unavailable | Implemented | Legal/accounting receipt review pending |
@@ -74,3 +74,7 @@ The following are not active CF-03 capabilities and must not be revived without 
 - wallet/escrow/custody/payout/split-payment flows.
 
 Schema `4.0.0` removes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from the active canonical schema. Existing legacy physical tables are not treated as current truth and require bounded retention/reconciliation before eventual approved retirement.
+
+### CF-05 analytics conditional consumer boundary (new source evidence)
+
+The newly supplied CF-05 v1.1 Future40 plan's **CF05-FR-018** requires ledger-derived **approved aggregates only**, no raw ledger, donor identity, individual refunds or decision ownership. `src/Integration/CF05FinancialAggregate.php` is a pure, non-activated, published-snapshot/hash/amount verified five-metric DTO. `tests/run-cf05-aggregate-boundary.php` proves fail-closed/private-data exclusion. No CF-05 ingestion runtime, route or activation is authorized; cross-file owner/consumer staging acceptance remains OPEN.
