@@ -20,6 +20,15 @@ interface QueryableFinancialRepository extends FinancialRepository
     public function page(string $collection, array $criteria, int $limit, int $offset): array;
 
     /** @param array<string,mixed> $criteria @param array<string,mixed> $changes */
+    /**
+     * Oldest-due first, bounded financial outbox scan. State is one of
+     * pending, retry, or processing; processing uses the lease deadline.
+     * Implementations must never return not-yet-due records.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function dueOutbox(string $state, \DateTimeImmutable $at, int $limit): array;
+
     public function updateWhere(string $collection, array $criteria, array $changes): int;
 
     /** @param array<string,mixed> $criteria */
