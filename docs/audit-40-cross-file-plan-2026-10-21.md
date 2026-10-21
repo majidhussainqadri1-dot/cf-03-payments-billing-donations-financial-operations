@@ -1,3 +1,5 @@
+> **Latest continuation:** CF03-FR-024 transactional InnoDB-verified refund reservation and 500-row cap, plus conditional CF05-FR-018 published-ledger-aggregate-only DTO, are documented in `docs/review-40-refund-cf05-cross-file-2026-10-21.md`. The review corpus additionally executed forty independently seeded financial scenarios (360 assertions). This note supersedes earlier 9-defect count; there are **10 confirmed source corrections on the isolated PR branch** and one QA correction. This does not establish Live installation.
+
 # CF-03 — Forty source-to-plan audit lenses, corrective follow-up (21 Oct 2026)
 
 ## Evidence basis and meaning
