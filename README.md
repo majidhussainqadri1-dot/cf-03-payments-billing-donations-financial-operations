@@ -2,7 +2,7 @@
 
 Canonical conditional financial owner for the **Sabri Social Homeopathy Platform**.
 
-> **Current source candidate:** `1.4.0-rc.1`  
+> **Current source candidate:** `1.4.0-rc.2` (corrective successor to approved Future40 target `1.4.0-rc.1`; not Live-deployed)  
 > **Active canonical schema:** `4.0.0` — 27 active canonical tables  
 > **Future Expansion Pack:** `CF03-FUTURE40-2026-09-08` — 40 coded future capabilities, all fail closed by default  
 > **Runtime:** fail closed. Live collection and financial file delivery are not claimed.

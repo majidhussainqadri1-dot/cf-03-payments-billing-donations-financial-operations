@@ -1,4 +1,4 @@
-# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.1
+# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.2
 
 This matrix is the current **source-code traceability** for the two governing documents and the current Future40 amendment:
 
@@ -10,7 +10,7 @@ It does **not** claim provider, legal, PCI, staging, Live or operational accepta
 
 | Requirement | Current source implementation | Source status | External acceptance |
 |---|---|---|---|
-| CF03-FR-001 Financial product registry | `FinancialProduct`, `DonationCatalogSeeder`, `CatalogDisclosureService`; only active collectible product is `donation.one_time`, no entitlement mapping | Implemented | Staging catalog/admin review pending |
+| CF03-FR-001 Financial product registry | `FinancialProduct`, `DonationCatalogSeeder`, `CatalogDisclosureService`, `ApprovedDonationCatalogGate`; checkout now requires an active, effective, Founder-approved `donation.one_time` product before provider-side action | Source implementation + isolated-branch regression | Catalogue provisioning and cross-file staging acceptance pending |
 | CF03-FR-002 Price/version policy | `PriceVersion`, `PriceCatalog`, `PriceLifecycle`, policy/version snapshots; historical records are not silently reinterpreted | Implemented | Future provider/legal price-policy acceptance where applicable |
 | CF03-FR-003 Pre-action disclosure | `PrePurchaseDisclosure`, `DonationAppealCopy`, `WordPressPublicUi`; amount/currency/purpose/one-time/no-privilege disclosure, no preselection | Implemented | Real-browser/mobile/RTL/accessibility acceptance pending |
 | CF03-FR-004 Zero commission | `CommissionPolicy`, `PlatformFinancialPolicy`; Clinic/Marketplace = 0 bp | Implemented invariant | Cross-file File 08/18 staging parity pending |

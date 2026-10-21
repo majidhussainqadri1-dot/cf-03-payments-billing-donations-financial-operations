@@ -23,11 +23,15 @@ final class OutboxDispatcher
     public function dispatch(DateTimeImmutable $now, int $limit = 50): array
     {
         if ($limit < 1 || $limit > 200) { throw new \InvalidArgumentException('Outbox dispatch limit is invalid.'); }
+        // Restore expired processing leases without changing delivery identity.
+        // Consumers must deduplicate the stable event_id (at-least-once delivery).
+        $recovered = $this->recoverExpiredLeases($now, $limit);
         $candidates = array_merge(
             $this->repository->find('outbox', ['state' => 'pending'], $limit),
             $this->repository->find('outbox', ['state' => 'retry'], $limit)
         );
-        $result = ['delivered'=>0,'retried'=>0,'dead_lettered'=>0,'skipped'=>0];
+        $result = ['delivered'=>0,'retried'=>$recovered['retried'],
+            'dead_lettered'=>$recovered['dead_lettered'],'skipped'=>$recovered['skipped']];
         $processed = 0;
         foreach ($candidates as $message) {
             if ($processed >= $limit) { break; }
@@ -63,6 +67,45 @@ final class OutboxDispatcher
             }
         }
         return $result;
+    }
+
+    /**
+     * Recover only expired processing leases. Compare-and-swap on the exact
+     * observed lease prevents overwriting a freshly renewed worker lease.
+     * Publication remains at-least-once; event consumers deduplicate event_id.
+     *
+     * @return array{retried:int,dead_lettered:int,skipped:int}
+     */
+    private function recoverExpiredLeases(DateTimeImmutable $now, int $limit): array
+    {
+        $counts = ['retried' => 0, 'dead_lettered' => 0, 'skipped' => 0];
+        foreach ($this->repository->page('outbox', ['state' => 'processing'], min(500, max(50, $limit)), 0) as $row) {
+            $observedLease = $row['leased_until'] ?? null;
+            $expires = self::date($observedLease);
+            if ($expires === null || $expires > $now) {
+                $counts['skipped']++;
+                continue;
+            }
+            $attempts = (int)($row['attempts'] ?? 0) + 1;
+            $dead = $attempts >= $this->maximumAttempts;
+            $affected = $this->repository->updateWhere('outbox', [
+                'event_id' => (string)($row['event_id'] ?? ''),
+                'state' => 'processing',
+                'leased_until' => $observedLease,
+            ], [
+                'state' => $dead ? 'dead_letter' : 'retry',
+                'attempts' => $attempts,
+                'available_at' => $now,
+                'leased_until' => null,
+                'last_error_code' => 'delivery_lease_expired',
+            ]);
+            if ($affected !== 1) {
+                $counts['skipped']++;
+                continue;
+            }
+            $counts[$dead ? 'dead_lettered' : 'retried']++;
+        }
+        return $counts;
     }
 
     private static function date(mixed $value): ?DateTimeImmutable
