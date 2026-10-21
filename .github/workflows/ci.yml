@@ -36,6 +36,8 @@ jobs:
         run: php tests/run-provider-idempotency-scoping.php
       - name: Registered financial fact consumer boundary
         run: php tests/run-outbox-consumer-boundary.php
+      - name: Governing Sabri Green and accessibility token
+        run: php tests/run-governing-brand-token.php
       - name: Future Expansion Pack 40 acceptance
         run: php tests/run-future-expansion-40.php
       - name: Validate manifests
