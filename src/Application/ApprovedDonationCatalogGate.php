@@ -32,10 +32,12 @@ final class ApprovedDonationCatalogGate
             || ($product['lifecycle_state'] ?? null) !== 'active'
             || ($product['policy_version'] ?? null) !== PlatformFinancialPolicy::DECISION_ID
             || ($product['entitlement_mapping'] ?? null) !== null
-            || !is_string($product['approval_ref'] ?? null)
-            || trim($product['approval_ref']) === ''
-            || !is_string($product['approved_by'] ?? null)
-            || trim($product['approved_by']) === ''
+            // Compare immutable governing markers, not arbitrary nonempty text.
+            // These source markers DO NOT substitute for independent Founder
+            // release authorization or the live/staging approval evidence.
+            || ($product['approval_ref'] ?? null) !== PlatformFinancialPolicy::GOVERNING_CF03_PLAN
+            || ($product['approved_by'] ?? null) !== 'founder:governing-plan'
+            || ($product['staged_by'] ?? null) !== 'system:cf03-migration'
         ) {
             throw new InvariantViolation('No approved active one-time donation catalogue snapshot is available.');
         }

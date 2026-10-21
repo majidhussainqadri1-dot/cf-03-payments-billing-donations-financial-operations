@@ -55,6 +55,19 @@ $repo->updateWhere('products', ['product_id' => 'donation.one_time'], ['effectiv
 $gate->assertReady($at);
 $expect(true, 'Current approved catalogue accepts checkout');
 
+// Arbitrary nonempty authority markers must never pass source catalogue preflight.
+$repo->updateWhere('products', ['product_id' => 'donation.one_time'], ['approval_ref' => 'unrelated-valid-looking-plan']);
+$rejects(fn () => $gate->assertReady($at), 'Unrelated nonempty plan reference is not approval');
+$repo->updateWhere('products', ['product_id' => 'donation.one_time'], ['approval_ref' => PlatformFinancialPolicy::GOVERNING_CF03_PLAN]);
+$repo->updateWhere('products', ['product_id' => 'donation.one_time'], ['approved_by' => 'unknown:operator']);
+$rejects(fn () => $gate->assertReady($at), 'Arbitrary nonempty approver cannot grant catalogue readiness');
+$repo->updateWhere('products', ['product_id' => 'donation.one_time'], ['approved_by' => 'founder:governing-plan']);
+$repo->updateWhere('products', ['product_id' => 'donation.one_time'], ['staged_by' => 'unknown:import']);
+$rejects(fn () => $gate->assertReady($at), 'Unknown catalogue staging origin is not canonical');
+$repo->updateWhere('products', ['product_id' => 'donation.one_time'], ['staged_by' => 'system:cf03-migration']);
+$gate->assertReady($at);
+$expect(true, 'Restored approved catalogue metadata passes preflight');
+
 $source = file_get_contents(__DIR__.'/../src/Application/DonationCheckoutService.php');
 $expect(is_string($source)
     && strpos($source, 'new ApprovedDonationCatalogGate($this->repository)') !== false
