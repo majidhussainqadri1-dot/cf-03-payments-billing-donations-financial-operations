@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0-rc.2 — Corrective Plan-to-Code Review (Source Candidate, Not Live)
+
+- Seven verified source/version defects corrected on the isolated review branch: approved one-time catalogue preflight; crashed outbox lease recovery; merchant-scoped provider idempotency; no-subscriber event-delivery guard; Sabri Green `#087A4E`; transactional one-time catalogue provisioning after schema verification; versioned upgrade trigger from `1.4.0-rc.1` to `1.4.0-rc.2`.
+- Added 40 separately named governing compliance checks and five focused regression groups (87 assertions in total), enforced in PHP 8.1, 8.2 and 8.3 CI.
+- Preserved 27 active tables / schema `4.0.0`, free core/AI/education, zero Marketplace/Clinic commission, seven-day appeal silence, voluntary one-time donation, and inactive Future40. The Future40 amendment's original approved software target `1.4.0-rc.1` remains historical provenance, not today's source package identity.
+- Updated deterministic package target to `cf-03-payments-billing-donations-financial-operations-1.4.0-rc.2.zip`.
+- **No Live assertion:** the PR remains Draft. External provider and native consumer integration, security/legal/PCI, staging, DB migration, backup/restore, Founder sign-off and exact deployed parity are pending.
+
 ## 1.4.0-rc.1 — Future Expansion Pack 40
 
 - Added governing amendment `CF03-FUTURE40-2026-09-08` with exactly **40** coded future financial-governance capabilities.
