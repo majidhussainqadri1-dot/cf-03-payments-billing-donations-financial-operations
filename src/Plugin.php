@@ -113,7 +113,7 @@ final class Plugin
         }
         $currentVersion = (string)get_option(self::OPTION_VERSION, '');
         $currentSchema = (string)get_option(self::OPTION_SCHEMA_VERSION, '');
-        $targetVersion = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.4.0-rc.1';
+        $targetVersion = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.4.0-rc.2';
         if (hash_equals($targetVersion, $currentVersion) && hash_equals(CompleteSchema::VERSION, $currentSchema)) {
             return;
         }
@@ -230,7 +230,7 @@ final class Plugin
         $repository->transaction(static function () use ($repository): void {
             (new DonationCatalogSeeder())->seed($repository, new DateTimeImmutable('now'));
         });
-        $version = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.3.0-rc.1';
+        $version = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.4.0-rc.2';
         update_option(self::OPTION_VERSION, $version, false);
         update_option(self::OPTION_SCHEMA_VERSION, CompleteSchema::VERSION, false);
         update_option(self::OPTION_FINANCIAL_POLICY_DECISION, PlatformFinancialPolicy::DECISION_ID, false);
