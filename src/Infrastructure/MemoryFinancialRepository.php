@@ -58,6 +58,16 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
         return $this->data[$collection][$id] ?? null;
     }
 
+    public function getForUpdate(string $collection, string $id): ?array
+    {
+        if ($this->transactionDepth < 1) {
+            throw new InvariantViolation('Financial record lock requires an active transaction.');
+        }
+        // A memory transaction serializes operations within this test adapter.
+        // Cross-process locking is verified by the SQL adapter and staging.
+        return $this->get($collection, $id);
+    }
+
     public function compareAndSwap(string $collection, string $id, int $expectedVersion, callable $mutator): array
     {
         $this->assertMutable($collection);
@@ -151,6 +161,33 @@ final class MemoryFinancialRepository implements QueryableFinancialRepository
             $matches[] = $record;
         }
         return array_values(array_slice($matches, $offset, $limit));
+    }
+
+    public function dueOutbox(string $state, \DateTimeImmutable $at, int $limit): array
+    {
+        if (!in_array($state, ['pending', 'retry', 'processing'], true)
+            || $limit < 1 || $limit > 500) {
+            throw new InvalidArgumentException('Invalid due financial outbox query.');
+        }
+        $column = $state === 'processing' ? 'leased_until' : 'available_at';
+        $rows = [];
+        foreach ($this->data['outbox'] ?? [] as $row) {
+            if (($row['state'] ?? null) !== $state) { continue; }
+            $value = $row[$column] ?? null;
+            try {
+                if ($value instanceof \DateTimeInterface) {
+                    $due = \DateTimeImmutable::createFromInterface($value);
+                } elseif (is_string($value) && $value !== '') {
+                    $due = new \DateTimeImmutable($value);
+                } else { continue; }
+            } catch (Throwable) { continue; }
+            if ($due <= $at) {
+                $rows[] = ['due' => $due->getTimestamp(), 'event' => (string)($row['event_id'] ?? ''), 'row' => $row];
+            }
+        }
+        usort($rows, static fn(array $a, array $b): int =>
+            ($a['due'] <=> $b['due']) ?: strcmp($a['event'], $b['event']));
+        return array_map(static fn(array $item): array => $item['row'], array_slice($rows, 0, $limit));
     }
 
     public function updateWhere(string $collection, array $criteria, array $changes): int

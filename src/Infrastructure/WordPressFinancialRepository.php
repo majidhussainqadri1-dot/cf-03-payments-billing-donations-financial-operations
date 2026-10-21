@@ -119,6 +119,47 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         return $this->hydrate($rows[0]);
     }
 
+    public function getForUpdate(string $collection, string $id): ?array
+    {
+        if ($this->transactionDepth < 1) {
+            throw new InvariantViolation('Financial record lock requires an active transaction.');
+        }
+        self::assertIdentifier($id);
+        [$table, $idField] = $this->spec($collection);
+        // MyISAM and other non-transactional engines cannot enforce a row
+        // lock or rollback. Never make refundable-balance reservations based
+        // on an unverified engine; remediation is a separate DBA migration.
+        $pattern = method_exists($this->wpdb, 'esc_like')
+            ? $this->wpdb->esc_like($table)
+            : addcslashes($table, '_%\\');
+        $engineSql = $this->wpdb->prepare('SHOW TABLE STATUS LIKE %s', $pattern);
+        if (!is_string($engineSql) || $engineSql === '') {
+            throw new RuntimeException('Financial engine verification query could not be prepared.');
+        }
+        $engineRow = $this->wpdb->get_row($engineSql, defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
+        if (!is_array($engineRow) || strcasecmp((string)($engineRow['Engine'] ?? ''), 'InnoDB') !== 0) {
+            throw new InvariantViolation('Financial intent row lock requires a verified InnoDB table engine.');
+        }
+        // This row lock must be obtained BEFORE reading per-intent refunds;
+        // otherwise concurrent independent refund requests can both see
+        // the same remaining balance under REPEATABLE READ.
+        $sql = $this->wpdb->prepare(
+            "SELECT * FROM {$table} WHERE {$idField} = %s LIMIT 2 FOR UPDATE",
+            $id
+        );
+        if (!is_string($sql) || $sql === '') {
+            throw new RuntimeException('Financial row-lock query could not be prepared.');
+        }
+        $rows = $this->wpdb->get_results($sql, defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
+        if (!is_array($rows)) {
+            throw new RuntimeException('Financial row-lock query failed.');
+        }
+        if (count($rows) > 1 || ($rows !== [] && !is_array($rows[0]))) {
+            throw new InvariantViolation('Locked financial identifier is not unique.');
+        }
+        return $rows === [] ? null : $this->hydrate($rows[0]);
+    }
+
     public function compareAndSwap(string $collection, string $id, int $expectedVersion, callable $mutator): array
     {
         $this->assertMutable($collection);
@@ -268,6 +309,31 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
             throw new RuntimeException('Financial page query failed.');
         }
         return array_values(array_map(fn (array $row): array => $this->hydrate($row), $rows));
+    }
+
+    public function dueOutbox(string $state, \DateTimeImmutable $at, int $limit): array
+    {
+        if (!in_array($state, ['pending', 'retry', 'processing'], true)
+            || $limit < 1 || $limit > 500) {
+            throw new InvalidArgumentException('Invalid due financial outbox query.');
+        }
+        [$table] = $this->spec('outbox');
+        $deadline = $state === 'processing' ? 'leased_until' : 'available_at';
+        // Dynamic identifiers are selected from fixed, validated literals.
+        $sql = $this->wpdb->prepare(
+            "SELECT * FROM {$table} WHERE state = %s AND {$deadline} <= %s ORDER BY {$deadline} ASC, id ASC LIMIT %d",
+            $state,
+            $at->format('Y-m-d H:i:s.u'),
+            $limit
+        );
+        if (!is_string($sql) || $sql === '') {
+            throw new \RuntimeException('Financial outbox due query could not be prepared.');
+        }
+        $rows = $this->wpdb->get_results($sql, defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
+        if (!is_array($rows)) {
+            throw new \RuntimeException('Financial outbox due query failed.');
+        }
+        return array_values(array_map(fn(array $row): array => $this->hydrate($row), $rows));
     }
 
     public function updateWhere(string $collection, array $criteria, array $changes): int

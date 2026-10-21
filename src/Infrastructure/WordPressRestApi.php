@@ -85,7 +85,8 @@ final class WordPressRestApi
             && $runtime->missingDonationCollectionGates() === []
             && ($incident['checkout_enabled'] ?? false) === true
             && ($incident['webhooks_enabled'] ?? false) === true
-            && self::providerReady($runtime);
+            && self::providerReady($runtime)
+            && WordPressDonationDisclosure::forProvider($runtime->providerCode()) !== null;
 
         return [
             'policy_name' => PlatformFinancialPolicy::POLICY_NAME,
@@ -217,6 +218,9 @@ final class WordPressRestApi
             $runtime = WordPressRuntimeConfiguration::load();
             if (!self::providerReady($runtime)) {
                 throw new InvariantViolation('The configured donation provider is not ready.');
+            }
+            if (WordPressDonationDisclosure::forProvider($runtime->providerCode()) === null) {
+                throw new InvariantViolation('Approved provider-specific donation terms must be published before checkout.');
             }
             $draft = new DonationIntentDraft(
                 $intent,
