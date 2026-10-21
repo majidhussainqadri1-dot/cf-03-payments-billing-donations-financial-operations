@@ -104,7 +104,7 @@ $check('CEN-FX40','all Future40 remain inert and non-privileging',static functio
 $check('CEN-RELEASE','runtime and plan registry aligned with manifest',static function()use($root):bool{
     $m=json_decode((string)file_get_contents($root.'/manifests/cf03-release-1.4.0.json'),true,512,JSON_THROW_ON_ERROR);
     $future=json_decode((string)file_get_contents($root.'/manifests/cf03-future-expansion-40.json'),true,512,JSON_THROW_ON_ERROR);
-    return ($m['software_version']??'')==='1.4.0-rc.1'
+    return ($m['software_version']??'')==='1.4.0-rc.2'
        &&($m['schema_version']??'')==='4.0.0'
        &&($m['future_features_activated']??-1)===0
        &&($m['platform_commission_basis_points']??-1)===0
@@ -112,7 +112,7 @@ $check('CEN-RELEASE','runtime and plan registry aligned with manifest',static fu
        &&($future['activation']??'')==='fail_closed_by_default';
 });
 $check('CEN-ACTIVATION','no evidence means no runtime activation',static function():bool{
-    $gate=new EvidenceBoundActivationGate(false,static fn():array=>[],null,'1.4.0-rc.1');
+    $gate=new EvidenceBoundActivationGate(false,static fn():array=>[],null,'1.4.0-rc.2');
     return $gate->evaluate()->approved()===false;
 });
 if(count($results)!==40){fwrite(STDERR,"Wrong check count\n");exit(2);}
