@@ -8,6 +8,14 @@ interface QueryableFinancialRepository extends FinancialRepository
 {
     public function transaction(callable $work): mixed;
 
+    /**
+     * Lock an existing canonical record inside an active transaction.
+     * Used to serialize monetary reservation decisions (refunds).
+     *
+     * @return null|array<string,mixed>
+     */
+    public function getForUpdate(string $collection, string $id): ?array;
+
     /** @param array<string,mixed> $criteria @return list<array<string,mixed>> */
     public function find(string $collection, array $criteria, int $limit = 100): array;
 
