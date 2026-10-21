@@ -169,7 +169,7 @@ $tests['future pack cannot activate itself or revive donor privilege'] = static 
 
 $tests['upgrade fallback and migration evidence match current schema law'] = static function (): void {
     $plugin = source('src/Plugin.php');
-    contains($plugin, "SABRI_CF03_VERSION : '1.4.0-rc.1'", true);
+    contains($plugin, "SABRI_CF03_VERSION : '1.4.0-rc.2'", true);
     contains($plugin, "'retired_tables' => \\Sabri\\CF03\\Persistence\\RuntimeSchemaExtension::RETIRED_TABLES", true);
     contains($plugin, "'retired_active_tables' => []", true);
 };
@@ -177,10 +177,10 @@ $tests['upgrade fallback and migration evidence match current schema law'] = sta
 $tests['release identity and package builder stay aligned'] = static function (): void {
     $bootstrap = source('cf-03-payments-billing-donations-financial-operations.php');
     $builder = source('scripts/build-package.sh');
-    contains($bootstrap, 'Version: 1.4.0-rc.1', true);
+    contains($bootstrap, 'Version: 1.4.0-rc.2', true);
     contains($bootstrap, "SABRI_CF03_SCHEMA_VERSION', '4.0.0'", true);
     contains($bootstrap, 'CF03-FUTURE40-2026-09-08', true);
-    contains($builder, 'VERSION="1.4.0-rc.1"', true);
+    contains($builder, 'VERSION="1.4.0-rc.2"', true);
 };
 
 $failures = 0;
