@@ -27,7 +27,8 @@
       "php tests/run-future-expansion-40.php",
       "php tests/run-refund-reservation-atomic.php",
       "php tests/run-cf05-aggregate-boundary.php",
-      "php tests/run-40-finance-review-scenarios.php"
+      "php tests/run-40-finance-review-scenarios.php",
+      "php tests/run-refund-database-engine.php"
     ],
     "test:historical": [
       "@php -r \"fwrite(STDOUT, 'Historical suites remain for provenance only and encode superseded business rules.\\n');\""
