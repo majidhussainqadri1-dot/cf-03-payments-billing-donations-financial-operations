@@ -6,6 +6,7 @@
 - Added 40 separately named governing compliance checks and five focused regression groups (87 assertions in total), enforced in PHP 8.1, 8.2 and 8.3 CI.
 - Preserved 27 active tables / schema `4.0.0`, free core/AI/education, zero Marketplace/Clinic commission, seven-day appeal silence, voluntary one-time donation, and inactive Future40. The Future40 amendment's original approved software target `1.4.0-rc.1` remains historical provenance, not today's source package identity.
 - Updated deterministic package target to `cf-03-payments-billing-donations-financial-operations-1.4.0-rc.2.zip`.
+- Follow-up independent 40-lens DOCX-grounded cross-file review fixed due-time fair outbox dispatch (expired leases, pending/retry starvation) and introduced approved provider/fee/tax/refund/support/data-use disclosure gating before donation checkout. Tests cover head-of-line starvation and fail-closed disclosure; `composer test` now includes all twelve active CI suites with a parity guard. Source corrections total **9**, plus **1** QA orchestration correction; not Live-deployed.
 - **No Live assertion:** the PR remains Draft. External provider and native consumer integration, security/legal/PCI, staging, DB migration, backup/restore, Founder sign-off and exact deployed parity are pending.
 
 ## 1.4.0-rc.1 — Future Expansion Pack 40
