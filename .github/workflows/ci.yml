@@ -28,8 +28,14 @@ jobs:
         run: php tests/run-new-governing-plans.php
       - name: New governing plans adversarial acceptance
         run: php tests/run-new-governing-plans-adversarial.php
+      - name: Approved donation product checkout boundary
+        run: php tests/run-approved-donation-catalog-gate.php
       - name: Future Expansion Pack 40 acceptance
         run: php tests/run-future-expansion-40.php
+      - name: Fresh 40 governing-plan and module code trace checks
+        run: php tests/run-fresh-40-crossplan-oct21.php
+      - name: Signed provider event idempotency and date boundary regression
+        run: php tests/run-fresh-provider-boundary-oct21.php
       - name: Validate manifests
         run: |
           for file in manifests/*.json; do

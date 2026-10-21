@@ -24,6 +24,9 @@ final class DonationCheckoutService
     {
         $this->configuration->assertDonationCheckoutReady();
         $draft->assertProviderCheckoutAvailable();
+        // CF03-FR-001/007: validate the active, Founder-approved catalogue
+        // before requesting any external provider session or writing an intent.
+        (new ApprovedDonationCatalogGate($this->repository))->assertReady($draft->createdAt());
         if ($draft->monthly() || $draft->explicitMonthlyConsent()) {
             throw new InvariantViolation('Donation checkout is one-time only; recurring state is prohibited.');
         }
