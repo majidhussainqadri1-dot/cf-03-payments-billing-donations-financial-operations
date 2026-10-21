@@ -2,6 +2,9 @@
 
 ## 1.4.0-rc.2 — Corrective Plan-to-Code Review (Source Candidate, Not Live)
 
+**Fifth independent audit continuation:** CF03-FR-024 refund-balance safety now serializes reservation per canonical payment intent with in-transaction `FOR UPDATE` only on read-only-verified InnoDB, fails closed if >=500 refund records are found, and adds dedicated 40 independent seeded financial review scenarios (360 assertions). Newly supplied CF05-FR-018 adds an **inactive, aggregate-only, verified published snapshot** DTO with no raw ledger/donor/receipt data or CF-05 auto-activation. Totals as of this corrective candidate: **10 confirmed source defects patched on this Draft branch**, **1 QA orchestration defect patched**, **1 conditional cross-file contract supplied**; deployment and real MySQL concurrency remain unverified. See `docs/review-40-refund-cf05-cross-file-2026-10-21.md`.
+
+
 - Seven verified source/version defects corrected on the isolated review branch: approved one-time catalogue preflight; crashed outbox lease recovery; merchant-scoped provider idempotency; no-subscriber event-delivery guard; Sabri Green `#087A4E`; transactional one-time catalogue provisioning after schema verification; versioned upgrade trigger from `1.4.0-rc.1` to `1.4.0-rc.2`.
 - Added 40 separately named governing compliance checks and five focused regression groups (87 assertions in total), enforced in PHP 8.1, 8.2 and 8.3 CI.
 - Preserved 27 active tables / schema `4.0.0`, free core/AI/education, zero Marketplace/Clinic commission, seven-day appeal silence, voluntary one-time donation, and inactive Future40. The Future40 amendment's original approved software target `1.4.0-rc.1` remains historical provenance, not today's source package identity.
