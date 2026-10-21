@@ -30,6 +30,8 @@ jobs:
         run: php tests/run-new-governing-plans-adversarial.php
       - name: Approved donation product checkout boundary
         run: php tests/run-approved-donation-catalog-gate.php
+      - name: Expired financial outbox lease recovery
+        run: php tests/run-expired-outbox-leases.php
       - name: Future Expansion Pack 40 acceptance
         run: php tests/run-future-expansion-40.php
       - name: Validate manifests
