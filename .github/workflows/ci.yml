@@ -34,6 +34,8 @@ jobs:
         run: php tests/run-expired-outbox-leases.php
       - name: Provider idempotency subject isolation
         run: php tests/run-provider-idempotency-scoping.php
+      - name: Registered financial fact consumer boundary
+        run: php tests/run-outbox-consumer-boundary.php
       - name: Future Expansion Pack 40 acceptance
         run: php tests/run-future-expansion-40.php
       - name: Validate manifests
