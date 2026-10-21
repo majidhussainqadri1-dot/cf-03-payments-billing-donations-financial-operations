@@ -36,6 +36,8 @@ jobs:
         run: php tests/run-outbox-due-fairness.php
       - name: Approved pre-donation disclosure fail-closed gate
         run: php tests/run-approved-disclosure.php
+      - name: Atomic same-intent refund reservations
+        run: php tests/run-refund-reservation-atomic.php
       - name: Provider idempotency subject isolation
         run: php tests/run-provider-idempotency-scoping.php
       - name: Registered financial fact consumer boundary
