@@ -66,7 +66,8 @@ foreach($map as $n=>$path) {
         $rows=preg_grep('/^\\| '.preg_quote($id,'/').' [^\\n]*\\|/m',explode("\n",$trace));
         if(count($rows)!==1)return false;
         $row=(string)reset($rows);
-        if(strpos($row,'Implemented')===false || strpos($row,'pending')===false && strpos($row,'acceptance')===false && strpos($row,'applicable')===false){
+        if((strpos($row,'Implemented')===false && strpos($row,'Source implementation')===false)
+            || (strpos($row,'pending')===false && strpos($row,'acceptance')===false && strpos($row,'applicable')===false)){
             return false;
         }
         $php=$root.'/src/'.$path.'.php';
