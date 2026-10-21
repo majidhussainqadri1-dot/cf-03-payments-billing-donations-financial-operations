@@ -61,4 +61,12 @@ $expect(is_string($source)
     && strpos($source, 'ApprovedDonationCatalogGate($this->repository)') < strpos($source, 'createHostedDonationCheckout('),
     'Checkout checks catalogue before provider side effect');
 
+$plugin = file_get_contents(__DIR__.'/../src/Plugin.php');
+$expect(is_string($plugin) && str_contains($plugin, 'new DonationCatalogSeeder()'), 'Plugin wires canonical product provisioning after verified schema install');
+$expect(is_string($plugin)
+    && strpos($plugin, 'new DonationCatalogSeeder()') < strpos($plugin, 'update_option(self::OPTION_VERSION'),
+    'Product provisioning completes before software/schema options claim success');
+$expect(is_string($plugin) && str_contains($plugin, "add_option(WordPressRuntimeConfiguration::OPTION_MODE, 'preparing'"),
+    'Catalogue provisioning never automatically enables payment collection');
+
 fwrite(STDOUT, "CF-03 approved donation catalogue gate: {$passes}/{$checks} checks passed.\n");
