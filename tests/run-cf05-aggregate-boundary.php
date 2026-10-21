@@ -22,7 +22,9 @@ $payload=[
     'total_donations_minor'=>120000,
     'current_month_donations_minor'=>20000,
     'current_year_donations_minor'=>90000,
-    'total_expenses_minor'=>5000,
+    'total_expenses_minor'=>0,
+    'founder_paid_or_withdrawn_minor'=>0,
+    'current_balance_minor'=>120000,
     'expense_categories_minor'=>[],
     'source_hash'=>$hash,
     // Injected internal/PII fields must never cross the allowlist.
@@ -31,13 +33,21 @@ $payload=[
     'provider_payment_ref'=>'ref:private:1',
     'ledger_rows'=>[['account'=>'income.donation','donor'=>'secret']],
 ];
+$canonicalSort = static function(mixed $x)use(&$canonicalSort):mixed{
+    if(!is_array($x)){return $x;}
+    if(!array_is_list($x)){ksort($x,SORT_STRING);}
+    foreach($x as $k=>$v){$x[$k]=$canonicalSort($v);}
+    return $x;
+};
+$snapshotHash=hash('sha256',json_encode($canonicalSort($payload),JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
 $row=[
     'snapshot_id'=>'snapshot.2026-10.usd','currency'=>'USD',
     'period_key'=>'2026-10','publication_state'=>'published',
-    'snapshot_json'=>$payload,'source_hash'=>$hash,'snapshot_hash'=>str_repeat('b',64),
+    'snapshot_json'=>$payload,'source_hash'=>$hash,'snapshot_hash'=>$snapshotHash,
 ];
 $dt=CF05FinancialAggregate::fromPublishedSnapshot($row);
 $serialized=json_encode($dt,JSON_THROW_ON_ERROR);
+$ok($dt['source_snapshot_hash']===$snapshotHash,'Authentic immutable snapshot hash passed to consumer');
 $ok($dt['source_owner']==='CF-03' && $dt['consumer_owner']==='CF-05','Finance truth remains CF-03 owned');
 $ok($dt['contract_version']===CF05FinancialAggregate::CONTRACT_VERSION,'Stable typed aggregate contract');
 $ok($dt['metrics_minor_units']['net_donations_lifetime']===120000,'Approved ledger-derived lifetime aggregate preserved');
