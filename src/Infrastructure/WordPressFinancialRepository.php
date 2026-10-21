@@ -119,6 +119,33 @@ final class WordPressFinancialRepository implements QueryableFinancialRepository
         return $this->hydrate($rows[0]);
     }
 
+    public function getForUpdate(string $collection, string $id): ?array
+    {
+        if ($this->transactionDepth < 1) {
+            throw new InvariantViolation('Financial record lock requires an active transaction.');
+        }
+        self::assertIdentifier($id);
+        [$table, $idField] = $this->spec($collection);
+        // This row lock must be obtained BEFORE reading per-intent refunds;
+        // otherwise concurrent independent refund requests can both see
+        // the same remaining balance under REPEATABLE READ.
+        $sql = $this->wpdb->prepare(
+            "SELECT * FROM {$table} WHERE {$idField} = %s LIMIT 2 FOR UPDATE",
+            $id
+        );
+        if (!is_string($sql) || $sql === '') {
+            throw new RuntimeException('Financial row-lock query could not be prepared.');
+        }
+        $rows = $this->wpdb->get_results($sql, defined('ARRAY_A') ? ARRAY_A : 'ARRAY_A');
+        if (!is_array($rows)) {
+            throw new RuntimeException('Financial row-lock query failed.');
+        }
+        if (count($rows) > 1 || ($rows !== [] && !is_array($rows[0]))) {
+            throw new InvariantViolation('Locked financial identifier is not unique.');
+        }
+        return $rows === [] ? null : $this->hydrate($rows[0]);
+    }
+
     public function compareAndSwap(string $collection, string $id, int $expectedVersion, callable $mutator): array
     {
         $this->assertMutable($collection);
