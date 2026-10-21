@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Sabri\CF03;
 
 use RuntimeException;
+use DateTimeImmutable;
+use Sabri\CF03\Application\DonationCatalogSeeder;
 use Sabri\CF03\Application\EvidenceBoundActivationGate;
 use Sabri\CF03\Domain\PlatformFinancialPolicy;
 use Sabri\CF03\Infrastructure\WordPressDailyReconciliation;
 use Sabri\CF03\Infrastructure\WordPressFinanceAdminApi;
+use Sabri\CF03\Infrastructure\WordPressFinancialRepository;
 use Sabri\CF03\Infrastructure\WordPressFinancialDashboardApi;
 use Sabri\CF03\Infrastructure\WordPressFinancialDocumentApi;
 use Sabri\CF03\Infrastructure\WordPressIncidentStateStore;
@@ -219,6 +222,14 @@ final class Plugin
             update_option(self::OPTION_RUNTIME_STATUS, 'schema_incomplete_fail_closed', false);
             throw new RuntimeException('CF-03 schema installation did not verify every canonical schema migration.');
         }
+        // Provision only the Founder-approved one-time donation catalogue
+        // in a DB transaction. This is product metadata, NOT activation of
+        // a payment provider, financial collection or any Future40 feature.
+        // Existing explicitly retired/conflicting products still fail closed.
+        $repository = WordPressFinancialRepository::fromWordPress();
+        $repository->transaction(static function () use ($repository): void {
+            (new DonationCatalogSeeder())->seed($repository, new DateTimeImmutable('now'));
+        });
         $version = defined('SABRI_CF03_VERSION') ? SABRI_CF03_VERSION : '1.3.0-rc.1';
         update_option(self::OPTION_VERSION, $version, false);
         update_option(self::OPTION_SCHEMA_VERSION, CompleteSchema::VERSION, false);
