@@ -2,7 +2,7 @@
 
 Canonical conditional financial owner for the **Sabri Social Homeopathy Platform**.
 
-> **Current source candidate:** `1.4.0-rc.2` (corrective successor to approved Future40 target `1.4.0-rc.1`; not Live-deployed)  
+> **Current source candidate:** `1.4.0-rc.3` (corrective successor to approved Future40 target `1.4.0-rc.1`; not Live-deployed)  
 > **Active canonical schema:** `4.0.0` — 27 active canonical tables  
 > **Future Expansion Pack:** `CF03-FUTURE40-2026-09-08` — 40 coded future capabilities, all fail closed by default  
 > **Runtime:** fail closed. Live collection and financial file delivery are not claimed.
@@ -18,6 +18,13 @@ The current governing test inventory consists of **19 suites in both Composer an
 See `docs/cf03-v12.3-release-evidence-2026-11-15.md` for the evidence ledger and blockers.
 
 The second source review also added a compare-and-swap delivery-state confirmation to `OutboxDispatcher`: a lost/renewed lease cannot count as delivered, retry, or dead-letter success for a stale worker. It added `tests/run-outbox-ack-lease-cas.php`, multi-shortcode unique ARIA form references, and a matching visible border for the actual custom donation text field. **These source protections do not establish downstream File 19 durable acknowledgements or real browser/staging acceptance.**
+
+### V12.3 RC3 — additional defended source boundaries
+
+- **Pre-provider rate/velocity admission:** `WordPressCheckoutRateGate` requires an explicitly approved, versioned Founder rate policy and uses database-unique, non-autoloaded WordPress option slots. Actor and request identities are only stored as site-keyed HMAC values; repeated request keys do not consume new slots. Exceeded quotas return HTTP 429 with Retry-After, and expired slots are removed in bounded cron batches. **No quantity/time values have been auto-approved.** Site WAF/CDN and provider abuse controls still require independent evidence.
+- **File 01 durable event acceptance:** CF-03 outbox no longer equates an arbitrary WordPress listener with successful financial-fact delivery. The transport requires File 01 software 2.0.1 / contract 2.0.0 or higher and accepts only a strict `SPF_Event_Bus::publish(...)` true receipt, with restricted/opaque, no-donor/no-amount envelopes. Existing bare CF-03 event names are published under explicit `CF03.*.v1` File01 names while native accounting event truth stays unchanged. File 19 end-user notification projection and durable downstream consumption remain separate independent contracts.
+- **Real DB isolation test:** an ephemeral MariaDB 10.11 service runs two concurrent SQL sessions with actual `InnoDB SELECT ... FOR UPDATE`, verifies MyISAM denial and rollback. This validates the staging-like isolated test environment, never the deployed Hostinger DB.
+- **Release identity:** distinct source candidate `1.4.0-rc.3`, still schema `4.0.0` / 27 canonical definitions. No paid tier, recurring mandate, provider charge, Future40 activation or Live deployment is implied.
 
 ## Current governing plans
 
