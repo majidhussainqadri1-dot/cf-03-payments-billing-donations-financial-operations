@@ -11,11 +11,13 @@ Canonical conditional financial owner for the **Sabri Social Homeopathy Platform
 
 This isolated source branch starts from the October PR #14 signed-event/catalogue-authority candidate and **restores independent PR #9 refund/row-lock, InnoDB preflight, oldest-due outbox, approved provider-specific donation disclosure, conditional CF-05 aggregate adapter and six missing financial regression suites**. The source-plan comparison uses the **Sabri Website Master Plan V12.3 (13 November 2026)**, especially CF03-FR-001..034, CF03-CEN-01..10, CF03-NJ-01..06 and the fail-closed FX-01..40 catalogue.
 
-The current governing test inventory consists of **18 suites in both Composer and GitHub Actions**; passing these is not independent provider, real-MySQL, browser, staging or Live acceptance. The previously separate GitHub review branches must not be merged over this branch without an exact diff review.
+The current governing test inventory consists of **19 suites in both Composer and GitHub Actions**; passing these is not independent provider, real-MySQL, browser, staging or Live acceptance. The previously separate GitHub review branches must not be merged over this branch without an exact diff review.
 
 **Do not activate or deploy from this source branch without its own exact-HEAD CI, independent finance/security/legal approval, approved provider sandbox, real-MySQL two-worker refund and outbox tests, valid deployment/restore evidence, cross-file contracts, explicit Founder change control, and a separate Live Reality Freeze.**
 
 See `docs/cf03-v12.3-release-evidence-2026-11-15.md` for the evidence ledger and blockers.
+
+The second source review also added a compare-and-swap delivery-state confirmation to `OutboxDispatcher`: a lost/renewed lease cannot count as delivered, retry, or dead-letter success for a stale worker. It added `tests/run-outbox-ack-lease-cas.php`, multi-shortcode unique ARIA form references, and a matching visible border for the actual custom donation text field. **These source protections do not establish downstream File 19 durable acknowledgements or real browser/staging acceptance.**
 
 ## Current governing plans
 
@@ -98,7 +100,7 @@ find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
 bash scripts/build-package.sh
 ```
 
-Current acceptance requires the complete 18-suite Composer/CI matrix and all current-governing-plan suites, the Future Expansion Pack 40 suite, PHP syntax scan, JSON validation, credential-material scan and deterministic package parity on the same exact candidate HEAD.
+Current acceptance requires the complete 19-suite Composer/CI matrix and all current-governing-plan suites, the Future Expansion Pack 40 suite, PHP syntax scan, JSON validation, credential-material scan and deterministic package parity on the same exact candidate HEAD.
 
 ## External acceptance boundary
 
