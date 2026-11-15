@@ -59,6 +59,17 @@ foreach ($entries as $index => $entry) {
     $assert(class_exists($fqcn) || interface_exists($fqcn),
         "Mapped implementation is autoloadable: {$id}");
 
+    if ($type === 'functional') {
+        $assert(($entry['source_assessment'] ?? null) ===
+            'source_owner_mapped_behavioral_acceptance_pending',
+            "Functional source mapping does not assert full behavior: {$id}");
+    }
+    if ($type === 'constitutional') {
+        $assert(($entry['source_assessment'] ?? null) ===
+            'policy_owner_mapped_cross_file_acceptance_pending',
+            "Constitutional rule still requires real cross-file acceptance: {$id}");
+    }
+
     if ($type !== 'future') {
         $assert(($entry['staging_acceptance'] ?? null) === 'unverified'
             && ($entry['live_acceptance'] ?? null) === 'unverified',
