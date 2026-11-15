@@ -81,6 +81,17 @@ $transport->publish($eventId, $eventType, $private);
 $expect(SPF_Event_Bus::$accepted[0][5] === SPF_Event_Bus::$accepted[1][5],
     'Duplicate same-source event retries preserve exact durable File01 deduplication');
 
+// CF-03's live source currently writes these bare event names. The
+// downstream File 01 envelope MUST carry an explicit contract version.
+$transport->publish('event:adjustment:abc', 'FinancialAdjustmentExecuted', $private);
+$expect(SPF_Event_Bus::$accepted[2][0] === 'CF03.FinancialAdjustmentExecuted.v1',
+    'Bare adjustment fact becomes an explicit v1 File01 event');
+$expect(SPF_Event_Bus::$accepted[2][3]['source_event_type'] === 'FinancialAdjustmentExecuted',
+    'Original immutable owner fact name is preserved in minimized metadata');
+$transport->publish('event:refund:abc', 'DonationRefunded', $private);
+$expect(SPF_Event_Bus::$accepted[3][0] === 'CF03.DonationRefunded.v1',
+    'Bare refund event is normalized to versioned durable File01 fact');
+
 SPF_Event_Bus::$result = false;
 $rejects(static fn() => $transport->publish('evt:failed:1', 'DonationSettled.v1', $private),
     'File01 failed store cannot be labeled delivered by CF03');
