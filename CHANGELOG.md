@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0-rc.3 — V12.3 Source Consolidation and Financial Safety Integration (Draft, NOT LIVE)
+
+- Retains the cross-branch PR #9/#14 integration and 20 current PHP governing/adversarial suites on PHP 8.1–8.3; no source correction is claimed deployed.
+- Closes the previously unimplemented **native pre-provider local request-rate source boundary** with a Founder-governed policy, database-unique slot claims, masked identity HMAC, idempotent replay, 429 Retry-After and bounded privacy cleanup. A policy must be deliberately approved; no operational quota is invented.
+- Replaces non-durable WordPress `do_action` listener success with strict File 01 v2.0.1+ durable event-store acceptance, versioned `CF03.*.v1` event names, opaque aggregate IDs, restricted aggregate-only payloads, exact event ID deduplication and separate File 19 downstream acceptance.
+- Adds a **separate isolated MariaDB 10.11 CI job** exercising actual InnoDB row-lock contention between two database connections, MyISAM failure and financial rollback. Production database remains unknown.
+- Supersedes the earlier `1.4.0-rc.2` source package identity; the schema remains `4.0.0` / 27 canonical tables. Future40 remains coded but disabled. The only allowed current donation type is voluntary one-time, with no paid AI/core or donor privileges and 0% Clinic/Marketplace commission.
+- External blockers: live exact deployed plugin/DB/migrations/WAF, provider/key/PCI/accounting/legal approvals, approved rate policy, File01 and File19 consumer staging, human independent security, browser/mobile RTL and accessibility, restore/rollback, Founder sign-off and parity-checked live retest. Keep Draft.
+
 ## V12.3 source consolidation — 2026-11-15 (Isolated Candidate / NOT DEPLOYED)
 
 - Preserved PR #14's canonical donation-catalogue authority-marker and signed webhook evidence preflight safeguards, including their adversarial regressions.
