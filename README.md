@@ -32,6 +32,8 @@ The separate machine-readable registry `manifests/cf03-v123-requirements.json` m
 A source-controlled operator-only S0 collector at scripts/collect-live-cf03-freeze.sh and corresponding docs/CF03-V12.3-HOSTINGER-LIVE-REALITY-HANDOFF.md specify read-only deployed artifact/version/table/engine evidence. tests/run-live-freeze-readonly.php and Bash syntax checks protect the collector itself; they do NOT run it on Hostinger, prove no MU-plugin side effects, or establish live deployment parity. This is the 22nd governed PHP source suite.
 
 
+The 90-entry registry deliberately distinguishes a mapped source owner from proven functional behavior: each of the 34 FR and 10 CEN entries is now marked behavioral/cross-file acceptance pending; six NJ scenarios remain partial, forty FX entries remain disabled. Source-class presence and 631+ assertions alone do not establish full journey coverage.
+
 ## Current governing plans
 
 The current source is governed by:
