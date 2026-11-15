@@ -2,7 +2,7 @@
 
 ## 1.4.0-rc.3 — V12.3 Source Consolidation and Financial Safety Integration (Draft, NOT LIVE)
 
-- Retains the cross-branch PR #9/#14 integration and 20 current PHP governing/adversarial suites on PHP 8.1–8.3; no source correction is claimed deployed.
+- Retains the cross-branch PR #9/#14 integration and 21 current PHP governing/adversarial suites on PHP 8.1–8.3; no source correction is claimed deployed.
 - Closes the previously unimplemented **native pre-provider local request-rate source boundary** with a Founder-governed policy, database-unique slot claims, masked identity HMAC, idempotent replay, 429 Retry-After and bounded privacy cleanup. A policy must be deliberately approved; no operational quota is invented.
 - Replaces non-durable WordPress `do_action` listener success with strict File 01 v2.0.1+ durable event-store acceptance, versioned `CF03.*.v1` event names, opaque aggregate IDs, restricted aggregate-only payloads, exact event ID deduplication and separate File 19 downstream acceptance.
 - Adds a **separate isolated MariaDB 10.11 CI job** exercising actual InnoDB row-lock contention between two database connections, MyISAM failure and financial rollback. Production database remains unknown.
@@ -17,8 +17,10 @@
 - Plan mapping: V12.3 CF03-FR-001..034, CF03-CEN-01..10, CF03-NJ-01..06; Future40 stays deactivated. No payment collection, staging, database migration or production deployment was performed.
 - Outstanding: real MySQL concurrency/engine verification, provider/key/legal/PCI review, per-actor pre-provider rate/velocity/WAF policy evidence, durable consumer acknowledgements, independent security, cross-file integration, real-browser RTL/accessibility, restore/rollback, founder approval, live deployed artifact/schema/migration/version parity and Live re-tests.
 
-- Second source review: fixed an outbox false-delivered result on an unpersisted or stolen-lease acknowledgment; update and recovery now require CAS of the worker's exact lease. Added adversarial lost-ACK and renewed-lease tests. The existing 19-suite matrix includes the new test.
+- Second source review: fixed an outbox false-delivered result on an unpersisted or stolen-lease acknowledgment; update and recovery now require CAS of the worker's exact lease. Added adversarial lost-ACK and renewed-lease tests. The existing 21-suite matrix includes the new test.
 - Corrected two donation UI issues: duplicate ARIA IDs across repeated shortcodes and a text input mistakenly styled as number. Real-browser and assistive-technology acceptance remains pending.
+
+- Added `manifests/cf03-v123-requirements.json` and executable V12.3 requirement matrix proving the full 34+10+6+40=90 entry inventory with honest independent staging/Live status. Composer/CI source suite count is now **21**, plus the separate MariaDB service job.
 
 ## 1.4.0-rc.2 — Corrective Plan-to-Code Review (Source Candidate, Not Live)
 
