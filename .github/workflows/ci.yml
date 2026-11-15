@@ -160,3 +160,34 @@ jobs:
           diff -q composer.json "$TMP/$ROOT/composer.json"
           diff -q cf-03-payments-billing-donations-financial-operations.php "$TMP/$ROOT/cf-03-payments-billing-donations-financial-operations.php"
           echo "$PACKAGE_SHA256  $ZIP"
+
+  mariadb_refund:
+    name: Isolated MariaDB refund transaction and row-lock integration
+    runs-on: ubuntu-latest
+    container:
+      image: php:8.2-cli
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: only_ephemeral_ci_root_2026
+          MARIADB_DATABASE: cf03_test
+          MARIADB_USER: cf03_ci
+          MARIADB_PASSWORD: only_ephemeral_ci_user_2026
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout exact candidate source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Enable native PHP MySQL extension inside isolated CI container
+        run: docker-php-ext-install mysqli
+      - name: Test real InnoDB row lock, MyISAM denial and transaction rollback
+        env:
+          CF03_TEST_DB_HOST: mariadb
+          CF03_TEST_DB_USER: cf03_ci
+          CF03_TEST_DB_PASS: only_ephemeral_ci_user_2026
+          CF03_TEST_DB_NAME: cf03_test
+        run: php tests/run-mariadb-refund-isolation.php
