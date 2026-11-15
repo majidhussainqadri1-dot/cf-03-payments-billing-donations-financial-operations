@@ -16,13 +16,13 @@
     "future": 40,
     "total": 90
   },
-  "acceptance_policy": "CI source evidence cannot substitute for provider, legal, database, consumer, browser, staging, Founder or live parity acceptance",
+  "acceptance_policy": "Owner-class/source traceability is NOT equivalent to behavior verified; unit fixtures/CI and independently evidenced real staging/Live journeys must be recorded separately. No production activation inferred.",
   "requirements": [
     {
       "id": "CF03-FR-001",
       "kind": "functional",
       "source_owner": "src/Domain/FinancialProduct.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -30,7 +30,7 @@
       "id": "CF03-FR-002",
       "kind": "functional",
       "source_owner": "src/Domain/PriceVersion.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -38,7 +38,7 @@
       "id": "CF03-FR-003",
       "kind": "functional",
       "source_owner": "src/Application/DonationAppealCopy.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -46,7 +46,7 @@
       "id": "CF03-FR-004",
       "kind": "functional",
       "source_owner": "src/Domain/CommissionPolicy.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -54,7 +54,7 @@
       "id": "CF03-FR-005",
       "kind": "functional",
       "source_owner": "src/Domain/DonationNeutralityPolicy.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -62,7 +62,7 @@
       "id": "CF03-FR-006",
       "kind": "functional",
       "source_owner": "src/Application/DonationCheckoutService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -70,7 +70,7 @@
       "id": "CF03-FR-007",
       "kind": "functional",
       "source_owner": "src/Domain/PaymentIntent.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -78,7 +78,7 @@
       "id": "CF03-FR-008",
       "kind": "functional",
       "source_owner": "src/Application/ProviderWebhookVerifier.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -86,7 +86,7 @@
       "id": "CF03-FR-009",
       "kind": "functional",
       "source_owner": "src/Domain/ProviderEventStateMapper.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -94,7 +94,7 @@
       "id": "CF03-FR-010",
       "kind": "functional",
       "source_owner": "src/Application/PaymentConfirmationService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -102,7 +102,7 @@
       "id": "CF03-FR-011",
       "kind": "functional",
       "source_owner": "src/Application/ProviderRegistry.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -110,7 +110,7 @@
       "id": "CF03-FR-012",
       "kind": "functional",
       "source_owner": "src/Domain/LedgerTransaction.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -118,7 +118,7 @@
       "id": "CF03-FR-013",
       "kind": "functional",
       "source_owner": "src/Application/FinancialDocumentService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -126,7 +126,7 @@
       "id": "CF03-FR-014",
       "kind": "functional",
       "source_owner": "src/Application/SettlementOperationsService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -134,7 +134,7 @@
       "id": "CF03-FR-015",
       "kind": "functional",
       "source_owner": "src/Application/DailyReconciliationService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -142,7 +142,7 @@
       "id": "CF03-FR-016",
       "kind": "functional",
       "source_owner": "src/Application/FinancialAdjustmentService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -150,7 +150,7 @@
       "id": "CF03-FR-017",
       "kind": "functional",
       "source_owner": "src/Domain/Money.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -158,7 +158,7 @@
       "id": "CF03-FR-018",
       "kind": "functional",
       "source_owner": "src/Application/DonationCheckoutService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -166,7 +166,7 @@
       "id": "CF03-FR-019",
       "kind": "functional",
       "source_owner": "src/Domain/DonationPromptPolicy.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -174,7 +174,7 @@
       "id": "CF03-FR-020",
       "kind": "functional",
       "source_owner": "src/Application/DonationCheckoutService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -182,7 +182,7 @@
       "id": "CF03-FR-021",
       "kind": "functional",
       "source_owner": "src/Domain/DonationNeutralityPolicy.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -190,7 +190,7 @@
       "id": "CF03-FR-022",
       "kind": "functional",
       "source_owner": "src/Application/BillingQueryService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -198,7 +198,7 @@
       "id": "CF03-FR-023",
       "kind": "functional",
       "source_owner": "src/Domain/PlatformFinancialPolicy.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -206,7 +206,7 @@
       "id": "CF03-FR-024",
       "kind": "functional",
       "source_owner": "src/Application/RefundWorkflowService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -214,7 +214,7 @@
       "id": "CF03-FR-025",
       "kind": "functional",
       "source_owner": "src/Application/RefundWorkflowService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -222,7 +222,7 @@
       "id": "CF03-FR-026",
       "kind": "functional",
       "source_owner": "src/Domain/ChargebackCase.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -230,7 +230,7 @@
       "id": "CF03-FR-027",
       "kind": "functional",
       "source_owner": "src/Application/FinancialDocumentService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -238,7 +238,7 @@
       "id": "CF03-FR-028",
       "kind": "functional",
       "source_owner": "src/Domain/FraudReviewCase.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -246,7 +246,7 @@
       "id": "CF03-FR-029",
       "kind": "functional",
       "source_owner": "src/Domain/SeparationOfDutiesPolicy.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -254,7 +254,7 @@
       "id": "CF03-FR-030",
       "kind": "functional",
       "source_owner": "src/Infrastructure/WordPressPublicUi.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -262,7 +262,7 @@
       "id": "CF03-FR-031",
       "kind": "functional",
       "source_owner": "src/Application/SecureExportService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -270,7 +270,7 @@
       "id": "CF03-FR-032",
       "kind": "functional",
       "source_owner": "src/Domain/FinancePeriod.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -278,7 +278,7 @@
       "id": "CF03-FR-033",
       "kind": "functional",
       "source_owner": "src/Application/IncidentOperationsService.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -286,7 +286,7 @@
       "id": "CF03-FR-034",
       "kind": "functional",
       "source_owner": "src/Application/RestoreReconciliation.php",
-      "source_assessment": "mapped_and_unit_covered",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -295,7 +295,7 @@
       "kind": "constitutional",
       "label": "Free approved core and no finance entitlement",
       "source_owner": "src/Domain/PlatformFinancialPolicy.php",
-      "source_assessment": "mapped_and_policy_checked",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -304,7 +304,7 @@
       "kind": "constitutional",
       "label": "Voluntary one-time donation, no preset/repeat, seven-day silence",
       "source_owner": "src/Domain/DonationPromptPolicy.php",
-      "source_assessment": "mapped_and_policy_checked",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -313,7 +313,7 @@
       "kind": "constitutional",
       "label": "No donor-based rank/badge/access/support advantage",
       "source_owner": "src/Domain/DonationNeutralityPolicy.php",
-      "source_assessment": "mapped_and_policy_checked",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -322,7 +322,7 @@
       "kind": "constitutional",
       "label": "Zero commission and no wallet/escrow/payout",
       "source_owner": "src/Domain/CommissionPolicy.php",
-      "source_assessment": "mapped_and_policy_checked",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -331,7 +331,7 @@
       "kind": "constitutional",
       "label": "Hosted/tokenized payment boundary and no raw card secrets",
       "source_owner": "src/Application/HostedCheckoutReference.php",
-      "source_assessment": "mapped_and_policy_checked",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -340,7 +340,7 @@
       "kind": "constitutional",
       "label": "Trusted provider settlement and balanced immutable ledger",
       "source_owner": "src/Application/PaymentConfirmationService.php",
-      "source_assessment": "mapped_and_policy_checked",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -349,7 +349,7 @@
       "kind": "constitutional",
       "label": "Idempotent signed webhook and uncertainty reconciliation",
       "source_owner": "src/Application/ProviderWebhookVerifier.php",
-      "source_assessment": "mapped_and_policy_checked",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -358,7 +358,7 @@
       "kind": "constitutional",
       "label": "Append-only refund/dispute with separated approval",
       "source_owner": "src/Application/RefundWorkflowService.php",
-      "source_assessment": "mapped_and_policy_checked",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -367,7 +367,7 @@
       "kind": "constitutional",
       "label": "Donor financial privacy and minimum legal retention",
       "source_owner": "src/Application/FinancialDocumentService.php",
-      "source_assessment": "mapped_and_policy_checked",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
@@ -376,7 +376,7 @@
       "kind": "constitutional",
       "label": "Founder change control for new financial flows",
       "source_owner": "src/Domain/FutureFinancePolicy.php",
-      "source_assessment": "mapped_and_policy_checked",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
       "staging_acceptance": "unverified",
       "live_acceptance": "unverified"
     },
