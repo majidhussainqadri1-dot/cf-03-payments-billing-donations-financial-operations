@@ -4,9 +4,12 @@
 
 - Preserved PR #14's canonical donation-catalogue authority-marker and signed webhook evidence preflight safeguards, including their adversarial regressions.
 - Integrated PR #9's transaction-aware InnoDB refund locking/500-row fail-closed guard, oldest-due financial outbox ordering, approved pre-donation provider disclosure, conditional CF-05 published aggregate DTO and six independent omitted test suites.
-- Composer and GitHub Actions now require the same 18 governed tests on PHP 8.1/8.2/8.3, alongside reproducible packaging, source parity and credential/material scans. Exact branch-HEAD outcomes are checked separately and never inferred from older jobs.
+- Composer and GitHub Actions now require the same 19 governed tests on PHP 8.1/8.2/8.3, alongside reproducible packaging, source parity and credential/material scans. Exact branch-HEAD outcomes are checked separately and never inferred from older jobs.
 - Plan mapping: V12.3 CF03-FR-001..034, CF03-CEN-01..10, CF03-NJ-01..06; Future40 stays deactivated. No payment collection, staging, database migration or production deployment was performed.
 - Outstanding: real MySQL concurrency/engine verification, provider/key/legal/PCI review, per-actor pre-provider rate/velocity/WAF policy evidence, durable consumer acknowledgements, independent security, cross-file integration, real-browser RTL/accessibility, restore/rollback, founder approval, live deployed artifact/schema/migration/version parity and Live re-tests.
+
+- Second source review: fixed an outbox false-delivered result on an unpersisted or stolen-lease acknowledgment; update and recovery now require CAS of the worker's exact lease. Added adversarial lost-ACK and renewed-lease tests. The existing 19-suite matrix includes the new test.
+- Corrected two donation UI issues: duplicate ARIA IDs across repeated shortcodes and a text input mistakenly styled as number. Real-browser and assistive-technology acceptance remains pending.
 
 ## 1.4.0-rc.2 — Corrective Plan-to-Code Review (Source Candidate, Not Live)
 
