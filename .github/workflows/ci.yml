@@ -60,11 +60,13 @@ jobs:
         run: php tests/run-40-finance-review-scenarios.php
       - name: Composer and CI exact governing suite parity
         run: |
-          php -r '$j=json_decode(file_get_contents("composer.json"),true,512,JSON_THROW_ON_ERROR); $s=$j["scripts"]["test"]??[]; if(count($s)!==20){fwrite(STDERR,"Expected 20 active governed suites.\n");exit(1);} $w=file_get_contents(".github/workflows/ci.yml"); foreach($s as $test){if(!str_contains($w,"run: ".$test)){fwrite(STDERR,"CI omits: ".$test."\n");exit(1);}}'
+          php -r '$j=json_decode(file_get_contents("composer.json"),true,512,JSON_THROW_ON_ERROR); $s=$j["scripts"]["test"]??[]; if(count($s)!==21){fwrite(STDERR,"Expected 21 active governed suites.\n");exit(1);} $w=file_get_contents(".github/workflows/ci.yml"); foreach($s as $test){if(!str_contains($w,"run: ".$test)){fwrite(STDERR,"CI omits: ".$test."\n");exit(1);}}'
       - name: Outbox persisted delivery CAS and renewed-lease protection
         run: php tests/run-outbox-ack-lease-cas.php
       - name: Atomic approved pre-provider checkout abuse admission
         run: php tests/run-pre-provider-checkout-rate-gate.php
+      - name: Master Plan V12.3 ninety-requirement evidence gate
+        run: php tests/run-v123-90-requirement-gates.php
       - name: Validate manifests
         run: |
           for file in manifests/*.json; do
