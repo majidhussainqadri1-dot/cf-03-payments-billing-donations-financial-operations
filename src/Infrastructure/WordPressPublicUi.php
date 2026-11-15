@@ -11,6 +11,9 @@ use Throwable;
 
 final class WordPressPublicUi
 {
+    // Multiple shortcodes can appear on one page; ARIA references must be unique.
+    private static int $donateRenderSequence = 0;
+
     public static function register(): void
     {
         if (function_exists('add_shortcode')) {
@@ -42,6 +45,9 @@ final class WordPressPublicUi
         self::assets($collectionEnabled);
 
         $copy = DonationAppealCopy::contract();
+        $renderIndex = ++self::$donateRenderSequence;
+        $headingId = 'sabri-cf03-donate-title-'.$renderIndex;
+        $assuranceId = 'sabri-cf03-donation-assurance-'.$renderIndex;
         $language = function_exists('get_locale') && str_starts_with((string)get_locale(), 'ur') ? 'ur' : 'en-US';
         $text = is_array($copy[$language] ?? null) ? $copy[$language] : $copy['en-US'];
         $options = '';
@@ -87,13 +93,13 @@ final class WordPressPublicUi
             ? 'میں تصدیق کرتا/کرتی ہوں کہ یہ صرف ایک رضاکارانہ یک وقتی عطیہ ہے؛ کوئی recurring یا خودکار دوبارہ چارج نہیں ہوگا۔'
             : 'I confirm this is a voluntary one-time donation only; there is no recurring or automatic repeat charge.';
 
-        return '<section class="sabri-cf03-card" dir="auto" aria-labelledby="sabri-cf03-donate-title">'
-            .'<h2 id="sabri-cf03-donate-title"><ion-icon name="heart-outline" aria-hidden="true"></ion-icon> '.esc_html($heading).'</h2>'
+        return '<section class="sabri-cf03-card" dir="auto" aria-labelledby="'.esc_attr($headingId).'">'
+            .'<h2 id="'.esc_attr($headingId).'"><ion-icon name="heart-outline" aria-hidden="true"></ion-icon> '.esc_html($heading).'</h2>'
             .'<p>'.esc_html($message).'</p>'
-            .'<p id="sabri-cf03-donation-assurance" class="sabri-cf03-assurance">'.esc_html($assurance).'</p>'
+            .'<p id="'.esc_attr($assuranceId).'" class="sabri-cf03-assurance">'.esc_html($assurance).'</p>'
             .$availability
             .$disclosureHtml
-            .'<form class="sabri-cf03-donation-form" aria-describedby="sabri-cf03-donation-assurance" novalidate>'
+            .'<form class="sabri-cf03-donation-form" aria-describedby="'.esc_attr($assuranceId).'" novalidate>'
             .'<fieldset class="sabri-cf03-amounts"'.($collectionEnabled ? '' : ' disabled').'><legend>'
             .esc_html__('Choose a suggested amount or enter a custom amount; nothing is preselected.', 'sabri-cf03-finance').'</legend>'
             .$options.'</fieldset>'
