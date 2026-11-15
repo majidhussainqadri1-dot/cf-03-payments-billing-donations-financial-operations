@@ -7,6 +7,7 @@ namespace Sabri\CF03\Application;
 use DateTimeImmutable;
 use JsonException;
 use Sabri\CF03\Contracts\QueryableFinancialRepository;
+use Sabri\CF03\Support\InvariantViolation;
 use Throwable;
 
 final class OutboxDispatcher
@@ -23,11 +24,23 @@ final class OutboxDispatcher
     public function dispatch(DateTimeImmutable $now, int $limit = 50): array
     {
         if ($limit < 1 || $limit > 200) { throw new \InvalidArgumentException('Outbox dispatch limit is invalid.'); }
+        // Restore expired processing leases without changing delivery identity.
+        // Consumers must deduplicate the stable event_id (at-least-once delivery).
+        $recovered = $this->recoverExpiredLeases($now, $limit);
+        // A stable oldest-due merge prevents pending traffic from starving
+        // retries and prevents future-dated messages from hiding due work.
         $candidates = array_merge(
-            $this->repository->find('outbox', ['state' => 'pending'], $limit),
-            $this->repository->find('outbox', ['state' => 'retry'], $limit)
+            $this->repository->dueOutbox('pending', $now, $limit),
+            $this->repository->dueOutbox('retry', $now, $limit)
         );
-        $result = ['delivered'=>0,'retried'=>0,'dead_lettered'=>0,'skipped'=>0];
+        usort($candidates, static function (array $left, array $right): int {
+            $a = self::date($left['available_at'] ?? null);
+            $b = self::date($right['available_at'] ?? null);
+            return ($a <=> $b)
+                ?: strcmp((string)($left['event_id'] ?? ''), (string)($right['event_id'] ?? ''));
+        });
+        $result = ['delivered'=>0,'retried'=>$recovered['retried'],
+            'dead_lettered'=>$recovered['dead_lettered'],'skipped'=>$recovered['skipped']];
         $processed = 0;
         foreach ($candidates as $message) {
             if ($processed >= $limit) { break; }
@@ -35,8 +48,13 @@ final class OutboxDispatcher
             if ($availableAt === null || $availableAt > $now) { $result['skipped']++; continue; }
             $eventId = (string)($message['event_id'] ?? '');
             $state = (string)($message['state'] ?? '');
-            $leased = $this->repository->updateWhere('outbox', ['event_id'=>$eventId,'state'=>$state], [
-                'state'=>'processing','leased_until'=>$now->modify('+5 minutes'),
+            // Claim the same observed due row and retain the lease identity for
+            // every later state transition (CAS: stale workers must not win).
+            $leaseUntil = $now->modify('+5 minutes');
+            $leased = $this->repository->updateWhere('outbox', [
+                'event_id'=>$eventId, 'state'=>$state, 'available_at'=>$message['available_at'] ?? null,
+            ], [
+                'state'=>'processing', 'leased_until'=>$leaseUntil,
             ]);
             if ($leased !== 1) { $result['skipped']++; continue; }
             $processed++;
@@ -45,24 +63,80 @@ final class OutboxDispatcher
                 if (is_string($payload)) { $payload = json_decode($payload, true, 512, JSON_THROW_ON_ERROR); }
                 if (!is_array($payload)) { throw new JsonException('Outbox payload is not an object.'); }
                 $this->transport->publish($eventId, (string)$message['event_type'], $payload);
-                $this->repository->updateWhere('outbox', ['event_id'=>$eventId,'state'=>'processing'], [
+                $acknowledged = $this->repository->updateWhere('outbox', [
+                    'event_id'=>$eventId, 'state'=>'processing', 'leased_until'=>$leaseUntil,
+                ], [
                     'state'=>'delivered','delivered_at'=>$now,'leased_until'=>null,'last_error_code'=>null,
                 ]);
+                if ($acknowledged !== 1) {
+                    // A different worker/recovery path replaced our lease or
+                    // the DB did not persist delivery. Never count false success.
+                    throw new InvariantViolation('Financial outbox delivery acknowledgement was not persisted.');
+                }
                 $result['delivered']++;
             } catch (Throwable $error) {
                 $attempts = (int)($message['attempts'] ?? 0) + 1;
                 $dead = $attempts >= $this->maximumAttempts;
-                $this->repository->updateWhere('outbox', ['event_id'=>$eventId,'state'=>'processing'], [
+                $failedTransition = $this->repository->updateWhere('outbox', [
+                    'event_id'=>$eventId, 'state'=>'processing', 'leased_until'=>$leaseUntil,
+                ], [
                     'state'=>$dead?'dead_letter':'retry',
                     'attempts'=>$attempts,
                     'available_at'=>$dead?$now:$now->modify('+'.min(3600, 2 ** min($attempts, 11)).' seconds'),
                     'leased_until'=>null,
                     'last_error_code'=>self::errorCode($error),
                 ]);
+                if ($failedTransition !== 1) {
+                    // Do not overwrite/relabel a lease or retry already owned
+                    // by another worker; report a lost claim as skipped.
+                    $result['skipped']++;
+                    continue;
+                }
                 $result[$dead?'dead_lettered':'retried']++;
             }
         }
         return $result;
+    }
+
+    /**
+     * Recover only expired processing leases. Compare-and-swap on the exact
+     * observed lease prevents overwriting a freshly renewed worker lease.
+     * Publication remains at-least-once; event consumers deduplicate event_id.
+     *
+     * @return array{retried:int,dead_lettered:int,skipped:int}
+     */
+    private function recoverExpiredLeases(DateTimeImmutable $now, int $limit): array
+    {
+        $counts = ['retried' => 0, 'dead_lettered' => 0, 'skipped' => 0];
+        // Query due leases directly; an arbitrarily large number of live
+        // worker leases must not hide a later expired lease from recovery.
+        foreach ($this->repository->dueOutbox('processing', $now, min(500, $limit)) as $row) {
+            $observedLease = $row['leased_until'] ?? null;
+            $expires = self::date($observedLease);
+            if ($expires === null || $expires > $now) {
+                $counts['skipped']++;
+                continue;
+            }
+            $attempts = (int)($row['attempts'] ?? 0) + 1;
+            $dead = $attempts >= $this->maximumAttempts;
+            $affected = $this->repository->updateWhere('outbox', [
+                'event_id' => (string)($row['event_id'] ?? ''),
+                'state' => 'processing',
+                'leased_until' => $observedLease,
+            ], [
+                'state' => $dead ? 'dead_letter' : 'retry',
+                'attempts' => $attempts,
+                'available_at' => $now,
+                'leased_until' => null,
+                'last_error_code' => 'delivery_lease_expired',
+            ]);
+            if ($affected !== 1) {
+                $counts['skipped']++;
+                continue;
+            }
+            $counts[$dead ? 'dead_lettered' : 'retried']++;
+        }
+        return $counts;
     }
 
     private static function date(mixed $value): ?DateTimeImmutable

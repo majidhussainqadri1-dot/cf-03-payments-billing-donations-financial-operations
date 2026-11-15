@@ -85,7 +85,10 @@ final class WordPressRestApi
             && $runtime->missingDonationCollectionGates() === []
             && ($incident['checkout_enabled'] ?? false) === true
             && ($incident['webhooks_enabled'] ?? false) === true
-            && self::providerReady($runtime);
+            && self::providerReady($runtime)
+            && WordPressDonationDisclosure::forProvider($runtime->providerCode()) !== null
+            && WordPressCheckoutRateGate::configured()
+            && WordPressOutboxTransport::backboneReady();
 
         return [
             'policy_name' => PlatformFinancialPolicy::POLICY_NAME,
@@ -218,6 +221,12 @@ final class WordPressRestApi
             if (!self::providerReady($runtime)) {
                 throw new InvariantViolation('The configured donation provider is not ready.');
             }
+            if (WordPressDonationDisclosure::forProvider($runtime->providerCode()) === null) {
+                throw new InvariantViolation('Approved provider-specific donation terms must be published before checkout.');
+            }
+            // A versioned Founder policy and database-unique option slots
+            // must admit this actor before any hosted provider side effect.
+            WordPressCheckoutRateGate::assertPermitted($actor, $key, new DateTimeImmutable('now'));
             $draft = new DonationIntentDraft(
                 $intent,
                 $actor,
@@ -234,6 +243,8 @@ final class WordPressRestApi
                 WordPressFinancialRepository::fromWordPress()
             ))->create($draft, $runtime->providerCode());
             return self::publicDonationResult($result);
+        } catch (CheckoutRateLimitExceeded $error) {
+            return self::rateLimited($error);
         } catch (Throwable $error) {
             return self::safePublicError($error);
         }
@@ -368,6 +379,8 @@ final class WordPressRestApi
             'incident_diagnostics' => (new WordPressIncidentStateStore())->get(),
             'providers' => WordPressProviderRegistryFactory::payments()->health(),
             'donation_provider_codes' => WordPressProviderRegistryFactory::donations()->registeredProviderCodes(),
+            'atomic_checkout_rate_gate_configured' => WordPressCheckoutRateGate::configured(),
+            'file01_durable_event_backbone' => WordPressOutboxTransport::backboneReady(),
             'transparency_snapshot' => self::transparency()['status'],
             'schema_version' => defined('SABRI_CF03_SCHEMA_VERSION') ? SABRI_CF03_SCHEMA_VERSION : 'unknown',
             'recurring_runtime' => 'retired',
@@ -546,6 +559,26 @@ final class WordPressRestApi
             if (is_int($parsed)) { return $parsed; }
         }
         throw new InvalidArgumentException('A positive integer amount or version is required.');
+    }
+
+    private static function rateLimited(CheckoutRateLimitExceeded $error): mixed
+    {
+        $message = 'Too many one-time donation attempts. No payment was made. Try again later.';
+        $retryAfter = (string)$error->retryAfterSeconds();
+        if (class_exists('WP_REST_Response')) {
+            $response = new \WP_REST_Response([
+                'code' => 'sabri_cf03_rate_limited',
+                'message' => $message,
+            ], 429);
+            $response->header('Retry-After', $retryAfter);
+            return $response;
+        }
+        return [
+            'code' => 'sabri_cf03_rate_limited',
+            'message' => $message,
+            'status' => 429,
+            'retry_after_seconds' => $error->retryAfterSeconds(),
+        ];
     }
 
     private static function safePublicError(Throwable $error): mixed

@@ -1,0 +1,878 @@
+{
+  "module": "CF-03",
+  "source_plan": "Sabri Website Master Plan V12.3",
+  "source_date": "2026-11-13",
+  "source_section": "CF03, pages 224–228",
+  "software_candidate": "1.4.0-rc.3",
+  "schema_version": "4.0.0",
+  "canonical_table_definitions": 27,
+  "source_only": true,
+  "live_deployed_verified": false,
+  "all_future_disabled": true,
+  "counts": {
+    "functional": 34,
+    "constitutional": 10,
+    "full_journey": 6,
+    "future": 40,
+    "total": 90
+  },
+  "acceptance_policy": "Owner-class/source traceability is NOT equivalent to behavior verified; unit fixtures/CI and independently evidenced real staging/Live journeys must be recorded separately. No production activation inferred.",
+  "requirements": [
+    {
+      "id": "CF03-FR-001",
+      "kind": "functional",
+      "source_owner": "src/Domain/FinancialProduct.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-002",
+      "kind": "functional",
+      "source_owner": "src/Domain/PriceVersion.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-003",
+      "kind": "functional",
+      "source_owner": "src/Application/DonationAppealCopy.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-004",
+      "kind": "functional",
+      "source_owner": "src/Domain/CommissionPolicy.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-005",
+      "kind": "functional",
+      "source_owner": "src/Domain/DonationNeutralityPolicy.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-006",
+      "kind": "functional",
+      "source_owner": "src/Application/DonationCheckoutService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-007",
+      "kind": "functional",
+      "source_owner": "src/Domain/PaymentIntent.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-008",
+      "kind": "functional",
+      "source_owner": "src/Application/ProviderWebhookVerifier.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-009",
+      "kind": "functional",
+      "source_owner": "src/Domain/ProviderEventStateMapper.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-010",
+      "kind": "functional",
+      "source_owner": "src/Application/PaymentConfirmationService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-011",
+      "kind": "functional",
+      "source_owner": "src/Application/ProviderRegistry.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-012",
+      "kind": "functional",
+      "source_owner": "src/Domain/LedgerTransaction.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-013",
+      "kind": "functional",
+      "source_owner": "src/Application/FinancialDocumentService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-014",
+      "kind": "functional",
+      "source_owner": "src/Application/SettlementOperationsService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-015",
+      "kind": "functional",
+      "source_owner": "src/Application/DailyReconciliationService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-016",
+      "kind": "functional",
+      "source_owner": "src/Application/FinancialAdjustmentService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-017",
+      "kind": "functional",
+      "source_owner": "src/Domain/Money.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-018",
+      "kind": "functional",
+      "source_owner": "src/Application/DonationCheckoutService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-019",
+      "kind": "functional",
+      "source_owner": "src/Domain/DonationPromptPolicy.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-020",
+      "kind": "functional",
+      "source_owner": "src/Application/DonationCheckoutService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-021",
+      "kind": "functional",
+      "source_owner": "src/Domain/DonationNeutralityPolicy.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-022",
+      "kind": "functional",
+      "source_owner": "src/Application/BillingQueryService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-023",
+      "kind": "functional",
+      "source_owner": "src/Domain/PlatformFinancialPolicy.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-024",
+      "kind": "functional",
+      "source_owner": "src/Application/RefundWorkflowService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-025",
+      "kind": "functional",
+      "source_owner": "src/Application/RefundWorkflowService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-026",
+      "kind": "functional",
+      "source_owner": "src/Domain/ChargebackCase.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-027",
+      "kind": "functional",
+      "source_owner": "src/Application/FinancialDocumentService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-028",
+      "kind": "functional",
+      "source_owner": "src/Domain/FraudReviewCase.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-029",
+      "kind": "functional",
+      "source_owner": "src/Domain/SeparationOfDutiesPolicy.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-030",
+      "kind": "functional",
+      "source_owner": "src/Infrastructure/WordPressPublicUi.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-031",
+      "kind": "functional",
+      "source_owner": "src/Application/SecureExportService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-032",
+      "kind": "functional",
+      "source_owner": "src/Domain/FinancePeriod.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-033",
+      "kind": "functional",
+      "source_owner": "src/Application/IncidentOperationsService.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-FR-034",
+      "kind": "functional",
+      "source_owner": "src/Application/RestoreReconciliation.php",
+      "source_assessment": "source_owner_mapped_behavioral_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-CEN-01",
+      "kind": "constitutional",
+      "label": "Free approved core and no finance entitlement",
+      "source_owner": "src/Domain/PlatformFinancialPolicy.php",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-CEN-02",
+      "kind": "constitutional",
+      "label": "Voluntary one-time donation, no preset/repeat, seven-day silence",
+      "source_owner": "src/Domain/DonationPromptPolicy.php",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-CEN-03",
+      "kind": "constitutional",
+      "label": "No donor-based rank/badge/access/support advantage",
+      "source_owner": "src/Domain/DonationNeutralityPolicy.php",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-CEN-04",
+      "kind": "constitutional",
+      "label": "Zero commission and no wallet/escrow/payout",
+      "source_owner": "src/Domain/CommissionPolicy.php",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-CEN-05",
+      "kind": "constitutional",
+      "label": "Hosted/tokenized payment boundary and no raw card secrets",
+      "source_owner": "src/Application/HostedCheckoutReference.php",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-CEN-06",
+      "kind": "constitutional",
+      "label": "Trusted provider settlement and balanced immutable ledger",
+      "source_owner": "src/Application/PaymentConfirmationService.php",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-CEN-07",
+      "kind": "constitutional",
+      "label": "Idempotent signed webhook and uncertainty reconciliation",
+      "source_owner": "src/Application/ProviderWebhookVerifier.php",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-CEN-08",
+      "kind": "constitutional",
+      "label": "Append-only refund/dispute with separated approval",
+      "source_owner": "src/Application/RefundWorkflowService.php",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-CEN-09",
+      "kind": "constitutional",
+      "label": "Donor financial privacy and minimum legal retention",
+      "source_owner": "src/Application/FinancialDocumentService.php",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-CEN-10",
+      "kind": "constitutional",
+      "label": "Founder change control for new financial flows",
+      "source_owner": "src/Domain/FutureFinancePolicy.php",
+      "source_assessment": "policy_owner_mapped_cross_file_acceptance_pending",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-NJ-01",
+      "kind": "full_journey",
+      "label": "Eligible appeal to hosted provider, signed settlement, ledger and receipt",
+      "source_owner": "src/Application/DonationCheckoutService.php",
+      "source_assessment": "partial_source_coverage",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-NJ-02",
+      "kind": "full_journey",
+      "label": "Failure/abandonment without automatic retry or recurring mandate",
+      "source_owner": "src/Application/DonationCheckoutService.php",
+      "source_assessment": "partial_source_coverage",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-NJ-03",
+      "kind": "full_journey",
+      "label": "Duplicate/out-of-order webhook converges to one ledger posting",
+      "source_owner": "src/Application/WebhookIngestionService.php",
+      "source_assessment": "partial_source_coverage",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-NJ-04",
+      "kind": "full_journey",
+      "label": "Refund request, separated approval, provider result and reversal",
+      "source_owner": "src/Application/RefundWorkflowService.php",
+      "source_assessment": "partial_source_coverage",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-NJ-05",
+      "kind": "full_journey",
+      "label": "Dispute evidence, deadline, provider outcome and truthful notice",
+      "source_owner": "src/Application/RiskOperationsService.php",
+      "source_assessment": "partial_source_coverage",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "CF03-NJ-06",
+      "kind": "full_journey",
+      "label": "Donor/non-donor feature, rank, support, feed, AI and education parity",
+      "source_owner": "src/Domain/DonationNeutralityPolicy.php",
+      "source_assessment": "partial_source_coverage",
+      "staging_acceptance": "unverified",
+      "live_acceptance": "unverified"
+    },
+    {
+      "id": "FX-01",
+      "kind": "future",
+      "label": "Donation Purpose Funds",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-02",
+      "kind": "future",
+      "label": "Donation Reminder Preference Center",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-03",
+      "kind": "future",
+      "label": "Donation Privacy Controls",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-04",
+      "kind": "future",
+      "label": "Complete Receipt Vault",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-05",
+      "kind": "future",
+      "label": "Receipt Authenticity Verification",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-06",
+      "kind": "future",
+      "label": "Donation Transparency Dashboard",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-07",
+      "kind": "future",
+      "label": "Use-of-Funds and Impact Reporting",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-08",
+      "kind": "future",
+      "label": "Multi-Currency Donation Engine",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-09",
+      "kind": "future",
+      "label": "Automatic Provider Selection",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-10",
+      "kind": "future",
+      "label": "Provider Health Dashboard",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-11",
+      "kind": "future",
+      "label": "Provider Failover and Disaster Switching",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-12",
+      "kind": "future",
+      "label": "Webhook Forensics Center",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-13",
+      "kind": "future",
+      "label": "Uncertain Transaction Resolution Center",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-14",
+      "kind": "future",
+      "label": "Smart Reconciliation Exception Queue",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-15",
+      "kind": "future",
+      "label": "Reconciliation Confidence Score",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-16",
+      "kind": "future",
+      "label": "Finance Close Checklist",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-17",
+      "kind": "future",
+      "label": "Digital Dual-Approval Workbench",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-18",
+      "kind": "future",
+      "label": "Refund Eligibility Preview",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-19",
+      "kind": "future",
+      "label": "Refund SLA Tracker",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-20",
+      "kind": "future",
+      "label": "Chargeback Evidence Builder",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-21",
+      "kind": "future",
+      "label": "Financial Privacy Center",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-22",
+      "kind": "future",
+      "label": "My Finance Data Export",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-23",
+      "kind": "future",
+      "label": "Advanced Accountant Export",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-24",
+      "kind": "future",
+      "label": "Immutable Audit Evidence Package",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-25",
+      "kind": "future",
+      "label": "Financial Configuration Version History",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-26",
+      "kind": "future",
+      "label": "Policy Simulation and Preview Mode",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-27",
+      "kind": "future",
+      "label": "Finance Sandbox Laboratory",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-28",
+      "kind": "future",
+      "label": "Deployment Readiness Dashboard",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-29",
+      "kind": "future",
+      "label": "Financial Kill-Switch Console",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-30",
+      "kind": "future",
+      "label": "Restore Verification Dashboard",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-31",
+      "kind": "future",
+      "label": "Privacy-Preserving Finance Analytics",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-32",
+      "kind": "future",
+      "label": "Accessibility-First Financial UX",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-33",
+      "kind": "future",
+      "label": "CF-02 Support Bridge",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-34",
+      "kind": "future",
+      "label": "Financial Notification Preference Center",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-35",
+      "kind": "future",
+      "label": "Internal Finance Event Explorer",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-36",
+      "kind": "future",
+      "label": "Country and Jurisdiction Financial Registry",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-37",
+      "kind": "future",
+      "label": "Tax and Legal Disclosure Registry",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-38",
+      "kind": "future",
+      "label": "Sharia Financial Classification Layer",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_conditional_change_control",
+      "activated": false,
+      "conditional_change_control": true,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-39",
+      "kind": "future",
+      "label": "Waqf and Grant Sustainability Module",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_conditional_change_control",
+      "activated": false,
+      "conditional_change_control": true,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    },
+    {
+      "id": "FX-40",
+      "kind": "future",
+      "label": "Founder Financial Command Center",
+      "source_owner": "src/Application/FutureExpansionRegistry.php",
+      "source_assessment": "coded_future_fail_closed",
+      "activated": false,
+      "conditional_change_control": false,
+      "staging_acceptance": "not_requested",
+      "live_acceptance": "not_approved"
+    }
+  ]
+}

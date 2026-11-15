@@ -2,10 +2,37 @@
 
 Canonical conditional financial owner for the **Sabri Social Homeopathy Platform**.
 
-> **Current source candidate:** `1.4.0-rc.1`  
+> **Current source candidate:** `1.4.0-rc.3` (corrective successor to approved Future40 target `1.4.0-rc.1`; not Live-deployed)  
 > **Active canonical schema:** `4.0.0` — 27 active canonical tables  
 > **Future Expansion Pack:** `CF03-FUTURE40-2026-09-08` — 40 coded future capabilities, all fail closed by default  
 > **Runtime:** fail closed. Live collection and financial file delivery are not claimed.
+
+## V12.3 source consolidation — 15 November 2026
+
+This isolated source branch starts from the October PR #14 signed-event/catalogue-authority candidate and **restores independent PR #9 refund/row-lock, InnoDB preflight, oldest-due outbox, approved provider-specific donation disclosure, conditional CF-05 aggregate adapter and six missing financial regression suites**. The source-plan comparison uses the **Sabri Website Master Plan V12.3 (13 November 2026)**, especially CF03-FR-001..034, CF03-CEN-01..10, CF03-NJ-01..06 and the fail-closed FX-01..40 catalogue.
+
+The current governing test inventory consists of **22 suites in both Composer and GitHub Actions**; passing these is not independent provider, real-MySQL, browser, staging or Live acceptance. The previously separate GitHub review branches must not be merged over this branch without an exact diff review.
+
+**Do not activate or deploy from this source branch without its own exact-HEAD CI, independent finance/security/legal approval, approved provider sandbox, real-MySQL two-worker refund and outbox tests, valid deployment/restore evidence, cross-file contracts, explicit Founder change control, and a separate Live Reality Freeze.**
+
+See `docs/cf03-v12.3-release-evidence-2026-11-15.md` for the evidence ledger and blockers.
+
+The second source review also added a compare-and-swap delivery-state confirmation to `OutboxDispatcher`: a lost/renewed lease cannot count as delivered, retry, or dead-letter success for a stale worker. It added `tests/run-outbox-ack-lease-cas.php`, multi-shortcode unique ARIA form references, and a matching visible border for the actual custom donation text field. **These source protections do not establish downstream File 19 durable acknowledgements or real browser/staging acceptance.**
+
+### V12.3 RC3 — additional defended source boundaries
+
+- **Pre-provider rate/velocity admission:** `WordPressCheckoutRateGate` requires an explicitly approved, versioned Founder rate policy and uses database-unique, non-autoloaded WordPress option slots. Actor and request identities are only stored as site-keyed HMAC values; repeated request keys do not consume new slots. Exceeded quotas return HTTP 429 with Retry-After, and expired slots are removed in bounded cron batches. **No quantity/time values have been auto-approved.** Site WAF/CDN and provider abuse controls still require independent evidence.
+- **File 01 durable event acceptance:** CF-03 outbox no longer equates an arbitrary WordPress listener with successful financial-fact delivery. The transport requires File 01 software 2.0.1 / contract 2.0.0 or higher and accepts only a strict `SPF_Event_Bus::publish(...)` true receipt, with restricted/opaque, no-donor/no-amount envelopes. Existing bare CF-03 event names are published under explicit `CF03.*.v1` File01 names while native accounting event truth stays unchanged. File 19 end-user notification projection and durable downstream consumption remain separate independent contracts.
+- **Real DB isolation test:** an ephemeral MariaDB 10.11 service runs two concurrent SQL sessions with actual `InnoDB SELECT ... FOR UPDATE`, verifies MyISAM denial and rollback. This validates the staging-like isolated test environment, never the deployed Hostinger DB.
+- **Release identity:** distinct source candidate `1.4.0-rc.3`, still schema `4.0.0` / 27 canonical definitions. No paid tier, recurring mandate, provider charge, Future40 activation or Live deployment is implied.
+
+The separate machine-readable registry `manifests/cf03-v123-requirements.json` maps **all 90 V12.3 requirement IDs** (34 functional, 10 constitutional, 6 user journeys and 40 future), retaining an explicit independent staging/Live evidence status per item. `tests/run-v123-90-requirement-gates.php` enforces unique IDs, existing owner code, matching Future40 names, disabled future features and the ban on claiming Live acceptance from source CI. It is one of **21** mandatory PHP suites; a separate isolated MariaDB job validates actual row-lock behavior.
+
+
+A source-controlled operator-only S0 collector at scripts/collect-live-cf03-freeze.sh and corresponding docs/CF03-V12.3-HOSTINGER-LIVE-REALITY-HANDOFF.md specify read-only deployed artifact/version/table/engine evidence. tests/run-live-freeze-readonly.php and Bash syntax checks protect the collector itself; they do NOT run it on Hostinger, prove no MU-plugin side effects, or establish live deployment parity. This is the 22nd governed PHP source suite.
+
+
+The 90-entry registry deliberately distinguishes a mapped source owner from proven functional behavior: each of the 34 FR and 10 CEN entries is now marked behavioral/cross-file acceptance pending; six NJ scenarios remain partial, forty FX entries remain disabled. Source-class presence and 631+ assertions alone do not establish full journey coverage.
 
 ## Current governing plans
 
@@ -14,6 +41,8 @@ The current source is governed by:
 1. **Sabri Social Homeopathy Platform Definitive Master Plan 2026 v3.0** — `SSH-PMP-2026-v3.0`;
 2. **CF-03 — Payments, Billing, Donations and Financial Operations — Conditional Complete Master Plan 2026 v1.1 — Future40 Amended 2026-09-09**;
 3. **CF-03 Future Expansion Pack 40 Amendment** — `CF03-FUTURE40-2026-09-08`, which adds future code contracts without changing current financial law.
+
+4. **Sabri Website Master Plan V12.3** (13 November 2026) — governing cross-platform acceptance, UI, finance and release evidence; later explicit approved requirements prevail over conflicting historical prose.
 
 Earlier CF-03 v2.0, recovered-directive, 30-day/monthly-donation, paid-AI and subscription rules remain historical evidence only.
 
@@ -86,7 +115,7 @@ find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
 bash scripts/build-package.sh
 ```
 
-Current acceptance requires all current-governing-plan suites, the Future Expansion Pack 40 suite, PHP syntax scan, JSON validation, credential-material scan and deterministic package parity on the same exact candidate HEAD.
+Current acceptance requires the complete 22-suite Composer/CI matrix and all current-governing-plan suites, the Future Expansion Pack 40 suite, PHP syntax scan, JSON validation, credential-material scan and deterministic package parity on the same exact candidate HEAD.
 
 ## External acceptance boundary
 

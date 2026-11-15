@@ -104,28 +104,36 @@ final class ProviderWebhookVerifier
             throw new InvalidArgumentException('Provider webhook currency must be a canonical uppercase code.');
         }
 
+        // Do not let DateTime parse relative or normalized dates from signed provider data.
+        // An invalid occurrence must not reserve/poison the provider's idempotency key.
+        $rawOccurredAt = $payload['occurred_at'];
+        if (preg_match('/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$/D', $rawOccurredAt) !== 1) {
+            throw new InvalidArgumentException('Provider webhook occurred_at must be an ISO-8601 timestamp with timezone.');
+        }
         try {
-            $occurredAt = new DateTimeImmutable($payload['occurred_at']);
+            $occurredAt = new DateTimeImmutable($rawOccurredAt);
         } catch (Throwable $error) {
             throw new InvalidArgumentException('Provider webhook occurred_at is invalid.', 0, $error);
         }
+        if ($occurredAt->format('Y-m-d\\TH:i:s') !== substr($rawOccurredAt, 0, 19)) {
+            throw new InvalidArgumentException('Provider webhook occurred_at is not a valid calendar date.');
+        }
 
-        // Reserve only after signature, replay and payload validation. A forged request
-        // must never consume a legitimate provider event ID.
+        $amount = new Money($payload['amount_minor'], $payload['currency']);
+        $bodyHash = hash('sha256', $rawBody);
+
+        // Fully validate the evidence's identifiers and plausible event chronology
+        // BEFORE calling the uniqueness callback, which may durably reserve an event ID.
+        $preflight = new ProviderEvidence(
+            $providerCode, $payload['event_id'], $payload['type'], $payload['intent_id'],
+            $amount, $keyVersion, $signatureTimestamp, $receivedAt, $bodyHash, true, true, $occurredAt
+        );
+        $preflight->assertTrusted($this->replayWindowSeconds);
+
         $unique = ($this->eventIsUnique)($providerCode, $payload['event_id']);
         $evidence = new ProviderEvidence(
-            $providerCode,
-            $payload['event_id'],
-            $payload['type'],
-            $payload['intent_id'],
-            new Money($payload['amount_minor'], $payload['currency']),
-            $keyVersion,
-            $signatureTimestamp,
-            $receivedAt,
-            hash('sha256', $rawBody),
-            true,
-            $unique,
-            $occurredAt
+            $providerCode, $payload['event_id'], $payload['type'], $payload['intent_id'],
+            $amount, $keyVersion, $signatureTimestamp, $receivedAt, $bodyHash, true, $unique, $occurredAt
         );
         $evidence->assertTrusted($this->replayWindowSeconds);
 

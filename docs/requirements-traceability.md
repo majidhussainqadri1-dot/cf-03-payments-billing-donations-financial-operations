@@ -1,4 +1,4 @@
-# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.1
+# CF-03 Requirements Traceability — Current Governing Plans / 1.4.0-rc.2
 
 This matrix is the current **source-code traceability** for the two governing documents and the current Future40 amendment:
 
@@ -10,13 +10,13 @@ It does **not** claim provider, legal, PCI, staging, Live or operational accepta
 
 | Requirement | Current source implementation | Source status | External acceptance |
 |---|---|---|---|
-| CF03-FR-001 Financial product registry | `FinancialProduct`, `DonationCatalogSeeder`, `CatalogDisclosureService`; only active collectible product is `donation.one_time`, no entitlement mapping | Implemented | Staging catalog/admin review pending |
+| CF03-FR-001 Financial product registry | `FinancialProduct`, `DonationCatalogSeeder`, `CatalogDisclosureService`, `ApprovedDonationCatalogGate`; checkout now requires an active, effective, Founder-approved `donation.one_time` product before provider-side action | Source implementation + isolated-branch regression | Catalogue provisioning and cross-file staging acceptance pending |
 | CF03-FR-002 Price/version policy | `PriceVersion`, `PriceCatalog`, `PriceLifecycle`, policy/version snapshots; historical records are not silently reinterpreted | Implemented | Future provider/legal price-policy acceptance where applicable |
-| CF03-FR-003 Pre-action disclosure | `PrePurchaseDisclosure`, `DonationAppealCopy`, `WordPressPublicUi`; amount/currency/purpose/one-time/no-privilege disclosure, no preselection | Implemented | Real-browser/mobile/RTL/accessibility acceptance pending |
+| CF03-FR-003 Pre-action disclosure | `PrePurchaseDisclosure`, `DonationAppealCopy`, `WordPressDonationDisclosure`, `WordPressRestApi`, `WordPressPublicUi`; approved provider/purpose/fees/tax/refund/support/data-use disclosure required before checkout; absent or superseded record fails closed, amount unselected | Implemented | Independent legal/tax approval, provider-terms publication and real-browser/mobile/RTL/accessibility acceptance pending |
 | CF03-FR-004 Zero commission | `CommissionPolicy`, `PlatformFinancialPolicy`; Clinic/Marketplace = 0 bp | Implemented invariant | Cross-file File 08/18 staging parity pending |
 | CF03-FR-005 Donation non-privilege | `DonationNeutralityPolicy`, no-access outbox facts, File 00 boundary | Implemented invariant | Cross-file donor/non-donor end-to-end staging parity pending |
 | CF03-FR-006 Hosted checkout | `DonationPaymentProvider`, `HostedPaymentProvider`, provider registry and fail-closed null adapters; platform never accepts raw card secrets | Implemented contract | Approved real hosted/tokenized provider + PCI responsibility pending |
-| CF03-FR-007 Payment intent lifecycle | `DonationIntentDraft`, `DonationCheckoutService`, `PaymentIntent`, state/version/idempotency/expiry binding | Implemented | Provider sandbox acceptance pending |
+| CF03-FR-007 Payment intent lifecycle | `DonationIntentDraft`, `DonationCheckoutService`, `PaymentIntent`, state/version/idempotency/expiry binding, and `WordPressCheckoutRateGate` atomic pre-provider admission | Implemented source | Approved Founder limits, WAF/provider safeguards and provider sandbox acceptance pending |
 | CF03-FR-008 Signed webhook verification | `ProviderWebhookVerifier`, `ProviderEvidence`, `WebhookIngestionService`; signature/key/timestamp/replay/body-hash/event-ID checks | Implemented | Approved provider signature/key-rotation drill pending |
 | CF03-FR-009 Provider state mapping | `ProviderEventStateMapper`, unknown/retired-product quarantine, trusted transition checks | Implemented | Provider event-matrix sandbox acceptance pending |
 | CF03-FR-010 Payment confirmation | `PaymentConfirmationService` and `WebhookIngestionService`; browser redirect cannot settle; durable ledger/outbox required | Implemented | Real provider/browser return tests pending |
@@ -29,17 +29,17 @@ It does **not** claim provider, legal, PCI, staging, Live or operational accepta
 | CF03-FR-017 Currency/rounding | `Money` integer minor units, currency-aware balance logic; no floating-point financial truth | Implemented invariant | Additional jurisdiction/tax/FX acceptance only if activated |
 | CF03-FR-018 Donation attempt lifecycle | `DonationCheckoutService`, `WebhookIngestionService`; one-time product only, recurring=false, explicit independent attempts | Implemented | Provider sandbox journey acceptance pending |
 | CF03-FR-019 Seven-day appeal + explicit one-time consent | `DonationPromptPolicy`, `DonationPromptState`, `DonationAppealCopy`, REST/UI/JS consent gate; 7-day minimum | Implemented | Real browser/session/storage acceptance pending |
-| CF03-FR-020 Failure recovery without recurrence | Stable idempotency/checkpoints, expiry/replay controls, no automatic repeat charge | Implemented | Provider timeout/outage fault-injection pending |
-| CF03-FR-021 Access/donor parity | Donation facts are receipt/accounting facts only; `DonationNeutralityPolicy`; no access event | Implemented invariant | File 00/05/16/21/26 consumer contract tests pending across repos |
+| CF03-FR-020 Failure recovery without recurrence | Stable idempotency/checkpoints, due-time fair outbox/lease CAS, File01 durable event-store receipt and no automatic repeat charge | Implemented source | File01 actual versioned bus, File19 durable downstream consumption and provider timeout/outage staging pending |
+| CF03-FR-021 Access/donor parity | Donation facts are receipt/accounting facts only; `DonationNeutralityPolicy`; restricted HMAC-opaque File01 projection has `donor_privilege=false` and `access_signal=false` | Implemented invariant | File 00/05/16/19/21/26 consumer contract tests pending across repos |
 | CF03-FR-022 Abandon/revoke/refund clarity | One-time history/refund status; recurring management retired/fail-closed; new independent attempt only | Implemented | Browser/support journey acceptance pending |
 | CF03-FR-023 Free AI and education boundary | `PlatformFinancialPolicy`; paid AI metering service is a compatibility tombstone; subscription runtime retired | Implemented invariant | File 05/16 cross-file parity acceptance pending |
-| CF03-FR-024 Refund request | `RefundRequest`, `RefundBalance`, `RefundWorkflowService`, bounded refundable balance/idempotency | Implemented | Provider sandbox/user-support journey pending |
+| CF03-FR-024 Refund request | `RefundRequest`, `RefundBalance`, `RefundWorkflowService`, transactional per-intent InnoDB row locking, 500-record fail-closed refund balance guard and idempotency | Implemented | Provider sandbox/user-support journey pending |
 | CF03-FR-025 Refund authorization/execution | Reviewer/executor separation, provider checkpoint, uncertain-state reconciliation, ledger reversal | Implemented | Real provider timeout/retry/dual-control acceptance pending |
 | CF03-FR-026 Chargeback/dispute | `ChargebackCase`, `RiskOperationsService`, settlement/reconciliation hooks and evidence lifecycle | Implemented | Provider dispute lifecycle/notification acceptance pending |
 | CF03-FR-027 Donation receipt/refund | One-time receipt snapshot, private identity, lawful refund ledger/outbox, recurring unavailable | Implemented | Legal/accounting receipt review pending |
-| CF03-FR-028 Fraud/manual review | `FraudReviewCase`, `RiskOperationsService`; bounded signals/holds/reasoned manual path | Implemented | Approved risk policy/manual-review staging acceptance pending |
+| CF03-FR-028 Fraud/manual review | `FraudReviewCase`, `RiskOperationsService`, plus `WordPressCheckoutRateGate` with WordPress option-name unique admission slots, 429 retry hints and retention cleanup | Implemented local source boundary | Founder-approved quota/versioned rate policy, live WAF/provider limits, shared-IP/guest fairness and real concurrency staging pending |
 | CF03-FR-029 Separation of duties | `SeparationOfDutiesPolicy`, granular WordPress finance capabilities, reviewer/executor/approver distinctions | Implemented | Quarterly-access-review operational process pending |
-| CF03-FR-030 Financial minimization | Provider-safe donor clone, sensitive-header stripping, bounded public projections, prohibited-credential scans | Implemented | Independent privacy/security review pending |
+| CF03-FR-030 Financial minimization | Provider-safe donor clone, sensitive-header stripping, HMAC-pseudonymous admission keys, opaque restricted File01 envelopes, bounded public projections and prohibited-credential scans | Implemented | Independent privacy/security review and File01/File19 retention acceptance pending |
 | CF03-FR-031 Secure finance export | `SecureExportJob`, `SecureExportService`, manifest/hash/limits/audit/time-bound contracts | Implemented contract | Encrypted artifact store + delivery/staging acceptance pending |
 | CF03-FR-032 Close and lock | `FinancePeriod`, settlement/reconciliation close controls and later adjustment model | Implemented | Finance close/reopen drill pending |
 | CF03-FR-033 Provider/key incident | `IncidentControl`, `IncidentPathGuard`, `IncidentOperationsService`, kill switches and fail-closed runtime | Implemented | Key rotation/provider outage incident drill pending |
@@ -74,3 +74,15 @@ The following are not active CF-03 capabilities and must not be revived without 
 - wallet/escrow/custody/payout/split-payment flows.
 
 Schema `4.0.0` removes `recurring_consents`, `subscriptions`, `usage_authorizations` and `usage_facts` from the active canonical schema. Existing legacy physical tables are not treated as current truth and require bounded retention/reconciliation before eventual approved retirement.
+
+### CF-05 analytics conditional consumer boundary (new source evidence)
+
+The newly supplied CF-05 v1.1 Future40 plan's **CF05-FR-018** requires ledger-derived **approved aggregates only**, no raw ledger, donor identity, individual refunds or decision ownership. `src/Integration/CF05FinancialAggregate.php` is a pure, non-activated, published-snapshot/hash/amount verified five-metric DTO. `tests/run-cf05-aggregate-boundary.php` proves fail-closed/private-data exclusion. No CF-05 ingestion runtime, route or activation is authorized; cross-file owner/consumer staging acceptance remains OPEN.
+
+## V12.3 RC3 integration and acceptance boundary
+
+The 20 currently approved **source-level** Composer suites and CI PHP matrix plus the separate isolated MariaDB 10.11 row-lock test are tracked under the distinct `1.4.0-rc.3` package identity. The MariaDB test exercises true two-connection InnoDB lock contention and MyISAM denial, but does not establish production DB parity.
+
+The File 01 bridge's strict `SPF_Event_Bus::publish` true return establishes **durable File01 event acceptance only**, not final File 19 notification delivery or end-user receipt. CF-03 continues to own the authoritative financial ledger; File01/File19 must not grant donor privileges or infer payment success from events.
+
+The local rate gate is coded and tested but cannot safely activate without a specific valid Founder rate-limit policy, site HMAC key, real WordPress options UNIQUE evidence and independently approved WAF/provider abuse controls. Absent approved terms => fail closed. No financial schema 4.0.0 change is authorized by this source candidate.

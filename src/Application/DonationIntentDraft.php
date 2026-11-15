@@ -59,7 +59,9 @@ final class DonationIntentDraft
             false,
             false,
             $this->serviceState,
-            $this->idempotencyKey,
+            // Provider idempotency is merchant-scoped for many gateways.
+            // Never send a client-chosen key unscoped across donor identities.
+            'cf03prov.'.substr(hash('sha256', 'donation-provider|'.$this->intentId.'|'.$this->donorReference.'|'.$this->idempotencyKey), 0, 64),
             $this->createdAt
         );
     }
