@@ -68,8 +68,6 @@ jobs:
       - name: Master Plan V12.3 ninety-requirement evidence gate
         run: php tests/run-v123-90-requirement-gates.php
       - name: Read-only deployed-reality freeze collector source contract
-        run: |
-          bash -n scripts/collect-live-cf03-freeze.sh
         run: php tests/run-live-freeze-readonly.php
       - name: Shell syntax for Hostinger read-only freeze collector
         run: bash -n scripts/collect-live-cf03-freeze.sh
