@@ -1,3 +1,5 @@
+> **Second-review supersession notice (2026-10-21):** The earlier six/seven-defect source review was extended using the attached CF-03 Word plan and three central plans. The latest 40-point matrix, two further source patches, one QA orchestration correction, and updated external blockers are in `docs/audit-40-cross-file-plan-2026-10-21.md`. Total confirmed source defects patched on the isolated branch: **9**; local-vs-CI orchestration defect patched: **1**. The historical seven-defect counts below are not the current final counts.
+
 # CF-03 — Governing Plan / Cross-File Code Review, 40 Executable Checks & Corrective Evidence
 **Review date:** 21 October 2026  
 **Exact initial main HEAD:** `24a8bbff7fd1940191ac947e4a23455d0567a0a3`  
