@@ -17,10 +17,12 @@
 - Plan mapping: V12.3 CF03-FR-001..034, CF03-CEN-01..10, CF03-NJ-01..06; Future40 stays deactivated. No payment collection, staging, database migration or production deployment was performed.
 - Outstanding: real MySQL concurrency/engine verification, provider/key/legal/PCI review, per-actor pre-provider rate/velocity/WAF policy evidence, durable consumer acknowledgements, independent security, cross-file integration, real-browser RTL/accessibility, restore/rollback, founder approval, live deployed artifact/schema/migration/version parity and Live re-tests.
 
-- Second source review: fixed an outbox false-delivered result on an unpersisted or stolen-lease acknowledgment; update and recovery now require CAS of the worker's exact lease. Added adversarial lost-ACK and renewed-lease tests. The existing 21-suite matrix includes the new test.
+- Second source review: fixed an outbox false-delivered result on an unpersisted or stolen-lease acknowledgment; update and recovery now require CAS of the worker's exact lease. Added adversarial lost-ACK and renewed-lease tests. The existing 22-suite matrix includes the new test.
 - Corrected two donation UI issues: duplicate ARIA IDs across repeated shortcodes and a text input mistakenly styled as number. Real-browser and assistive-technology acceptance remains pending.
 
 - Added `manifests/cf03-v123-requirements.json` and executable V12.3 requirement matrix proving the full 34+10+6+40=90 entry inventory with honest independent staging/Live status. Composer/CI source suite count is now **21**, plus the separate MariaDB service job.
+
+- Added the Hostinger read-only reality-freeze operator script and source-only regression checks, with a guarded handoff specifying independently captured deployed hashes, DB versions/migrations and strict prohibition on financial activation before approval. Active Composer/CI source suites: 22, plus separate real-MariaDB CI job.
 
 ## 1.4.0-rc.2 — Corrective Plan-to-Code Review (Source Candidate, Not Live)
 
