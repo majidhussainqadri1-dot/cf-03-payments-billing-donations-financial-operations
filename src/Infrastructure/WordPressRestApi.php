@@ -87,7 +87,8 @@ final class WordPressRestApi
             && ($incident['webhooks_enabled'] ?? false) === true
             && self::providerReady($runtime)
             && WordPressDonationDisclosure::forProvider($runtime->providerCode()) !== null
-            && WordPressCheckoutRateGate::configured();
+            && WordPressCheckoutRateGate::configured()
+            && WordPressOutboxTransport::backboneReady();
 
         return [
             'policy_name' => PlatformFinancialPolicy::POLICY_NAME,
@@ -379,6 +380,7 @@ final class WordPressRestApi
             'providers' => WordPressProviderRegistryFactory::payments()->health(),
             'donation_provider_codes' => WordPressProviderRegistryFactory::donations()->registeredProviderCodes(),
             'atomic_checkout_rate_gate_configured' => WordPressCheckoutRateGate::configured(),
+            'file01_durable_event_backbone' => WordPressOutboxTransport::backboneReady(),
             'transparency_snapshot' => self::transparency()['status'],
             'schema_version' => defined('SABRI_CF03_SCHEMA_VERSION') ? SABRI_CF03_SCHEMA_VERSION : 'unknown',
             'recurring_runtime' => 'retired',
