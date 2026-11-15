@@ -16,4 +16,13 @@ $assert(str_contains($css, 'var(--sabri-green)'), 'Donation UI reuses the single
 $assert(str_contains($css, ':focus-visible'), 'Keyboard focus remains explicit');
 $assert(str_contains($css, 'prefers-reduced-motion'), 'Motion-safety accessibility guard remains');
 $assert(str_contains($css, 'max-width:380px'), 'Mobile 320–380px layout breakpoint remains');
+$ui = file_get_contents(__DIR__.'/../src/Infrastructure/WordPressPublicUi.php');
+$assert(is_string($ui), 'WordPress donation UI template is present');
+$assert(str_contains($css, 'input[type=text]') && !str_contains($css, 'input[type=number]'),
+    'Custom amount text field receives the intended full-border input styling');
+$assert(str_contains($ui, 'private static int $donateRenderSequence'),
+    'Donation shortcode uses a per-render unique ID counter');
+$assert(substr_count($ui, 'esc_attr($headingId)')===2
+    && substr_count($ui, 'esc_attr($assuranceId)')===2,
+    'ARIA heading and assurance references share each form’s unique IDs');
 fwrite(STDOUT, "CF-03 governing brand token: {$checks}/{$checks} checks passed.\n");
