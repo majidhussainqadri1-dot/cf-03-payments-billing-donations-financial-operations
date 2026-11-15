@@ -29,6 +29,16 @@ final class WordPressPublicUi
         $collectionEnabled = false;
         try { $collectionEnabled = WordPressRestApi::policy()['live_collection_enabled'] === true; }
         catch (Throwable) { $collectionEnabled = false; }
+        $disclosure = null;
+        if ($collectionEnabled) {
+            try {
+                $runtime = WordPressRuntimeConfiguration::load();
+                $disclosure = WordPressDonationDisclosure::forProvider($runtime->providerCode());
+            } catch (Throwable) {
+                $disclosure = null;
+            }
+            if ($disclosure === null) { $collectionEnabled = false; }
+        }
         self::assets($collectionEnabled);
 
         $copy = DonationAppealCopy::contract();
@@ -55,6 +65,24 @@ final class WordPressPublicUi
         $disabled = $collectionEnabled ? '' : ' disabled aria-disabled="true"';
         $availability = $collectionEnabled ? ''
             : '<p class="sabri-cf03-availability" role="status" aria-live="polite">'.esc_html($preparedMessage).'</p>';
+        $disclosureHtml = '';
+        if ($collectionEnabled && is_array($disclosure)) {
+            $labels = [
+                'provider_name' => 'Payment provider',
+                'donation_purpose' => 'Donation purpose',
+                'provider_fee_terms' => 'Provider fees',
+                'tax_terms' => 'Tax treatment',
+                'refund_terms' => 'Refund terms',
+                'support_terms' => 'Support and disputes',
+                'data_use_terms' => 'Financial data use',
+            ];
+            $disclosureHtml = '<section class="sabri-cf03-disclosure" aria-label="Approved donation terms"><dl>';
+            foreach ($labels as $field => $label) {
+                $disclosureHtml .= '<dt>'.esc_html__($label, 'sabri-cf03-finance').'</dt>'
+                    .'<dd>'.esc_html($disclosure[$field]).'</dd>';
+            }
+            $disclosureHtml .= '</dl><p>'.esc_html__('Currency: USD. A voluntary one-time donation never changes core access or rank.', 'sabri-cf03-finance').'</p></section>';
+        }
         $consentLabel = $language === 'ur'
             ? 'میں تصدیق کرتا/کرتی ہوں کہ یہ صرف ایک رضاکارانہ یک وقتی عطیہ ہے؛ کوئی recurring یا خودکار دوبارہ چارج نہیں ہوگا۔'
             : 'I confirm this is a voluntary one-time donation only; there is no recurring or automatic repeat charge.';
@@ -64,6 +92,7 @@ final class WordPressPublicUi
             .'<p>'.esc_html($message).'</p>'
             .'<p id="sabri-cf03-donation-assurance" class="sabri-cf03-assurance">'.esc_html($assurance).'</p>'
             .$availability
+            .$disclosureHtml
             .'<form class="sabri-cf03-donation-form" aria-describedby="sabri-cf03-donation-assurance" novalidate>'
             .'<fieldset class="sabri-cf03-amounts"'.($collectionEnabled ? '' : ' disabled').'><legend>'
             .esc_html__('Choose a suggested amount or enter a custom amount; nothing is preselected.', 'sabri-cf03-finance').'</legend>'
