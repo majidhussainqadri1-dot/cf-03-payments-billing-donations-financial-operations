@@ -33,7 +33,7 @@ final class WordPressOutboxTransport implements OutboxTransport
     public function publish(string $eventId, string $eventType, array $payload): void
     {
         if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/D', $eventId) !== 1
-            || preg_match('/^[A-Z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*)+$/D', $eventType) !== 1
+            || preg_match('/^[A-Z][A-Za-z0-9]*(?:\.v[1-9][0-9]*)?$/D', $eventType) !== 1
         ) {
             throw new InvariantViolation('Financial event identity is not a canonical versioned domain fact.');
         }
@@ -46,7 +46,13 @@ final class WordPressOutboxTransport implements OutboxTransport
         // Hash the source event ID as it may itself contain an actor reference.
         $opaque = hash('sha256', $eventId);
         $aggregate = 'fact.'.substr($opaque, 0, 48);
-        $eventName = self::EVENT_PREFIX.$eventType;
+        // Existing CF-03 outbox facts are sometimes stored as bare names
+        // (DonationSettled, DonationRefunded, FinancialAdjustmentExecuted).
+        // File 01 publication is always explicitly versioned without rewriting
+        // the original CF-03 accounting or idempotency evidence.
+        $versionedType = preg_match('/\.v[1-9][0-9]*$/D', $eventType) === 1
+            ? $eventType : $eventType.'.v1';
+        $eventName = self::EVENT_PREFIX.$versionedType;
         $minimal = [
             'owner_module' => 'cf03',
             'source_event_hash' => $opaque,
