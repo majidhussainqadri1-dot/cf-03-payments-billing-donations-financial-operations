@@ -43,7 +43,16 @@ final class RefundWorkflowService
             throw new InvalidArgumentException('Refund amount must be positive.');
         }
 
-        $existing = $this->repository->get('refunds', $refundId);
+        return $this->repository->transaction(function () use (
+            $refundId, $intentId, $requesterReference, $amount, $reasonCode, $now
+        ): array {
+            // Lock the intent first, before any balance or idempotency read.
+            // This serializes independent refund IDs for the same payment.
+            $intent = $this->repository->getForUpdate('intents', $intentId);
+            if ($intent === null || (string)($intent['actor_ref'] ?? '') !== $requesterReference) {
+                throw new InvariantViolation('Refundable payment was not found in requester scope.');
+            }
+            $existing = $this->repository->get('refunds', $refundId);
         if ($existing !== null) {
             if (($existing['intent_id'] ?? null) === $intentId
                 && ($existing['requester_ref'] ?? null) === $requesterReference
@@ -56,10 +65,6 @@ final class RefundWorkflowService
             throw new InvariantViolation('Refund identifier already exists with different terms.');
         }
 
-        $intent = $this->repository->get('intents', $intentId);
-        if ($intent === null || (string)($intent['actor_ref'] ?? '') !== $requesterReference) {
-            throw new InvariantViolation('Refundable payment was not found in requester scope.');
-        }
         if (!in_array((string)($intent['state'] ?? ''), ['captured', 'settled'], true)) {
             throw new InvariantViolation('Payment is not in a refundable state.');
         }
@@ -69,7 +74,13 @@ final class RefundWorkflowService
         }
 
         $committed = 0;
-        foreach ($this->repository->find('refunds', ['intent_id' => $intentId], 500) as $prior) {
+        $existingRefunds = $this->repository->find('refunds', ['intent_id' => $intentId], 500);
+        if (count($existingRefunds) >= 500) {
+            // A truncated scan could silently ignore older committed refunds.
+            // Fail closed and require reviewed reconciliation instead.
+            throw new InvariantViolation('Refund record safety cap reached; manual reconciliation is required.');
+        }
+        foreach ($existingRefunds as $prior) {
             if (!in_array((string)($prior['state'] ?? ''), self::BALANCE_COMMITTING_STATES, true)) {
                 continue;
             }
@@ -110,6 +121,7 @@ final class RefundWorkflowService
         ];
         $this->repository->insert('refunds', $refundId, $record);
         return $this->safe($record) + ['reused' => false];
+        });
     }
 
     /** @return array<string,mixed> */
