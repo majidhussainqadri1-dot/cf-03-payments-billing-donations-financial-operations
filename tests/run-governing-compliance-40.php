@@ -62,7 +62,7 @@ $add('32 | Approved product provisioning occurs after schema validation', static
 $add('33 | Financial platform activation stays preparing by default', static fn():bool => str_contains($source('src/Plugin.php'),"OPTION_MODE, 'preparing'"));
 $add('34 | Provider idempotency namespace is opaque per intent', static fn():bool => str_contains($source('src/Application/DonationIntentDraft.php'),'donation-provider|'));
 $add('35 | Expired financial outbox lease recovery exists', static fn():bool => str_contains($source('src/Application/OutboxDispatcher.php'),'recoverExpiredLeases('));
-$add('36 | Silent no-consumer delivery is prohibited', static fn():bool => str_contains($source('src/Infrastructure/WordPressOutboxTransport.php'),'has_action(self::EVENT_HOOK) === false'));
+$add('36 | Durable File01 financial-fact acknowledgement is mandatory', static fn():bool => str_contains($source('src/Infrastructure/WordPressOutboxTransport.php'),'SPF_Event_Bus::publish(') && str_contains($source('src/Infrastructure/WordPressOutboxTransport.php'),'$accepted !== true'));
 $add('37 | File 20/25 presentation integration readiness gate', static fn():bool => str_contains($source('src/Application/RuntimeConfiguration.php'),'file20_file25_contract'));
 $add('38 | File 24 independent financial assurance gate', static fn():bool => str_contains($source('src/Application/RuntimeConfiguration.php'),'file24_assurance'));
 $add('39 | Current central Sabri Green #087A4E enforced', static fn():bool => str_contains($source('assets/css/public.css'),'--sabri-green:#087A4E'));
