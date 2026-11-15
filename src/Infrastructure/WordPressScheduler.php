@@ -91,6 +91,13 @@ final class WordPressScheduler
         } catch (Throwable $error) {
             self::log('scheduled processing', $error);
         }
+        // Bounded privacy cleanup is independent of finance queue health:
+        // stale HMAC-only attempt slots are not retained indefinitely.
+        try {
+            WordPressCheckoutRateGate::cleanExpired(new DateTimeImmutable('now'), 100);
+        } catch (Throwable $error) {
+            self::log('checkout rate-limit cleanup', $error);
+        }
     }
 
     private static function log(string $operation, Throwable $error): void
