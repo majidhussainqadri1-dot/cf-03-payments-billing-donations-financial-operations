@@ -7,6 +7,16 @@ Canonical conditional financial owner for the **Sabri Social Homeopathy Platform
 > **Future Expansion Pack:** `CF03-FUTURE40-2026-09-08` — 40 coded future capabilities, all fail closed by default  
 > **Runtime:** fail closed. Live collection and financial file delivery are not claimed.
 
+## V12.3 source consolidation — 15 November 2026
+
+This isolated source branch starts from the October PR #14 signed-event/catalogue-authority candidate and **restores independent PR #9 refund/row-lock, InnoDB preflight, oldest-due outbox, approved provider-specific donation disclosure, conditional CF-05 aggregate adapter and six missing financial regression suites**. The source-plan comparison uses the **Sabri Website Master Plan V12.3 (13 November 2026)**, especially CF03-FR-001..034, CF03-CEN-01..10, CF03-NJ-01..06 and the fail-closed FX-01..40 catalogue.
+
+The current governing test inventory consists of **18 suites in both Composer and GitHub Actions**; passing these is not independent provider, real-MySQL, browser, staging or Live acceptance. The previously separate GitHub review branches must not be merged over this branch without an exact diff review.
+
+**Do not activate or deploy from this source branch without its own exact-HEAD CI, independent finance/security/legal approval, approved provider sandbox, real-MySQL two-worker refund and outbox tests, valid deployment/restore evidence, cross-file contracts, explicit Founder change control, and a separate Live Reality Freeze.**
+
+See `docs/cf03-v12.3-release-evidence-2026-11-15.md` for the evidence ledger and blockers.
+
 ## Current governing plans
 
 The current source is governed by:
@@ -14,6 +24,8 @@ The current source is governed by:
 1. **Sabri Social Homeopathy Platform Definitive Master Plan 2026 v3.0** — `SSH-PMP-2026-v3.0`;
 2. **CF-03 — Payments, Billing, Donations and Financial Operations — Conditional Complete Master Plan 2026 v1.1 — Future40 Amended 2026-09-09**;
 3. **CF-03 Future Expansion Pack 40 Amendment** — `CF03-FUTURE40-2026-09-08`, which adds future code contracts without changing current financial law.
+
+4. **Sabri Website Master Plan V12.3** (13 November 2026) — governing cross-platform acceptance, UI, finance and release evidence; later explicit approved requirements prevail over conflicting historical prose.
 
 Earlier CF-03 v2.0, recovered-directive, 30-day/monthly-donation, paid-AI and subscription rules remain historical evidence only.
 
@@ -86,7 +98,7 @@ find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
 bash scripts/build-package.sh
 ```
 
-Current acceptance requires all current-governing-plan suites, the Future Expansion Pack 40 suite, PHP syntax scan, JSON validation, credential-material scan and deterministic package parity on the same exact candidate HEAD.
+Current acceptance requires the complete 18-suite Composer/CI matrix and all current-governing-plan suites, the Future Expansion Pack 40 suite, PHP syntax scan, JSON validation, credential-material scan and deterministic package parity on the same exact candidate HEAD.
 
 ## External acceptance boundary
 
